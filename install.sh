@@ -57,7 +57,7 @@ done
 
 say() { printf '%s\n' "$*"; }
 run() {
-    if [[ "$DRY_RUN" == "1" ]]; then say "DRY: $*"; else eval "$@"; fi
+    if [[ "$DRY_RUN" == "1" ]]; then say "DRY: $*"; else "$@"; fi
 }
 
 # ---- Parse config (very small TOML subset) -------------------------------
@@ -78,7 +78,8 @@ AGENT_ONLY_TABLE=""  # pipe-delimited records: "|name:val1 val2|name:val3|"
 
 agent_only_for() {
     local name="$1"
-    local rec="${AGENT_ONLY_TABLE#*|${name}:}"
+    local prefix="|${name}:"
+    local rec="${AGENT_ONLY_TABLE#*${prefix}}"
     if [[ "$rec" == "$AGENT_ONLY_TABLE" ]]; then echo ""; return; fi
     echo "${rec%%|*}"
 }
@@ -197,7 +198,7 @@ fi
 
 if [[ "$MODE" == "update" ]]; then
     say "Updating hivesmith at $HIVESMITH_DIR..."
-    run "git -C \"$HIVESMITH_DIR\" pull --ff-only"
+    run git -C "$HIVESMITH_DIR" pull --ff-only
     # Re-enumerate skills in case git pull added/removed some
     SKILLS=()
     for dir in "$HIVESMITH_DIR"/skills/*/; do
@@ -219,25 +220,29 @@ if [[ "$MODE" == "uninstall" ]]; then
                 target="$(readlink "$link")"
                 if [[ "$target" == "$HIVESMITH_DIR/skills/$skill" \
                    || "$target" == "$RENDER_ROOT/"*"/skills/$link_name" ]]; then
-                    run "rm \"$link\""
+                    run rm "$link"
                 fi
             fi
             # Also clean up an un-prefixed link if it happens to exist (migration)
             if [[ -n "$PREFIX" && -L "$skills_dir/$skill" ]]; then
                 t2="$(readlink "$skills_dir/$skill")"
                 if [[ "$t2" == "$HIVESMITH_DIR/skills/$skill" ]]; then
-                    run "rm \"$skills_dir/$skill\""
+                    run rm "$skills_dir/$skill"
                 fi
             fi
         done
     done
     # Remove rendered tree
     if [[ -d "$RENDER_ROOT" ]]; then
-        run "rm -rf \"$RENDER_ROOT\""
+        run rm -rf "$RENDER_ROOT"
     fi
     # Remove auto-update cron if any
     if crontab -l 2>/dev/null | grep -q "hivesmith .*install.sh.* --update\|hivesmith/install.sh --update"; then
-        run "(crontab -l | grep -v 'hivesmith/install.sh --update\\|hivesmith .*install.sh.* --update') | crontab -"
+        if [[ "$DRY_RUN" == "1" ]]; then
+            say "DRY: remove hivesmith crontab entry"
+        else
+            (crontab -l | grep -v 'hivesmith/install.sh --update\|hivesmith .*install.sh.* --update') | crontab -
+        fi
     fi
     say "Uninstalled."
     exit 0
@@ -252,8 +257,8 @@ render_tree() {
     local root="$RENDER_ROOT/$prefix"
 
     # Wipe and recreate so it's always in sync with source.
-    run "rm -rf \"$root\""
-    run "mkdir -p \"$root/skills\""
+    run rm -rf "$root"
+    run mkdir -p "$root/skills"
 
     # Build sed program (ERE): rewrite `name:` frontmatter and /skill-name
     # slash-commands, being careful NOT to rewrite path segments like
@@ -269,7 +274,7 @@ render_tree() {
     for s in "${SKILLS[@]}"; do
         local src_dir="$HIVESMITH_DIR/skills/$s"
         local dst_dir="$root/skills/${prefix}${s}"
-        run "mkdir -p \"$dst_dir\""
+        run mkdir -p "$dst_dir"
         # Copy everything, then rewrite SKILL.md in place.
         if [[ "$DRY_RUN" == "1" ]]; then
             say "DRY: cp -R $src_dir/. $dst_dir/"
@@ -291,7 +296,7 @@ if [[ -n "$PREFIX" ]]; then
 else
     # Clean up any stale rendered tree when running without prefix.
     if [[ -d "$RENDER_ROOT" ]]; then
-        run "rm -rf \"$RENDER_ROOT\""
+        run rm -rf "$RENDER_ROOT"
     fi
 fi
 
@@ -301,7 +306,7 @@ created=0; skipped=0; removed=0
 
 for entry in "${TARGETS[@]}"; do
     IFS=$'\t' read -r name skills_dir <<< "$entry"
-    run "mkdir -p \"$skills_dir\""
+    run mkdir -p "$skills_dir"
 
     only="$(agent_only_for "$name")"
 
@@ -324,7 +329,7 @@ for entry in "${TARGETS[@]}"; do
                 fi
             done
             if [[ "$keep" == "0" ]]; then
-                run "rm \"$existing\""
+                run rm "$existing"
                 removed=$((removed + 1))
             fi
         done
@@ -342,12 +347,13 @@ for entry in "${TARGETS[@]}"; do
         # Opt-out: globally disabled or not in this agent's "only" list.
         # Config values are un-prefixed (they refer to skill identity, not link name).
         disabled=0
+        # shellcheck disable=SC2086  # intentional word-split of space-separated lists
         if in_list "$skill" $DISABLE_GLOBAL; then disabled=1; fi
         if [[ -n "$only" ]] && ! in_list "$skill" $only; then disabled=1; fi
 
         if [[ "$disabled" == "1" ]]; then
             if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$src" ]]; then
-                run "rm \"$link\""
+                run rm "$link"
                 removed=$((removed + 1))
             fi
             continue
@@ -361,14 +367,14 @@ for entry in "${TARGETS[@]}"; do
             # Stale hivesmith link (e.g. prefix changed, or render-root moved).
             if [[ "$cur_target" == "$HIVESMITH_DIR/skills/$skill" \
                || "$cur_target" == "$RENDER_ROOT/"*"/skills/${PREFIX}${skill}" ]]; then
-                run "rm \"$link\""
+                run rm "$link"
             fi
         fi
         if [[ -e "$link" ]]; then
             say "WARN: $link exists and is not a hivesmith symlink — skipping"
             continue
         fi
-        run "ln -s \"$src\" \"$link\""
+        run ln -s "$src" "$link"
         created=$((created + 1))
     done
     say "  [$name] $skills_dir — linked"
@@ -394,7 +400,7 @@ if [[ "$AUTO_UPDATE" == "1" && "$MODE" == "install" ]]; then
         else
             echo "17 4 * * * $HIVESMITH_DIR/install.sh --update >/dev/null 2>&1" >> "$tmp"
         fi
-        run "crontab \"$tmp\""
+        run crontab "$tmp"
         rm -f "$tmp"
     fi
 fi

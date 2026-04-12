@@ -15,7 +15,6 @@ usage() {
 
 # Get list of already-ingested issue numbers from active/ and completed/ filenames
 ingested_issues() {
-  local nums=""
   for f in "$ACTIVE_DIR"/*.md "$FEATURES_DIR/completed"/*.md; do
     [ -f "$f" ] || continue
     basename "$f" | grep -oE '^[0-9]+' || true
