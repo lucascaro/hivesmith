@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: '.'
+          additional_files: >-
+            install.sh
+            skills/feature-ingest/ingest.sh
+            templates/features/ingest.sh
+            templates/scripts/release.sh
+
+  install-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test — with prefix
+        run: |
+          export HOME="$(mktemp -d)"
+          mkdir -p "$HOME/.claude"
+          ./install.sh --prefix hs- --no-auto-update --dry-run
+      - name: Smoke test — without prefix
+        run: |
+          export HOME="$(mktemp -d)"
+          mkdir -p "$HOME/.claude"
+          ./install.sh --prefix "" --no-auto-update --dry-run
+
+  render-correctness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install with prefix and verify render
+        run: |
+          export HOME="$(mktemp -d)"
+          mkdir -p "$HOME/.claude"
+          HIVESMITH_DIR="$(pwd)"
+          ./install.sh --prefix hs- --no-auto-update
+          grep -q '/hs-feature-plan' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
+          ! grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
+          grep -q 'scripts/release.sh' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-release/SKILL.md"
+
+  # Informational — macOS smoke. Not used as a branch-protection context.
+  install-smoke-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test — macOS
+        run: |
+          export HOME="$(mktemp -d)"
+          mkdir -p "$HOME/.claude"
+          ./install.sh --prefix hs- --no-auto-update --dry-run
