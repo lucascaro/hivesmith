@@ -5,6 +5,11 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 ## [Unreleased]
 
 ### Added
+- OSS-readiness: CONTRIBUTING.md, SECURITY.md, PR template, issue templates, CI + secret-scanning workflows, Dependabot for GitHub Actions.
+- `install.sh`: fail fast with a clear error if `python3` is missing.
+
+### Changed
+- README rewritten with "Why" section, MIT badge, and improved organization.
 - `changelog-update` skill — guided `[Unreleased]` entry in Keep a Changelog format.
 - `release` skill — pre-flight checks, version-bump suggestion, and wraps `scripts/release.sh`.
 - `templates/CHANGELOG.md` — seed file scaffolded by `hivesmith-init`.

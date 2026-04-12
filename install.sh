@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Error: python3 is required (used to parse agents.json)." >&2
+    exit 1
+fi
+
 # install.sh — fan-out symlinks from hivesmith/skills/* into each detected
 # agent's skills dir (Claude, Codex, Factory, Gemini, Copilot).
 #
