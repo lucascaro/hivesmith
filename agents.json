@@ -1,0 +1,29 @@
+{
+  "agents": [
+    {
+      "name": "claude",
+      "skills_dir": "~/.claude/skills",
+      "detect_dir": "~/.claude"
+    },
+    {
+      "name": "codex",
+      "skills_dir": "~/.codex/skills",
+      "detect_dir": "~/.codex"
+    },
+    {
+      "name": "factory",
+      "skills_dir": "~/.factory/skills",
+      "detect_dir": "~/.factory"
+    },
+    {
+      "name": "gemini",
+      "skills_dir": "~/.gemini/skills",
+      "detect_dir": "~/.gemini"
+    },
+    {
+      "name": "copilot",
+      "skills_dir": "~/.copilot/skills",
+      "detect_dir": "~/.copilot"
+    }
+  ]
+}

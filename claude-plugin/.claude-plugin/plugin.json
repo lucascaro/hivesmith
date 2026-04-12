@@ -1,0 +1,13 @@
+{
+  "name": "hivesmith",
+  "version": "0.1.0",
+  "description": "Multi-agent dev workflow — feature pipeline, PR review, release scaffolding.",
+  "author": {
+    "name": "Lucas Caro",
+    "url": "https://github.com/lucascaro"
+  },
+  "homepage": "https://github.com/lucascaro/hivesmith",
+  "repository": "https://github.com/lucascaro/hivesmith",
+  "license": "MIT",
+  "keywords": ["workflow", "feature-pipeline", "pr-review", "multi-agent"]
+}

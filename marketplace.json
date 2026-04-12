@@ -1,0 +1,17 @@
+{
+  "name": "hivesmith",
+  "owner": {
+    "name": "Lucas Caro",
+    "url": "https://github.com/lucascaro"
+  },
+  "plugins": [
+    {
+      "name": "hivesmith",
+      "source": "./claude-plugin",
+      "description": "Multi-agent dev workflow — feature pipeline, PR review, release scaffolding.",
+      "version": "0.1.0",
+      "category": "workflow",
+      "tags": ["feature-pipeline", "pr-review", "multi-agent"]
+    }
+  ]
+}
