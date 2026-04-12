@@ -78,10 +78,11 @@ AGENT_ONLY_TABLE=""  # pipe-delimited records: "|name:val1 val2|name:val3|"
 
 agent_only_for() {
     local name="$1"
-    local prefix="|${name}:"
-    local rec="${AGENT_ONLY_TABLE#*${prefix}}"
-    if [[ "$rec" == "$AGENT_ONLY_TABLE" ]]; then echo ""; return; fi
-    echo "${rec%%|*}"
+    if [[ "$AGENT_ONLY_TABLE" =~ \|"${name}":([^\|]*) ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        echo ""
+    fi
 }
 
 if [[ -f "$CONFIG" ]]; then
@@ -349,6 +350,7 @@ for entry in "${TARGETS[@]}"; do
         disabled=0
         # shellcheck disable=SC2086  # intentional word-split of space-separated lists
         if in_list "$skill" $DISABLE_GLOBAL; then disabled=1; fi
+        # shellcheck disable=SC2086  # intentional word-split of space-separated lists
         if [[ -n "$only" ]] && ! in_list "$skill" $only; then disabled=1; fi
 
         if [[ "$disabled" == "1" ]]; then
