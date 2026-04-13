@@ -4,6 +4,8 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-12
+
 ### Added
 - `feature-loop` skill — drives a single feature through the full pipeline (TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE) with confirmation gates at each stage, auto-runs `/review-pr` after PR creation.
 - OSS-readiness: CONTRIBUTING.md, SECURITY.md, PR template, issue templates, CI + secret-scanning workflows, Dependabot for GitHub Actions.
