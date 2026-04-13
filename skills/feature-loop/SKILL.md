@@ -126,29 +126,35 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
 40. Fill in Implementation Notes in the feature file:
     - Any deviations from the plan and why
     - Decisions made during coding
-41. Stage completion changes:
-    - Set Stage to DONE in the feature file
-    - Move the feature file from `features/active/` to `features/completed/`
-    - Update `features/BACKLOG.md`: remove the Active table row, renumber remaining rows sequentially, add a Completed table row with PR link and merge date placeholders
-42. Commit with a descriptive message referencing `Fixes #<issue-number>`.
-43. **[Gate 5 — confirm push and PR]** Use AskUserQuestion to ask:
+41. Commit the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch `features/BACKLOG.md` or move the feature file yet.
+42. **[Gate 5 — confirm push and PR]** Use AskUserQuestion to ask:
     > "Push branch and open a pull request?"
     > 1. Yes — push, create PR, then run /review-pr
     > 2. Yes — push, create PR, then run /gstack-review
     > 3. Yes — push, create PR, skip review
     > 4. No — leave branch local (no push)
 
-44. If options 1–3:
+43. If options 1–3:
     - `git push -u origin <branch>`
-    - `gh pr create` referencing the issue and capture the PR number
+    - `gh pr create` referencing the issue — capture the PR number from the output
     - Apply GitHub label: `gh issue edit <number> --remove-label planned --add-label implementing`
+44. Update the backlog (only if a PR was opened):
+    - Fill in the PR link in the feature file's Implementation Notes
+    - Set Stage to DONE in the feature file
+    - Move the feature file from `features/active/` to `features/completed/`
+    - Update `features/BACKLOG.md`: remove the Active table row, renumber remaining rows sequentially, add a Completed table row with the real PR number and today's date as the merge-date placeholder
+    - Commit: `git commit -m "chore: mark #<issue-number> complete, update backlog"`
+    - Push: `git push`
+45. Run the chosen review skill:
     - If option 1: run `/review-pr <pr-number>`
     - If option 2: run `/gstack-review <pr-number>`
-    - If option 3: skip the review step
+    - If option 3 or 4: skip review
+
+    If option 4 was chosen (no push), skip steps 43–45 entirely — leave the feature at IMPLEMENT stage and BACKLOG unchanged.
 
 ## Phase 6: Done
 
-45. Print a summary:
+46. Print a summary:
     - Feature: #<issue-number> — <title>
     - Stages completed this run (e.g. "TRIAGE → RESEARCH → PLAN → IMPLEMENT")
     - PR link (if opened)

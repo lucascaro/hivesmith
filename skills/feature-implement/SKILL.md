@@ -24,19 +24,24 @@ Implement feature **#$ARGUMENTS** (or the next feature in IMPLEMENT stage if no 
 7. **Fill in Implementation Notes** in the feature file:
    - Any deviations from the plan and why
    - Decisions made during coding
-8. **Mark feature as done** (these changes go in the PR so they land on merge):
-   - Set Stage to `DONE` in the feature file
-   - Move feature file from `features/active/` to `features/completed/`
-   - Update `features/BACKLOG.md`: remove the feature row from the Active table, renumber remaining rows sequentially, and add it to the Completed table with PR link and merge date
-9. **Commit** with a descriptive message referencing `Fixes #<issue-number>`
-10. **Offer to open a PR:** Ask the user if they want to push and create a PR. If yes:
+8. **Commit** the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch `features/BACKLOG.md` or move the feature file yet.
+9. **Offer to open a PR:** Ask the user if they want to push and create a PR. If yes:
     - `git push -u origin <branch>`
-    - Create PR with `gh pr create` referencing the issue
+    - Create PR with `gh pr create` referencing the issue — capture the PR number from the output
     - Update GitHub labels: `gh issue edit <number> --remove-label planned --add-label implementing`
+10. **Update the backlog** (only if a PR was opened):
+    - Fill in the PR link in the feature file's Implementation Notes
+    - Set Stage to `DONE` in the feature file
+    - Move the feature file from `features/active/` to `features/completed/`
+    - Update `features/BACKLOG.md`: remove the feature row from the Active table, renumber remaining rows sequentially, and add it to the Completed table with the real PR number and today's date as the merge-date placeholder
+    - Commit these changes: `git commit -m "chore: mark #<issue-number> complete, update backlog"`
+    - Push: `git push`
+
+    If the user declined to open a PR, skip this step — leave the feature file at IMPLEMENT stage and BACKLOG unchanged.
 
 ## Already-Merged Detection
 
-Before starting implementation, check if the feature already has a PR link in its file. If it does, check if that PR is merged (`gh pr view <number> --json state`). If merged, run step 8 on the current branch (main), commit, and skip the rest.
+Before starting implementation, check if the feature already has a PR link in its file. If it does, check if that PR is merged (`gh pr view <number> --json state`). If merged, run step 10 (backlog update) on the current branch (main) and skip the rest.
 
 ## Rules
 - Do not skip tests — all checks defined in `AGENTS.md` must pass before committing
