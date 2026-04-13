@@ -4,6 +4,10 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+### Security
+- Harden feature pipeline against stored prompt injection: GitHub issue body is now wrapped in `EXTERNAL CONTENT` markers on ingest, and all pipeline skills (`feature-triage`, `feature-research`, `feature-plan`, `feature-implement`, `feature-loop`) include an explicit anti-injection rule.
+- SHA-pin third-party GitHub Actions (`action-shellcheck`, `gitleaks-action`, `action-actionlint`) to prevent supply chain compromise via mutable tags.
+
 ### Changed
 - `feature-loop` skill — all confirmation gates now use `AskUserQuestion` with numbered choices; Gate 5 (push/PR) lets the user choose between `/review-pr`, `/gstack-review`, or skipping review.
 

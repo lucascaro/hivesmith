@@ -48,6 +48,23 @@ jobs:
           ! grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
           grep -q 'scripts/release.sh' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-release/SKILL.md"
 
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check [Unreleased] section is non-empty
+        run: |
+          # Extract content between ## [Unreleased] and the next ## [
+          content=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md)
+          # Strip blank lines
+          non_blank=$(echo "$content" | grep -v '^[[:space:]]*$' || true)
+          if [ -z "$non_blank" ]; then
+            echo "ERROR: CHANGELOG.md [Unreleased] section is empty."
+            echo "Run /changelog-update to document your changes before pushing."
+            exit 1
+          fi
+          echo "OK: [Unreleased] has content."
+
   # Informational — macOS smoke. Not used as a branch-protection context.
   install-smoke-macos:
     runs-on: macos-latest

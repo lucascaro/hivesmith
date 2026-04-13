@@ -61,6 +61,16 @@ When one skill refers to another in its body, use the `/skill-name` slash-comman
 
 This matters because the installer's `--prefix` mode rewrites `/skill-name` references automatically so the pipeline still works under a prefix. Plain skill names, paths (`scripts/release.sh`), and path-like segments (`some/release`) are left alone.
 
+### Git hooks
+
+A pre-push hook warns you if `CHANGELOG.md`'s `[Unreleased]` section is empty before you push. Install it once:
+
+```bash
+cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+```
+
+CI enforces the same check — the `changelog` job fails if `[Unreleased]` has no content. Catch it locally to avoid a round-trip.
+
 ### Scripts
 
 Shell scripts (installer, `ingest.sh`, scaffolded `release.sh`) must pass `shellcheck` on the default ruleset. CI enforces this.

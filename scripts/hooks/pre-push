@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# pre-push hook: warn if CHANGELOG.md [Unreleased] section is empty.
+# Install: cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+
+set -euo pipefail
+
+content=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md 2>/dev/null || true)
+non_blank=$(echo "$content" | grep -v '^[[:space:]]*$' || true)
+
+if [ -z "$non_blank" ]; then
+  echo ""
+  echo "⚠  CHANGELOG.md [Unreleased] is empty."
+  echo "   Run /changelog-update to document your changes."
+  echo "   Push anyway? [y/N] "
+  read -r answer </dev/tty
+  case "$answer" in
+    [yY]*) exit 0 ;;
+    *) echo "Push aborted."; exit 1 ;;
+  esac
+fi
