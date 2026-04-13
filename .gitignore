@@ -3,3 +3,4 @@
 *.bak
 .claude/
 .rendered/
+.gstack/
