@@ -4,6 +4,8 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-04-13
+
 ### Security
 - Harden feature pipeline against stored prompt injection: GitHub issue body is now wrapped in `EXTERNAL CONTENT` markers on ingest, and all pipeline skills (`feature-triage`, `feature-research`, `feature-plan`, `feature-implement`, `feature-loop`) include an explicit anti-injection rule.
 - SHA-pin third-party GitHub Actions (`action-shellcheck`, `gitleaks-action`, `action-actionlint`) to prevent supply chain compromise via mutable tags.
