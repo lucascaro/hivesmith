@@ -29,7 +29,14 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
 4. Draft a GitHub issue from the description:
    - **Title:** concise, imperative (e.g. "Add dark mode toggle")
    - **Body:** a `## Description` section explaining the problem and desired behavior (2-4 sentences)
-5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Wait for user approval or edits before proceeding.
+5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask:
+   > "Create this GitHub issue?"
+   > 1. Yes — create it as shown
+   > 2. Edit the title
+   > 3. Edit the body
+   > 4. Cancel
+
+   For options 2 or 3, prompt for the new value and loop back to show the updated draft. For option 4, stop.
 6. Run `gh issue create --title "..." --body "..."` and capture the new issue number.
 7. Check for duplicates: look for files in `features/active/` or `features/completed/` starting with the zero-padded number. If found, warn and stop.
 8. Generate filename: zero-pad issue number to 3 digits, slugify title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`
@@ -48,7 +55,15 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
     - **Type:** `bug` or `enhancement`
     - **Complexity:** `S` (< 1 day, few files), `M` (1-3 days, moderate scope), `L` (3+ days, significant changes)
     - **Priority:** recommend where this sits in the backlog (P1 = top) relative to existing items in `features/BACKLOG.md`
-14. **[Gate 2 — confirm triage]** Present type, complexity, and priority recommendation. Wait for user confirmation or adjustment before writing anything.
+14. **[Gate 2 — confirm triage]** Present type, complexity, and priority recommendation. Use AskUserQuestion to ask:
+    > "Approve this triage classification?"
+    > 1. Yes — save and advance to RESEARCH
+    > 2. Change the type
+    > 3. Change the complexity
+    > 4. Change the priority
+    > 5. Cancel
+
+    For options 2–4, prompt for the new value, update the classification, and re-present before asking again. For option 5, stop.
 15. Update the feature file: set Type, Complexity, Priority; advance Stage to RESEARCH.
 16. Update `features/BACKLOG.md`: fill in complexity and priority, reorder rows by priority (P1 first), update Stage to RESEARCH.
 17. Apply GitHub label: `gh issue edit <number> --add-label triaged`
@@ -66,7 +81,13 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
     - **Relevant Code:** specific files with paths and line numbers, explaining why each matters
     - **Constraints / Dependencies:** anything that blocks or complicates the work
 22. For complex features (M/L), create `research/<slug>/RESEARCH.md` with detailed findings and link from the feature file.
-23. **[Gate 3 — confirm research]** Summarize key findings. Ask the user to confirm the research is sufficient before advancing. If they want more investigation, continue researching.
+23. **[Gate 3 — confirm research]** Summarize key findings. Use AskUserQuestion to ask:
+    > "Is the research sufficient to write an implementation plan?"
+    > 1. Yes — advance to PLAN
+    > 2. No — continue researching
+    > 3. Stop here (leave at RESEARCH stage)
+
+    For option 2, continue the investigation and re-present findings before asking again. For option 3, stop.
 24. Update Stage → PLAN in the feature file and `features/BACKLOG.md`.
 25. Apply GitHub label: `gh issue edit <number> --remove-label triaged --add-label researching`
 26. Continue to Phase 4 (Plan).
@@ -80,7 +101,13 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
     - **Files to Change:** numbered list with file paths and what to change in each
     - **Test Strategy:** concrete, named test functions for every behavioral change — unit and integration tests per `AGENTS.md` conventions. List each with file path, function name, and what it verifies.
     - **Risks:** what could go wrong, edge cases to watch for
-31. **[Gate 4 — confirm plan]** Walk the user through the key decisions. Wait for explicit approval before advancing.
+31. **[Gate 4 — confirm plan]** Walk the user through the key decisions. Use AskUserQuestion to ask:
+    > "Approve this implementation plan?"
+    > 1. Yes — advance to IMPLEMENT
+    > 2. Revise the plan
+    > 3. Stop here (leave at PLAN stage)
+
+    For option 2, prompt for what to change, update the plan, and re-present before asking again. For option 3, stop.
 32. Update Stage → IMPLEMENT in the feature file and `features/BACKLOG.md`.
 33. Apply GitHub label: `gh issue edit <number> --remove-label researching --add-label planned`
 34. Continue to Phase 5 (Implement).
@@ -104,12 +131,20 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
     - Move the feature file from `features/active/` to `features/completed/`
     - Update `features/BACKLOG.md`: remove the Active table row, renumber remaining rows sequentially, add a Completed table row with PR link and merge date placeholders
 42. Commit with a descriptive message referencing `Fixes #<issue-number>`.
-43. **[Gate 5 — confirm push and PR]** Ask the user if they want to push and open a PR. Wait for their answer.
-44. If yes:
+43. **[Gate 5 — confirm push and PR]** Use AskUserQuestion to ask:
+    > "Push branch and open a pull request?"
+    > 1. Yes — push, create PR, then run /review-pr
+    > 2. Yes — push, create PR, then run /gstack-review
+    > 3. Yes — push, create PR, skip review
+    > 4. No — leave branch local (no push)
+
+44. If options 1–3:
     - `git push -u origin <branch>`
     - `gh pr create` referencing the issue and capture the PR number
     - Apply GitHub label: `gh issue edit <number> --remove-label planned --add-label implementing`
-    - Immediately run `/review-pr <pr-number>` to perform a deep code review before the PR is merged.
+    - If option 1: run `/review-pr <pr-number>`
+    - If option 2: run `/gstack-review <pr-number>`
+    - If option 3: skip the review step
 
 ## Phase 6: Done
 

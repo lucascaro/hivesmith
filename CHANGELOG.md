@@ -4,6 +4,9 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+### Changed
+- `feature-loop` skill — all confirmation gates now use `AskUserQuestion` with numbered choices; Gate 5 (push/PR) lets the user choose between `/review-pr`, `/gstack-review`, or skipping review.
+
 ## [0.2.0] — 2026-04-12
 
 ### Added
