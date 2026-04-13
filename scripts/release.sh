@@ -106,7 +106,7 @@ git push origin HEAD "$TAG"
 
 echo "Creating GitHub release ${TAG}..."
 NOTES=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found" CHANGELOG.md)
-gh release create "$TAG" --title "$TAG" --notes "$NOTES" "${ARTIFACTS[@]}"
+gh release create "$TAG" --title "$TAG" --notes "$NOTES" ${ARTIFACTS[@]+"${ARTIFACTS[@]}"}
 
 # ---- CLEANUP -------------------------------------------------------------
 
