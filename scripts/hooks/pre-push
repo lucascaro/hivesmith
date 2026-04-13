@@ -8,10 +8,15 @@ content=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found
 non_blank=$(echo "$content" | grep -v '^[[:space:]]*$' || true)
 
 if [ -z "$non_blank" ]; then
+  # Non-interactive (e.g. called from release.sh): warn but allow.
+  if ! [ -t 1 ] || ! [ -e /dev/tty ]; then
+    echo "⚠  CHANGELOG.md [Unreleased] is empty (non-interactive push, skipping prompt)."
+    exit 0
+  fi
   echo ""
   echo "⚠  CHANGELOG.md [Unreleased] is empty."
   echo "   Run /changelog-update to document your changes."
-  echo "   Push anyway? [y/N] "
+  printf "   Push anyway? [y/N] "
   read -r answer </dev/tty
   case "$answer" in
     [yY]*) exit 0 ;;
