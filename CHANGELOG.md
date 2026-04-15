@@ -4,6 +4,12 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+### Changed
+- `install.sh` — auto-upgrade cron is now **opt-in** (`--auto-upgrade`); the choice is persisted as `auto_upgrade` in `~/.hivesmith.toml`, so subsequent runs honor it without re-passing the flag. `--no-auto-upgrade` opts back out and removes any existing cron. `--no-auto-update` is kept as a deprecated alias. Existing cron entries are detected on first upgrade and treated as implicit opt-in so nothing disappears unexpectedly.
+
+### Added
+- `namecheck` skill — check whether one or more candidate names are free on npm, GitHub (user / org / repo), and popular TLD domains (`.com .net .org .io .dev .app .ai` by default; `--tlds` to override, `--no-domains` to skip). Domains are resolved via RDAP (cached IANA bootstrap) with a `whois` fallback for TLDs without RDAP (notably `.io`). Backed by `skills/namecheck/namecheck.sh`.
+
 ## [0.2.1] — 2026-04-13
 
 ### Security

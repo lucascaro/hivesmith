@@ -15,8 +15,13 @@ fi
 #   ./install.sh --uninstall       # remove all hivesmith symlinks everywhere
 #   ./install.sh --prefix hs-      # install with a name prefix (see below)
 #   ./install.sh --prefix ""       # clear any stored prefix
-#   ./install.sh --no-auto-update  # skip installing daily auto-update
+#   ./install.sh --auto-upgrade    # opt in to a daily auto-upgrade cron (remembered)
+#   ./install.sh --no-auto-upgrade # opt out (also removes an existing cron entry)
 #   ./install.sh --dry-run         # print what would happen
+#
+# Auto-upgrade is opt-in. Once you pass --auto-upgrade, the choice is stored
+# in ~/.hivesmith.toml as `auto_upgrade = true` so subsequent runs honor it
+# without re-passing the flag. `--no-auto-update` is a deprecated alias.
 #
 # --prefix namespaces every skill on disk and in cross-skill references.
 # With --prefix hs-, skills install as /hs-feature-plan, /hs-release, etc.
@@ -35,7 +40,7 @@ CONFIG="${HIVESMITH_DIR_CONFIG:-$HOME/.hivesmith.toml}"
 RENDER_ROOT="$HIVESMITH_DIR/.rendered"
 
 MODE="install"
-AUTO_UPDATE=1
+AUTO_UPGRADE_CLI=""   # "" | "1" | "0" — set only when the user passed a flag
 DRY_RUN=0
 PREFIX_CLI=""
 PREFIX_CLI_SET=0
@@ -44,12 +49,14 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --update) MODE="update"; shift ;;
         --uninstall) MODE="uninstall"; shift ;;
-        --no-auto-update) AUTO_UPDATE=0; shift ;;
+        --auto-upgrade) AUTO_UPGRADE_CLI=1; shift ;;
+        --no-auto-upgrade) AUTO_UPGRADE_CLI=0; shift ;;
+        --no-auto-update) AUTO_UPGRADE_CLI=0; shift ;;  # deprecated alias
         --dry-run) DRY_RUN=1; shift ;;
         --prefix) PREFIX_CLI="${2-}"; PREFIX_CLI_SET=1; shift 2 ;;
         --prefix=*) PREFIX_CLI="${1#--prefix=}"; PREFIX_CLI_SET=1; shift ;;
         -h|--help)
-            sed -n '3,25p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '9,36p' "$0" | sed 's/^# \{0,1\}//'
             exit 0 ;;
         *) echo "Unknown arg: $1" >&2; exit 1 ;;
     esac
@@ -74,6 +81,7 @@ run() {
 
 DISABLE_GLOBAL=""
 PREFIX_CONFIG=""
+AUTO_UPGRADE_CONFIG=""   # "" | "1" | "0" — only set if the key is present
 AGENT_ONLY_TABLE=""  # pipe-delimited records: "|name:val1 val2|name:val3|"
 
 agent_only_for() {
@@ -100,6 +108,12 @@ if [[ -f "$CONFIG" ]]; then
         fi
         if [[ -z "$current_agent" && "$line" =~ ^prefix[[:space:]]*=[[:space:]]*\"([^\"]*)\" ]]; then
             PREFIX_CONFIG="${BASH_REMATCH[1]}"
+        fi
+        if [[ -z "$current_agent" && "$line" =~ ^auto_upgrade[[:space:]]*=[[:space:]]*(true|false) ]]; then
+            case "${BASH_REMATCH[1]}" in
+                true)  AUTO_UPGRADE_CONFIG=1 ;;
+                false) AUTO_UPGRADE_CONFIG=0 ;;
+            esac
         fi
         if [[ -n "$current_agent" && "$line" =~ ^only[[:space:]]*=[[:space:]]*\[(.*)\] ]]; then
             vals="$(echo "${BASH_REMATCH[1]}" | tr -d '",' )"
@@ -155,6 +169,78 @@ if [[ "$PREFIX_CLI_SET" == "1" && "$MODE" != "uninstall" ]]; then
             fi
         fi
         mv "$tmp_cfg" "$CONFIG"
+    fi
+fi
+
+# ---- Resolve effective auto-upgrade --------------------------------------
+# Tri-state resolution (first match wins):
+#   1. --auto-upgrade / --no-auto-upgrade on this run
+#   2. auto_upgrade key in ~/.hivesmith.toml
+#   3. Implicit opt-in migration: existing cron already installed
+#   4. Default: off (opt-in)
+# $AUTO_UPGRADE is the resolved 0/1 flag. $AUTO_UPGRADE_PERSIST, if set,
+# is what to write back to the config this run.
+
+CRON_GREP='hivesmith/install.sh --update\|hivesmith .*install.sh.* --update'
+has_hivesmith_cron() { crontab -l 2>/dev/null | grep -q "$CRON_GREP"; }
+
+AUTO_UPGRADE=0
+AUTO_UPGRADE_PERSIST=""
+if [[ -n "$AUTO_UPGRADE_CLI" ]]; then
+    AUTO_UPGRADE="$AUTO_UPGRADE_CLI"
+    AUTO_UPGRADE_PERSIST="$AUTO_UPGRADE_CLI"
+elif [[ -n "$AUTO_UPGRADE_CONFIG" ]]; then
+    AUTO_UPGRADE="$AUTO_UPGRADE_CONFIG"
+elif has_hivesmith_cron; then
+    AUTO_UPGRADE=1
+    AUTO_UPGRADE_PERSIST=1
+fi
+
+write_config_auto_upgrade() {
+    # Upsert or remove the top-level auto_upgrade key in $CONFIG.
+    # Arg: "true" | "false" | "" (remove).
+    local value="$1"
+    if [[ "$DRY_RUN" == "1" ]]; then
+        if [[ -z "$value" ]]; then
+            say "DRY: would remove auto_upgrade from $CONFIG"
+        else
+            say "DRY: would write auto_upgrade = $value to $CONFIG"
+        fi
+        return
+    fi
+    touch "$CONFIG"
+    local tmp_cfg; tmp_cfg="$(mktemp)"
+    local found=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^[[:space:]]*auto_upgrade[[:space:]]*= ]]; then
+            if [[ -n "$value" ]]; then
+                echo "auto_upgrade = $value" >> "$tmp_cfg"
+            fi
+            found=1
+        else
+            echo "$line" >> "$tmp_cfg"
+        fi
+    done < "$CONFIG"
+    if [[ "$found" == "0" && -n "$value" ]]; then
+        if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
+            local tmp_cfg2; tmp_cfg2="$(mktemp)"
+            awk -v line="auto_upgrade = $value" '
+                !done && /^\[/ { print line; print ""; done=1 }
+                { print }
+            ' "$tmp_cfg" > "$tmp_cfg2"
+            mv "$tmp_cfg2" "$tmp_cfg"
+        else
+            echo "auto_upgrade = $value" >> "$tmp_cfg"
+        fi
+    fi
+    mv "$tmp_cfg" "$CONFIG"
+}
+
+if [[ -n "$AUTO_UPGRADE_PERSIST" && "$MODE" != "uninstall" ]]; then
+    if [[ "$AUTO_UPGRADE_PERSIST" == "1" ]]; then
+        write_config_auto_upgrade "true"
+    else
+        write_config_auto_upgrade "false"
     fi
 fi
 
@@ -237,13 +323,17 @@ if [[ "$MODE" == "uninstall" ]]; then
     if [[ -d "$RENDER_ROOT" ]]; then
         run rm -rf "$RENDER_ROOT"
     fi
-    # Remove auto-update cron if any
-    if crontab -l 2>/dev/null | grep -q "hivesmith .*install.sh.* --update\|hivesmith/install.sh --update"; then
+    # Remove auto-upgrade cron if any
+    if has_hivesmith_cron; then
         if [[ "$DRY_RUN" == "1" ]]; then
             say "DRY: remove hivesmith crontab entry"
         else
-            (crontab -l | grep -v 'hivesmith/install.sh --update\|hivesmith .*install.sh.* --update') | crontab -
+            (crontab -l | grep -v "$CRON_GREP") | crontab -
         fi
+    fi
+    # Clear auto_upgrade from config so a reinstall starts at the new default.
+    if [[ -f "$CONFIG" ]] && grep -q '^[[:space:]]*auto_upgrade[[:space:]]*=' "$CONFIG"; then
+        write_config_auto_upgrade ""
     fi
     say "Uninstalled."
     exit 0
@@ -388,22 +478,38 @@ if [[ -n "$PREFIX" ]]; then
     say "Prefix: \"$PREFIX\" (stored in $CONFIG)"
 fi
 
-# ---- Auto-update ---------------------------------------------------------
+# ---- Auto-upgrade --------------------------------------------------------
 
-if [[ "$AUTO_UPDATE" == "1" && "$MODE" == "install" ]]; then
-    if ! crontab -l 2>/dev/null | grep -q "hivesmith/install.sh --update\|hivesmith .*install.sh.* --update"; then
-        say "Installing daily auto-update cron..."
-        tmp="$(mktemp)"
-        crontab -l 2>/dev/null > "$tmp" || true
-        # Prefix is persisted in config so we don't need it on the cron line,
-        # but being explicit guards against config drift.
-        if [[ -n "$PREFIX" ]]; then
-            echo "17 4 * * * $HIVESMITH_DIR/install.sh --update --prefix \"$PREFIX\" >/dev/null 2>&1" >> "$tmp"
+if [[ "$MODE" == "install" ]]; then
+    if [[ "$AUTO_UPGRADE" == "1" ]]; then
+        if has_hivesmith_cron; then
+            :  # already present — nothing to do
         else
-            echo "17 4 * * * $HIVESMITH_DIR/install.sh --update >/dev/null 2>&1" >> "$tmp"
+            say "Installing daily auto-upgrade cron..."
+            tmp="$(mktemp)"
+            crontab -l 2>/dev/null > "$tmp" || true
+            # Prefix is persisted in config so we don't need it on the cron line,
+            # but being explicit guards against config drift.
+            if [[ -n "$PREFIX" ]]; then
+                echo "17 4 * * * $HIVESMITH_DIR/install.sh --update --prefix \"$PREFIX\" >/dev/null 2>&1" >> "$tmp"
+            else
+                echo "17 4 * * * $HIVESMITH_DIR/install.sh --update >/dev/null 2>&1" >> "$tmp"
+            fi
+            run crontab "$tmp"
+            rm -f "$tmp"
         fi
-        run crontab "$tmp"
-        rm -f "$tmp"
+    else
+        # Opted out (or default). Remove any existing cron entry.
+        if has_hivesmith_cron; then
+            say "Removing existing auto-upgrade cron (opted out)."
+            if [[ "$DRY_RUN" == "1" ]]; then
+                say "DRY: remove hivesmith crontab entry"
+            else
+                (crontab -l | grep -v "$CRON_GREP") | crontab -
+            fi
+        elif [[ -z "$AUTO_UPGRADE_CLI" && -z "$AUTO_UPGRADE_CONFIG" ]]; then
+            say "Auto-upgrade is opt-in. Pass --auto-upgrade to enable a daily cron."
+        fi
     fi
 fi
 

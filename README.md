@@ -75,7 +75,7 @@ Skills install as `/hs-feature-plan`, `/hs-release`, etc. Cross-skill references
 ~/.hivesmith/install.sh --update
 ```
 
-Runs `git pull --ff-only` in `~/.hivesmith`, then re-runs symlink reconciliation. A daily auto-update cron is installed on first run; disable it with `--no-auto-update`.
+Runs `git pull --ff-only` in `~/.hivesmith`, then re-runs symlink reconciliation. Auto-upgrade is **opt-in** — pass `--auto-upgrade` to install a daily cron; the choice is remembered in `~/.hivesmith.toml` so subsequent runs honor it without re-passing the flag. `--no-auto-upgrade` opts back out (and removes any existing cron). `--no-auto-update` is a deprecated alias.
 
 ## Per-skill opt-out
 
