@@ -23,6 +23,7 @@ Given one or more candidate names, check if each is free on **npm**, the **GitHu
    - Machine-readable: add `--json` when the caller wants to pipe output into something else.
    - Only winners: add `--only-free` to suppress noise for long lists.
    - Custom TLDs: `--tlds com,dev,xyz` to override the default list. `--no-domains` skips domain checks entirely.
+   - Suggest variations: add `--suggest` to auto-generate prefix/suffix variations (e.g., `gethivesmith`, `hivesmith-app`). Combine with `--only-free` to surface only available variations: `./namecheck.sh --suggest --only-free foo`
 
 4. **Interpret the exit code.**
    - `0` — every name is fully free on all enabled services (npm, github, and each requested TLD).
@@ -38,3 +39,5 @@ Given one or more candidate names, check if each is free on **npm**, the **GitHu
 - **Respect the validator.** Names with invalid characters are rejected up front (`^[a-z0-9][a-z0-9_-]*$`). Don't try to work around it — pick a different name.
 - **Keep concurrency reasonable.** Default is 6. Raising it past ~15 invites npm/GitHub rate limits; if the user asks for more, warn them.
 - **No scraping fallbacks.** The script uses the official npm registry and the authenticated GitHub API only. Do not add HTML-scraping code paths.
+- **Hyphenated splits are manual.** `--suggest` generates prefix/suffix variations but does not attempt word-boundary detection. If you recognise word boundaries in a name (e.g., `hivesmith` → `hive-smith`), pass the split form as an additional explicit name.
+- **Variation count scales linearly.** Each input name produces ~24 suggestions. For large input lists (10+ names), warn the user about increased API calls before adding `--suggest`.

@@ -13,21 +13,26 @@
 #   -r, --retries N       Retries per network call (default: 2)
 #       --tlds LIST       Comma-separated TLDs to check (default: com,net,org,io,dev,app,ai)
 #       --no-domains      Skip domain checks entirely
+#       --suggest         Generate and check prefix/suffix name variations
 #       --json            Emit a single JSON array instead of the pretty output
 #       --only-free       Print only names that are fully free
 #   -h, --help            Show this help
 #
-# A name is "fully free" when it is free on every enabled service (npm,
-# github, and each requested TLD). The GitHub check uses
-# `GET /users/NAME/events`, which returns 200 for any claimed login —
-# including names that are reserved or held by GitHub — and 404 only when
-# the name is truly unclaimed, matching what the org-signup form reports.
-# Domain availability uses RDAP (https://data.iana.org/rdap/dns.json),
+# Status levels per name:
+#   free — npm, github, and every checked domain are available.
+#   warn — npm + github are free but 1–2 domains are taken/error.
+#   fail — npm or github is taken/error, OR 3+ domains are taken/error,
+#          OR the name has invalid characters.
+#
+# The GitHub check uses `GET /users/NAME/events`, which returns 200 for
+# any claimed login — including names reserved or held by GitHub — and 404
+# only when the name is truly unclaimed, matching what the org-signup form
+# reports. Domain availability uses RDAP (https://data.iana.org/rdap/dns.json),
 # cached locally for 7 days, with a `whois` fallback for TLDs not in the
 # bootstrap (notably .io). Unknown or unreachable registries return `error`,
 # which is never treated as "free".
 #
-# Exit codes: 0 all fully free, 1 at least one taken/invalid/errored,
+# Exit codes: 0 no failures (all free or warn), 1 at least one fail,
 #             2 usage error, 3 tooling error (missing curl/gh/jq, or
 #             gh not authenticated).
 set -euo pipefail
@@ -35,7 +40,7 @@ set -euo pipefail
 die()  { printf 'error: %s\n' "$*" >&2; exit 2; }
 need() { command -v "$1" >/dev/null 2>&1 || { printf 'error: %s not found on PATH\n' "$1" >&2; exit 3; }; }
 
-usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; }
 
 # ---------- arg parsing ----------
 FILE=""
@@ -43,6 +48,7 @@ CONCURRENCY=6
 RETRIES=2
 JSON=0
 ONLY_FREE=0
+SUGGEST=0
 CHECK_DOMAINS=1
 TLDS_CSV="com,net,org,io,dev,app,ai"
 NAMES=()
@@ -55,6 +61,7 @@ while [ $# -gt 0 ]; do
     -r|--retries) RETRIES="${2:-}"; shift 2 ;;
     --tlds) TLDS_CSV="${2:-}"; [ -n "$TLDS_CSV" ] || die "--tlds needs a value"; shift 2 ;;
     --no-domains) CHECK_DOMAINS=0; shift ;;
+    --suggest) SUGGEST=1; shift ;;
     --json) JSON=1; shift ;;
     --only-free) ONLY_FREE=1; shift ;;
     --) shift; NAMES+=("$@"); break ;;
@@ -73,6 +80,43 @@ if [ -n "$FILE" ]; then
     line="$(printf '%s' "$line" | tr -d '[:space:]')"
     [ -n "$line" ] && NAMES+=("$line")
   done < "$FILE"
+fi
+
+# ---------- suggestion generation ----------
+generate_variations() {
+  local name="$1"
+  local prefixes=(get go use try my)
+  local suffixes=(app hq hub dev js lab kit)
+  local p s
+  for p in "${prefixes[@]}"; do
+    printf '%s\n' "${p}${name}"
+    printf '%s\n' "${p}-${name}"
+  done
+  for s in "${suffixes[@]}"; do
+    printf '%s\n' "${name}${s}"
+    printf '%s\n' "${name}-${s}"
+  done
+}
+
+# Record original names (lowercased) before expanding with suggestions.
+ORIGINALS=()
+for n in "${NAMES[@]}"; do
+  ORIGINALS+=("$(printf '%s' "$n" | tr '[:upper:]' '[:lower:]')")
+done
+
+if [ "$SUGGEST" -eq 1 ]; then
+  for n in "${ORIGINALS[@]}"; do
+    while IFS= read -r v; do
+      NAMES+=("$v")
+    done < <(generate_variations "$n")
+  done
+  # Deduplicate (user may have passed a name that is also a generated variation).
+  _dedup=()
+  while IFS= read -r _n; do
+    _dedup+=("$_n")
+  done < <(printf '%s\n' "${NAMES[@]}" | awk '!seen[$0]++')
+  NAMES=("${_dedup[@]}")
+  unset _dedup _n
 fi
 
 [ "${#NAMES[@]}" -gt 0 ] || { usage; exit 2; }
@@ -135,9 +179,14 @@ check_one() {
   local normalized
   normalized="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')"
 
+  local is_suggested=true
+  for orig in $ORIGINALS_SPACE; do
+    if [ "$normalized" = "$orig" ]; then is_suggested=false; break; fi
+  done
+
   if ! [[ "$normalized" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
-    jq -cn --arg name "$normalized" \
-      '{name:$name, ok:false, invalid:true, reason:"invalid characters"}'
+    jq -cn --arg name "$normalized" --argjson suggested "$is_suggested" \
+      '{name:$name, ok:false, invalid:true, suggested:$suggested, reason:"invalid characters"}'
     return
   fi
 
@@ -180,16 +229,22 @@ check_one() {
     --arg    npm      "$npm" \
     --arg    github   "$github" \
     --argjson domains "$domains_json" \
+    --argjson suggested "$is_suggested" \
     '{
-       name:     $name,
-       invalid:  false,
-       services: {npm:$npm, github:$github},
-       domains:  $domains,
-       ok:       (
-         ([$npm,$github] | all(. == "free"))
-         and ($domains | to_entries | all(.value == "free"))
-       )
-     }'
+       name:      $name,
+       invalid:   false,
+       suggested: $suggested,
+       services:  {npm:$npm, github:$github},
+       domains:   $domains,
+     } + (
+       ([$npm,$github] | any(. != "free")) as $svc_fail |
+       ($domains | to_entries | map(select(.value != "free")) | length) as $dom_taken |
+       if $svc_fail then {status:"fail"}
+       elif $dom_taken >= 3 then {status:"fail"}
+       elif $dom_taken >= 1 then {status:"warn"}
+       else {status:"free"}
+       end
+     )'
 }
 
 # Returns one of: free | taken | error
@@ -285,8 +340,10 @@ check_domain_whois() {
 # subshells spawned by xargs can read it without re-parsing the CSV.
 TLDS_SPACE="${TLDS[*]:-}"
 
+ORIGINALS_SPACE="${ORIGINALS[*]:-}"
+
 export -f check_one check_npm check_github check_domain check_domain_whois rdap_base_for_tld
-export RETRIES CHECK_DOMAINS TLDS_SPACE RDAP_CACHE
+export RETRIES CHECK_DOMAINS TLDS_SPACE RDAP_CACHE ORIGINALS_SPACE SUGGEST
 
 # ---------- fan out ----------
 RESULTS="$(mktemp -t namecheck.XXXXXX)"
@@ -295,6 +352,13 @@ trap 'rm -f "$RESULTS"' EXIT
 printf '%s\n' "${NAMES[@]}" \
   | xargs -I{} -P "$CONCURRENCY" -n 1 bash -c 'check_one "$@"' _ {} \
   > "$RESULTS"
+
+# When --suggest is active, sort results: originals first, then suggestions,
+# each group sorted alphabetically by name.
+if [ "$SUGGEST" -eq 1 ]; then
+  jq -s 'sort_by(.suggested, .name)' "$RESULTS" | jq -c '.[]' > "${RESULTS}.sorted"
+  mv "${RESULTS}.sorted" "$RESULTS"
+fi
 
 # ---------- output ----------
 if [ "$JSON" -eq 1 ]; then
@@ -324,15 +388,24 @@ else
   # shellcheck disable=SC2059
   printf "$fmt" "${sep_cells[@]}" ------
 
+  printed_suggest_header=0
   while IFS= read -r line; do
+    # Print a separator before the first suggestion row.
+    if [ "$SUGGEST" -eq 1 ] && [ "$printed_suggest_header" -eq 0 ]; then
+      if [ "$(jq -r '.suggested // false' <<<"$line")" = "true" ]; then
+        printed_suggest_header=1
+        printf '\n--- Suggestions ---\n'
+      fi
+    fi
+
     name="$(jq -r '.name' <<<"$line")"
     if [ "$(jq -r '.invalid' <<<"$line")" = "true" ]; then
       [ "$ONLY_FREE" -eq 1 ] && continue
       printf '%-28s %s\n' "$name" "✗ invalid ($(jq -r '.reason' <<<"$line"))"
       continue
     fi
-    ok="$(jq -r '.ok' <<<"$line")"
-    [ "$ONLY_FREE" -eq 1 ] && [ "$ok" != "true" ] && continue
+    st="$(jq -r '.status' <<<"$line")"
+    [ "$ONLY_FREE" -eq 1 ] && [ "$st" != "free" ] && continue
 
     row=("$name")
     for k in "${SVC_KEYS[@]}"; do
@@ -343,7 +416,11 @@ else
         row+=("$(jq -r --arg k "$t" '.domains[$k] // "-"' <<<"$line")")
       done
     fi
-    status=$([ "$ok" = "true" ] && echo "✅ free" || echo "❌ taken/error")
+    case "$st" in
+      free) status="✅ free" ;;
+      warn) status="⚠️  warn" ;;
+      *)    status="❌ fail" ;;
+    esac
     row+=("$status")
     # shellcheck disable=SC2059
     printf "$fmt" "${row[@]}"
@@ -351,7 +428,15 @@ else
 fi
 
 # ---------- exit code ----------
-if jq -e 'any(.ok == false)' <(jq -s '.' "$RESULTS") >/dev/null; then
-  exit 1
+# When --suggest is active, only original names affect the exit code.
+if [ "$SUGGEST" -eq 1 ]; then
+  if jq -e 'map(select(.suggested != true)) | any(.status == "fail")' \
+       <(jq -s '.' "$RESULTS") >/dev/null; then
+    exit 1
+  fi
+else
+  if jq -e 'any(.status == "fail")' <(jq -s '.' "$RESULTS") >/dev/null; then
+    exit 1
+  fi
 fi
 exit 0
