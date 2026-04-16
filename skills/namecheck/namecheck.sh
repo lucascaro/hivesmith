@@ -9,7 +9,7 @@
 #
 # Options:
 #   -f, --file FILE       Read names from FILE (one per line, # comments allowed)
-#   -c, --concurrency N   Parallel workers (default: 6)
+#   -c, --concurrency N   Parallel name workers (default: 6); each fans out internally
 #   -r, --retries N       Retries per network call (default: 2)
 #       --tlds LIST       Comma-separated TLDs to check (default: com,net,org,io,dev,app,ai)
 #       --no-domains      Skip domain checks entirely
@@ -141,26 +141,39 @@ check_one() {
     return
   fi
 
-  local npm github
-  npm="$(check_npm    "$normalized")"
-  github="$(check_github "$normalized")"
+  local work pids=()
+  work="$(mktemp -d -t namecheck-one.XXXXXX)"
 
-  # Build domain results as a JSON object.
-  local domains_json='{}'
+  check_npm    "$normalized" >"$work/npm"    & pids+=($!)
+  check_github "$normalized" >"$work/github" & pids+=($!)
+
   if [ "$CHECK_DOMAINS" -eq 1 ]; then
     for tld in $TLDS_SPACE; do
-      # domain label rules: letters/digits/hyphen, no leading/trailing hyphen,
-      # max 63 chars. Underscores are not valid in hostnames.
-      local label_status
       if [[ ! "$normalized" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
-        label_status='invalid'
+        printf 'invalid' >"$work/d_$tld"
       else
-        label_status="$(check_domain "$normalized" "$tld")"
+        check_domain "$normalized" "$tld" >"$work/d_$tld" & pids+=($!)
       fi
-      domains_json="$(jq -c --arg k "$tld" --arg v "$label_status" \
-        '. + {($k): $v}' <<<"$domains_json")"
     done
   fi
+
+  local pid; for pid in "${pids[@]}"; do wait "$pid" || true; done
+
+  local npm github
+  npm="$(<"$work/npm")"
+  github="$(<"$work/github")"
+
+  local domains_json='{}'
+  if [ "$CHECK_DOMAINS" -eq 1 ]; then
+    domains_json="$(
+      for tld in $TLDS_SPACE; do
+        printf '%s\t%s\n' "$tld" "$(<"$work/d_$tld")"
+      done \
+      | jq -Rs 'split("\n") | map(select(length>0) | split("\t") | {key:.[0], value:.[1]}) | from_entries'
+    )"
+  fi
+
+  rm -rf "$work"
 
   jq -cn \
     --arg    name     "$normalized" \
