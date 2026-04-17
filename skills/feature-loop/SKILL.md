@@ -1,7 +1,7 @@
 ---
 name: feature-loop
 description: Drive a feature through the full pipeline with confirmation gates
-argument-hint: [issue-number | description]
+argument-hint: "[issue-number | description]"
 disable-model-invocation: true
 allowed-tools: Read Glob Grep Edit Write Bash Agent
 ---

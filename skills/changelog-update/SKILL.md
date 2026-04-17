@@ -1,7 +1,7 @@
 ---
 name: changelog-update
-description: Add an entry under [Unreleased] in CHANGELOG.md for a user-visible change
-argument-hint: [category] [short description]
+description: "Add an entry under [Unreleased] in CHANGELOG.md for a user-visible change"
+argument-hint: "[category] [short description]"
 allowed-tools: Read Edit Bash
 ---
 

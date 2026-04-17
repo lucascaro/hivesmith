@@ -1,7 +1,7 @@
 ---
 name: namecheck
 description: Check whether one or more names are available on npm, the GitHub namespace, and popular TLD domains
-argument-hint: [name...] | -f wordlist.txt
+argument-hint: "[name...] | -f wordlist.txt"
 allowed-tools: Bash Read
 ---
 
