@@ -4,6 +4,8 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-04-21
+
 ### Changed
 - `install.sh` — auto-upgrade cron is now **opt-in** (`--auto-upgrade`); the choice is persisted as `auto_upgrade` in `~/.hivesmith.toml`, so subsequent runs honor it without re-passing the flag. `--no-auto-upgrade` opts back out and removes any existing cron. `--no-auto-update` is kept as a deprecated alias. Existing cron entries are detected on first upgrade and treated as implicit opt-in so nothing disappears unexpectedly.
 
