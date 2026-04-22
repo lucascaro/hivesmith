@@ -124,6 +124,7 @@ fi
 need curl
 need gh
 need jq
+# shellcheck disable=SC2016  # backticks are literal in the error message
 gh auth status >/dev/null 2>&1 || { printf 'error: gh is not authenticated — run `gh auth login`\n' >&2; exit 3; }
 
 # Parse + validate TLDs once. Empty list + --no-domains == skip.
@@ -158,6 +159,7 @@ rdap_bootstrap_fetch() {
   fi
 }
 
+# shellcheck disable=SC2329  # called from check_domain
 rdap_base_for_tld() {
   local tld="$1"
   [ -s "$RDAP_CACHE" ] || return 1
@@ -174,6 +176,7 @@ fi
 
 # ---------- worker ----------
 # Emits one JSON object per name on stdout (one per line).
+# shellcheck disable=SC2329  # called from the parallel dispatch loop below
 check_one() {
   local name="$1"
   local normalized
@@ -248,6 +251,7 @@ check_one() {
 }
 
 # Returns one of: free | taken | error
+# shellcheck disable=SC2329  # called from check_one in background subshells
 check_npm() {
   local name="$1" attempt=0 code
   while : ; do
@@ -274,6 +278,7 @@ check_npm() {
 # GitHub (e.g. after an org deletion, or globally reserved logins like
 # `pingwatch`). It returns 404 only when the login is truly unclaimed, which
 # matches what the `github.com/account/organizations/new` signup form reports.
+# shellcheck disable=SC2329  # called from check_one in background subshells
 check_github() {
   local name="$1" attempt=0 out rc
   while : ; do
@@ -289,6 +294,7 @@ check_github() {
 # Returns one of: free | taken | error
 # Tries RDAP first; falls back to `whois` for TLDs not in the IANA RDAP
 # bootstrap (notably .io). If both paths fail, returns "error".
+# shellcheck disable=SC2329  # called from check_one in background subshells
 check_domain() {
   local name="$1" tld="$2" attempt=0 base code
   base="$(rdap_base_for_tld "$tld")"
@@ -317,6 +323,7 @@ check_domain() {
 
 # WHOIS fallback for TLDs without RDAP. Output format varies per registry;
 # we match a small set of well-known phrases. Returns: free | taken | error.
+# shellcheck disable=SC2329  # called from check_domain
 check_domain_whois() {
   local name="$1" tld="$2" attempt=0 out
   command -v whois >/dev/null 2>&1 || { printf 'error'; return; }
