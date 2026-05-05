@@ -297,6 +297,7 @@ fi
 # ---- Mode: uninstall -----------------------------------------------------
 
 if [[ "$MODE" == "uninstall" ]]; then
+    GONE=()
     for entry in "${TARGETS[@]}"; do
         IFS=$'\t' read -r name skills_dir <<< "$entry"
         say "Removing hivesmith symlinks from $skills_dir..."
@@ -308,6 +309,7 @@ if [[ "$MODE" == "uninstall" ]]; then
                 if [[ "$target" == "$HIVESMITH_DIR/skills/$skill" \
                    || "$target" == "$RENDER_ROOT/"*"/skills/$link_name" ]]; then
                     run rm "$link"
+                    GONE+=("$name"$'\t'"$link_name"$'\t'"uninstall")
                 fi
             fi
             # Also clean up an un-prefixed link if it happens to exist (migration)
@@ -315,6 +317,7 @@ if [[ "$MODE" == "uninstall" ]]; then
                 t2="$(readlink "$skills_dir/$skill")"
                 if [[ "$t2" == "$HIVESMITH_DIR/skills/$skill" ]]; then
                     run rm "$skills_dir/$skill"
+                    GONE+=("$name"$'\t'"$skill"$'\t'"uninstall")
                 fi
             fi
         done
@@ -334,6 +337,13 @@ if [[ "$MODE" == "uninstall" ]]; then
     # Clear auto_upgrade from config so a reinstall starts at the new default.
     if [[ -f "$CONFIG" ]] && grep -q '^[[:space:]]*auto_upgrade[[:space:]]*=' "$CONFIG"; then
         write_config_auto_upgrade ""
+    fi
+    if (( ${#GONE[@]} > 0 )); then
+        say ""
+        say "Removed:"
+        printf '%s\n' "${GONE[@]}" | sort | while IFS=$'\t' read -r a n _r; do
+            printf '  [%s]  %s\n' "$a" "$n"
+        done
     fi
     say "Uninstalled."
     exit 0
@@ -394,6 +404,8 @@ fi
 # ---- Mode: install / update → reconcile symlinks -------------------------
 
 created=0; skipped=0; removed=0
+ADDED=()    # entries: "agent\tlink_name"
+GONE=()     # entries: "agent\tlink_name\treason"  (reason: stale|opt-out|renamed)
 
 for entry in "${TARGETS[@]}"; do
     IFS=$'\t' read -r name skills_dir <<< "$entry"
@@ -422,6 +434,7 @@ for entry in "${TARGETS[@]}"; do
             if [[ "$keep" == "0" ]]; then
                 run rm "$existing"
                 removed=$((removed + 1))
+                GONE+=("$name"$'\t'"$base"$'\t'"stale")
             fi
         done
     fi
@@ -447,6 +460,7 @@ for entry in "${TARGETS[@]}"; do
             if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$src" ]]; then
                 run rm "$link"
                 removed=$((removed + 1))
+                GONE+=("$name"$'\t'"$link_name"$'\t'"opt-out")
             fi
             continue
         fi
@@ -460,6 +474,7 @@ for entry in "${TARGETS[@]}"; do
             if [[ "$cur_target" == "$HIVESMITH_DIR/skills/$skill" \
                || "$cur_target" == "$RENDER_ROOT/"*"/skills/${PREFIX}${skill}" ]]; then
                 run rm "$link"
+                GONE+=("$name"$'\t'"$link_name"$'\t'"renamed")
             fi
         fi
         if [[ -e "$link" ]]; then
@@ -468,12 +483,85 @@ for entry in "${TARGETS[@]}"; do
         fi
         run ln -s "$src" "$link"
         created=$((created + 1))
+        ADDED+=("$name"$'\t'"$link_name")
     done
     say "  [$name] $skills_dir — linked"
 done
 
 say ""
 say "Linked: $created new, $skipped already present, $removed removed (opt-outs/stale)."
+
+# Detect "moved" entries: same agent+link_name appears in both ADDED and GONE
+# (with reason=renamed). Collapse those into a single "Moved:" section.
+MOVED_KEYS=""
+if (( ${#GONE[@]} > 0 )) && (( ${#ADDED[@]} > 0 )); then
+    for g in "${GONE[@]}"; do
+        IFS=$'\t' read -r ga gn gr <<< "$g"
+        [[ "$gr" == "renamed" ]] || continue
+        for a in "${ADDED[@]}"; do
+            IFS=$'\t' read -r aa an <<< "$a"
+            if [[ "$ga" == "$aa" && "$gn" == "$an" ]]; then
+                MOVED_KEYS="${MOVED_KEYS}|${ga}"$'\t'"${gn}|"
+            fi
+        done
+    done
+fi
+
+is_moved() {
+    local key="|$1"$'\t'"$2|"
+    [[ "$MOVED_KEYS" == *"$key"* ]]
+}
+
+added_filtered=()
+if (( ${#ADDED[@]} > 0 )); then
+    for a in "${ADDED[@]}"; do
+        IFS=$'\t' read -r aa an <<< "$a"
+        if ! is_moved "$aa" "$an"; then
+            added_filtered+=("$a")
+        fi
+    done
+fi
+
+gone_filtered=()
+if (( ${#GONE[@]} > 0 )); then
+    for g in "${GONE[@]}"; do
+        IFS=$'\t' read -r ga gn gr <<< "$g"
+        if ! is_moved "$ga" "$gn"; then
+            gone_filtered+=("$g")
+        fi
+    done
+fi
+
+if (( ${#added_filtered[@]} > 0 )); then
+    say ""
+    say "Added:"
+    printf '%s\n' "${added_filtered[@]}" | sort | while IFS=$'\t' read -r a n; do
+        printf '  [%s]  %s\n' "$a" "$n"
+    done
+fi
+
+if (( ${#gone_filtered[@]} > 0 )); then
+    say ""
+    say "Removed:"
+    printf '%s\n' "${gone_filtered[@]}" | sort | while IFS=$'\t' read -r a n r; do
+        printf '  [%s]  %s  (%s)\n' "$a" "$n" "$r"
+    done
+fi
+
+if [[ -n "$MOVED_KEYS" ]]; then
+    say ""
+    say "Moved (relinked due to prefix/render-root change):"
+    # Print unique entries from MOVED_KEYS
+    printf '%s' "$MOVED_KEYS" | tr '|' '\n' | grep -v '^$' | sort -u \
+      | while IFS=$'\t' read -r a n; do
+            printf '  [%s]  %s\n' "$a" "$n"
+        done
+fi
+
+if (( ${#added_filtered[@]} == 0 )) && (( ${#gone_filtered[@]} == 0 )) && [[ -z "$MOVED_KEYS" ]]; then
+    say "No skill changes."
+fi
+
 if [[ -n "$PREFIX" ]]; then
     say "Prefix: \"$PREFIX\" (stored in $CONFIG)"
 fi
