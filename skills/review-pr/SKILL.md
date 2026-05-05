@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Deep PR review — correctness, safety, performance, UX, consistency
+description: Deep PR review — correctness, safety, security, performance, UX, consistency
 argument-hint: [pr-number]
 allowed-tools: Read Glob Grep Bash Agent
 ---
@@ -9,86 +9,207 @@ allowed-tools: Read Glob Grep Bash Agent
 
 Perform a thorough review of PR **#$ARGUMENTS**.
 
-## Setup
+The orchestrator (you) does setup once, then fans out to read-only review agents that share a pre-built context bundle. Findings come back as JSON, get verified against the source, deduped, and synthesized into a single review with a deterministic verdict.
 
-1. Read `AGENTS.md` (if present) to internalize project conventions, module map, key types, and data flows. Use it to calibrate every finding — "follows conventions" and "violates conventions" are the two most load-bearing judgments in this review.
-2. Fetch the PR diff: `gh pr diff $ARGUMENTS`
-3. Read the PR description: `gh pr view $ARGUMENTS`
-4. Identify every file changed and categorize them (production code, tests, config, CI, docs).
+## 1. Setup
 
-## Review Passes
+Run these in order. Abort with a clear message on any failure — do not continue with partial context.
 
-Launch **3 parallel Agent** reviews, each focused on a different dimension. Each agent must read the full diff AND the surrounding context of changed files (not just the diff lines — read the full functions/methods being modified).
+```bash
+PR=$ARGUMENTS
+DIFF=$(mktemp -t pr-${PR}-diff.XXXXXX.patch)
+META=$(mktemp -t pr-${PR}-meta.XXXXXX.json)
 
-### Agent 1: Correctness & Logic
+gh pr diff "$PR" > "$DIFF" || { echo "ABORT: gh pr diff failed for #$PR"; exit 1; }
+gh pr view "$PR" --json title,body,baseRefName,headRefName,files,comments,reviews > "$META" \
+  || { echo "ABORT: gh pr view failed for #$PR"; exit 1; }
+[ -s "$DIFF" ] || { echo "ABORT: empty diff for #$PR"; exit 1; }
+echo "DIFF=$DIFF"
+echo "META=$META"
+wc -l "$DIFF"
+```
 
-Check every changed function for:
-- **Logic errors** — wrong conditions, off-by-one, missing cases, unreachable code
-- **Type / API misuse** — calling methods with wrong argument types or the wrong constructor/enum for an API. `grep` the API's declaration and compare.
-- **Interface / contract compliance** — if a type implements an interface or extends a class, verify ALL methods are present and signatures match. Find the interface definition and compare.
-- **Control-flow integrity** — for event-driven / message-passing code (reducers, handlers, state machines), trace the full chain: does the event/command produce the expected next state? Does the next handler actually handle it?
-- **Error handling** — are errors silently swallowed? Are nil / null / None / undefined checks missing where the value could be absent? Are exceptions caught too broadly?
-- **Concurrency** — data races on shared state, missing locks, goroutine/thread leaks, async ordering assumptions
-- **Edge cases** — empty inputs, zero values, nil/null collections, boundary conditions, unicode, very large inputs
+Then:
 
-### Agent 2: Safety & Test Isolation
+1. Read `AGENTS.md` if present. Extract the sections relevant to the changed files (module map, conventions, key types, data flows). Save the extract — agents share it.
+2. Read `$META`. Categorize each changed file: `prod-code | tests | config | ci | docs | generated`.
+3. Read prior PR review comments from `$META`. These are issues humans already raised — agents should not re-flag them.
+4. Detect base branch from `$META.baseRefName`. If not `main` / `master`, note it; the diff is already correct, but flag stacked-PR context in the final review.
 
-Check for:
-- **Filesystem safety in tests** — does ANY code path during tests touch real user files (config dirs, state files, logs, cache, history)? Trace every read/write — including `init()` / module-level code that runs before test setup. Suggest a temp dir + env override if a leak is possible.
-- **Global / module-level mutable state** — identify package-level mutable variables. Are they safe in tests? Could parallel test runs corrupt them? Is cleanup happening in the right order (defer ordering, teardown hooks)?
-- **Environment leaks** — do tests set every env var that affects behavior? Could a missing override cause real-world side effects (e.g. actually hitting an API, touching prod config)?
-- **Golden file / snapshot determinism** — scan every golden/snapshot for: absolute paths, temp dir paths, timestamps, random IDs, ANSI/color codes, platform-specific rendering, CWD-dependent content. Any non-deterministic content = flaky CI.
-- **Test assertions** — are tests actually asserting what they claim? Watch for `t.Skip` / `xit` / `@Ignore` hiding failures, bifurcated assertions that pass on both branches, assertions on unrelated fields.
-- **Dependency safety** — new dependencies: are they maintained? Known vulnerabilities? Pinned to a specific version? License compatible?
-- **Secrets / tokens** — anything hardcoded or accidentally committed? Env-var names that hint at secret material printed to logs?
+## 2. Triage gate
 
-### Agent 3: Performance, UX & Consistency
+Decide fan-out shape from the diff:
 
-Check for:
-- **Performance** — O(n²) loops where n is user-scaled, unnecessary allocations in hot paths, blocking operations on UI / request-handling threads, unbounded growth of caches/maps/slices, N+1 queries
-- **UX correctness** (for anything user-facing — CLI, TUI, web UI, API):
-  - Output stays within its allocated space (no over-long lines in TUIs, no layout breaks in web UIs, no truncated CLI output)
-  - Input / key / focus isolation — when a modal/overlay/dialog is active, background handlers must not fire
-  - Focus / selection management — does opening/closing overlays correctly save and restore focus?
-  - Status / feedback — does the UI show accurate state? Loading, error, empty, and success states all handled?
-  - Accessibility basics — keyboard reachable, labeled controls, sufficient contrast (if web/TUI colors changed)
-- **Consistency with codebase:**
-  - Read existing code patterns in the same module. Does the new code follow them?
-  - Are existing helpers/utilities reused instead of reinvented? `grep` for similar functions before concluding "new helper needed."
-  - Naming follows the project's conventions (and language idioms)
-  - Comments: accurate? Describe WHY not WHAT? No dead / stale comments left behind?
-  - Does the code match the patterns documented in `AGENTS.md`?
-- **CI / build / packaging changes** — are they correct across all supported platforms? Do they introduce new toolchain dependencies that need documenting or installing?
+- **Tiny** (≤ 30 LOC AND only `docs|config` files): single-pass review, no fan-out. Skip to §6 with one Explore agent covering all dimensions.
+- **Small** (≤ 200 LOC, no `prod-code` security surface): 2 agents — Correctness + Consistency. Skip Security and Performance dimensions if they obviously don't apply (justify in output).
+- **Standard** (default): all 4 agents.
+- **Huge** (> 2000 LOC): all 4 agents, but instruct each to prioritize ruthlessly and explicitly note coverage gaps in their output.
 
-## Output Format
+State the chosen tier in one line before fan-out: `TIER: standard (520 LOC, 12 files, prod-code touched)`.
 
-After all 3 agents complete, synthesize their findings into a single structured review. Deduplicate overlapping findings.
+## 3. Context bundle
 
-### Structure
+Build the bundle once. Every reviewer agent receives the same bundle so they don't re-derive it.
 
 ```
+ContextBundle {
+  pr_number:        int
+  pr_title:         string
+  pr_body:          string
+  base_branch:      string
+  diff_path:        string         # absolute path to $DIFF on disk
+  files: [
+    { path, category, loc_added, loc_removed }
+  ]
+  prior_comments:   [string]       # human comments already on the PR
+  agents_md_excerpt: string        # relevant sections, or "" if no AGENTS.md
+  conventions_summary: string      # 3-5 bullets distilled from AGENTS.md
+}
+```
+
+Write the bundle to a temp JSON file and pass its path to each agent. Do not paste the diff inline — agents Read the path.
+
+## 4. Reviewer agents
+
+Launch in parallel with `subagent_type: Explore` (read-only, lighter than general-purpose). Each agent receives the **same** preamble plus its dimension-specific checklist.
+
+### Shared agent preamble
+
+```
+You are reviewing PR #<N> as a read-only Explore agent. You will NOT edit files.
+
+INPUT:
+  - Context bundle JSON at: <bundle_path>
+  - Diff at: <diff_path> (read this first)
+  - Repo root: <cwd>
+
+PROCEDURE:
+  1. Read the context bundle and the diff.
+  2. For each finding you intend to report, OPEN the cited file at the cited
+     line and confirm the issue is real. If you cannot verify it from the
+     current source, drop the finding.
+  3. Skip anything already raised in `prior_comments`.
+  4. Stay strictly within your dimension. Other agents cover other dimensions.
+
+OUTPUT:
+  Emit ONLY a single JSON array. No prose before or after. Each element:
+    {
+      "file":       "<repo-relative path>",
+      "line":       <int>,
+      "severity":   "BLOCKING" | "IMPORTANT" | "MINOR",
+      "category":   "<dimension>",
+      "confidence": <int 1-10>,
+      "title":      "<≤80 char summary>",
+      "why":        "<why it matters, 1-3 sentences>",
+      "fix":        "<concrete suggested fix, code snippet OK; null for MINOR>"
+    }
+
+  If you have zero findings, emit `[]`. Findings under confidence 5 should be
+  dropped unless severity would be BLOCKING.
+
+CAP: at most 10 findings. Prioritize impact.
+```
+
+### Agent 1 — Correctness & Logic
+
+Check changed code for:
+- Logic errors — wrong conditions, off-by-one, missing cases, unreachable code.
+- Type / API misuse — call sites that don't match the API's declared signature. `grep` the declaration.
+- Interface / contract compliance — if a type implements an interface, verify all methods present and signatures match.
+- Control-flow integrity — for event/message/reducer code, trace the chain end-to-end.
+- Error handling — silent swallow, missing nil/null checks, exceptions caught too broadly.
+- Concurrency — data races, missing locks, async ordering, goroutine/thread leaks.
+- Edge cases — empty inputs, zero, nil collections, boundaries, unicode, very large inputs.
+
+### Agent 2 — Safety & Test Hygiene
+
+Check for:
+- Filesystem leaks in tests — any code path that touches real user files (config, state, logs, history). Trace `init()` / module-level code too.
+- Global / module-level mutable state — safe in parallel tests? Cleanup ordering correct?
+- Environment leaks — does the test override every env var that affects behavior?
+- Golden / snapshot determinism — absolute paths, temp paths, timestamps, random IDs, ANSI codes, platform-specific rendering, CWD-dependent content.
+- Test assertions — `t.Skip` / `xit` / `@Ignore` hiding failures, bifurcated assertions, assertions on unrelated fields.
+
+### Agent 3 — Security
+
+Check for:
+- Authn / authz — missing checks, broken object-level auth, privilege escalation paths.
+- Injection — SQL, command, template, prompt, header, log.
+- SSRF, path traversal, unsafe deserialization, XXE.
+- Secrets — hardcoded tokens, credentials in env-var names that get logged, accidental commits.
+- Dependency supply chain — new deps: maintained? known CVEs? pinned? license OK?
+- Crypto — weak algorithms, hand-rolled crypto, predictable randomness, MAC-then-encrypt mistakes.
+- LLM / prompt-handling — untrusted input concatenated into prompts, tool-use without allowlist.
+
+### Agent 4 — Performance, UX & Consistency
+
+Check for:
+- Performance — O(n²) where n is user-scaled, allocations in hot paths, blocking I/O on UI/request threads, unbounded caches/maps/slices, N+1 queries (database calls inside a loop).
+- UX correctness (CLI / TUI / web / API) — output stays in its space, modal/focus isolation, focus restore on close, accurate loading/error/empty/success states, keyboard reachability.
+- Consistency — patterns match the surrounding module, helpers reused not reinvented (`grep` for similar functions before declaring "new helper needed"), naming follows conventions, comments accurate (WHY not WHAT, no stale ones).
+- CI / build / packaging — correct across all supported platforms, no undocumented toolchain deps.
+
+## 5. Verification & dedup
+
+After all agents return:
+
+1. **Parse JSON.** If an agent returned non-JSON, log a warning, treat its output as zero findings, and continue. Do not let one malformed response sink the review.
+2. **Drop invalid citations.** Any finding whose `file:line` is not in the diff range is dropped silently — agents occasionally hallucinate.
+3. **Spot-verify (parallel batches of 5).** For each surviving finding, Read the cited file at the cited line and confirm the cited code matches the `why`. Drop findings that don't hold up. Run batches in parallel — do not serialize 30 file reads.
+4. **Dedup.** Group by `(file, line ± 3, category)`. Within a group, keep the highest-severity finding; if tied, keep the highest-confidence; merge `why` if they add distinct information.
+5. **Cap.** Limit to 15 total findings. Drop order: MINOR → IMPORTANT with confidence < 7 → IMPORTANT with confidence ≥ 7. **Never drop BLOCKING** even if it pushes over the cap.
+
+If any agent timed out or returned no JSON, note it explicitly in the output: `Note: <dimension> review incomplete — agent returned no parseable output.`
+
+## 6. Output format
+
+```
+## TIER
+<tier> · <N> files · <LOC> changed lines · base: <base branch>
+
 ## BLOCKING (must fix before merge)
-1. [File:line] Description — why it matters, suggested fix
+1. [path:line] (confidence: N/10) Title
+   Why: ...
+   Fix: ...
 
 ## IMPORTANT (should fix, could be fast follow-up)
-1. [File:line] Description — why it matters, suggested fix
+1. [path:line] (confidence: N/10) Title
+   Why: ...
+   Fix: ...
 
 ## MINOR (nice to have)
-1. [File:line] Description
+1. [path:line] Title
 
 ## Verdict
-APPROVE / REQUEST_CHANGES / COMMENT
-One-sentence summary of overall assessment.
+<APPROVE | REQUEST_CHANGES | COMMENT>
+<one-sentence summary>
 ```
 
-### Rules
+## 7. Verdict rubric
 
-- Cite **specific file paths and line numbers** from the diff for every finding.
-- For each finding, explain **why** it's a problem (not just what's wrong).
-- Include a **suggested fix** for BLOCKING and IMPORTANT items — be concrete, show code if helpful.
-- Don't flag style-only issues unless they violate patterns established in `AGENTS.md`.
-- Don't flag missing tests for code that is itself test infrastructure (test helpers, mocks, fixtures).
-- Do flag tests that don't actually test what they claim to test.
-- If golden / snapshot files are present, spot-check 2-3 for determinism issues.
-- If the diff touches an interface or abstract type, verify ALL implementations are updated.
-- Limit to 15 findings max. Prioritize impact over quantity.
+Deterministic, no vibes:
+
+| State | Verdict |
+|---|---|
+| any BLOCKING finding | `REQUEST_CHANGES` |
+| no BLOCKING, ≥ 1 IMPORTANT | `COMMENT` |
+| only MINOR or zero findings | `APPROVE` |
+| any agent failed AND tier ≠ Tiny | `COMMENT` (state which dimension is uncovered) |
+
+## 8. Rules
+
+- Cite **specific file paths and line numbers** for every finding. No floating prose.
+- Every finding has a confidence score 1-10. Findings under 5 are dropped unless they'd be BLOCKING.
+- Explain **why** for every finding (not just what). Concrete fix for BLOCKING and IMPORTANT.
+- Don't flag style-only issues unless they violate AGENTS.md.
+- Don't flag missing tests for code that *is* test infrastructure (helpers, mocks, fixtures).
+- Do flag tests that don't actually test what they claim.
+- Spot-check 2-3 golden / snapshot files for determinism if any are touched.
+- If the diff touches an interface, verify all implementations are updated.
+- Do not re-flag issues already raised in `prior_comments`.
+
+## 9. Cleanup
+
+```bash
+rm -f "$DIFF" "$META" "$bundle_path" 2>/dev/null || true
+```
