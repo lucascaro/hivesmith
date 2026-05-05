@@ -1,7 +1,7 @@
 ---
 name: review-pr
 description: Deep PR review — correctness, safety, security, performance, UX, consistency
-argument-hint: [pr-number]
+argument-hint: "[pr-number]"
 allowed-tools: Read Glob Grep Bash Agent
 ---
 
@@ -113,6 +113,7 @@ CAP: at most 10 findings. Prioritize impact.
 ### Agent 1 — Correctness & Logic
 
 Check changed code for:
+
 - Logic errors — wrong conditions, off-by-one, missing cases, unreachable code.
 - Type / API misuse — call sites that don't match the API's declared signature. `grep` the declaration.
 - Interface / contract compliance — if a type implements an interface, verify all methods present and signatures match.
@@ -124,6 +125,7 @@ Check changed code for:
 ### Agent 2 — Safety & Test Hygiene
 
 Check for:
+
 - Filesystem leaks in tests — any code path that touches real user files (config, state, logs, history). Trace `init()` / module-level code too.
 - Global / module-level mutable state — safe in parallel tests? Cleanup ordering correct?
 - Environment leaks — does the test override every env var that affects behavior?
@@ -133,6 +135,7 @@ Check for:
 ### Agent 3 — Security
 
 Check for:
+
 - Authn / authz — missing checks, broken object-level auth, privilege escalation paths.
 - Injection — SQL, command, template, prompt, header, log.
 - SSRF, path traversal, unsafe deserialization, XXE.
@@ -144,6 +147,7 @@ Check for:
 ### Agent 4 — Performance, UX & Consistency
 
 Check for:
+
 - Performance — O(n²) where n is user-scaled, allocations in hot paths, blocking I/O on UI/request threads, unbounded caches/maps/slices, N+1 queries (database calls inside a loop).
 - UX correctness (CLI / TUI / web / API) — output stays in its space, modal/focus isolation, focus restore on close, accurate loading/error/empty/success states, keyboard reachability.
 - Consistency — patterns match the surrounding module, helpers reused not reinvented (`grep` for similar functions before declaring "new helper needed"), naming follows conventions, comments accurate (WHY not WHAT, no stale ones).
@@ -189,11 +193,11 @@ If any agent timed out or returned no JSON, note it explicitly in the output: `N
 
 Deterministic, no vibes:
 
-| State | Verdict |
-|---|---|
-| any BLOCKING finding | `REQUEST_CHANGES` |
-| no BLOCKING, ≥ 1 IMPORTANT | `COMMENT` |
-| only MINOR or zero findings | `APPROVE` |
+| State                            | Verdict                                        |
+| -------------------------------- | ---------------------------------------------- |
+| any BLOCKING finding             | `REQUEST_CHANGES`                              |
+| no BLOCKING, ≥ 1 IMPORTANT       | `COMMENT`                                      |
+| only MINOR or zero findings      | `APPROVE`                                      |
 | any agent failed AND tier ≠ Tiny | `COMMENT` (state which dimension is uncovered) |
 
 ## 8. Rules
@@ -202,7 +206,7 @@ Deterministic, no vibes:
 - Every finding has a confidence score 1-10. Findings under 5 are dropped unless they'd be BLOCKING.
 - Explain **why** for every finding (not just what). Concrete fix for BLOCKING and IMPORTANT.
 - Don't flag style-only issues unless they violate AGENTS.md.
-- Don't flag missing tests for code that *is* test infrastructure (helpers, mocks, fixtures).
+- Don't flag missing tests for code that _is_ test infrastructure (helpers, mocks, fixtures).
 - Do flag tests that don't actually test what they claim.
 - Spot-check 2-3 golden / snapshot files for determinism if any are touched.
 - If the diff touches an interface, verify all implementations are updated.

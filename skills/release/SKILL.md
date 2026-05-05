@@ -1,7 +1,7 @@
 ---
 name: release
 description: Cut a release — pre-flight checks, version bump suggestion, run scripts/release.sh
-argument-hint: [version]
+argument-hint: "[version]"
 allowed-tools: Read Bash
 ---
 

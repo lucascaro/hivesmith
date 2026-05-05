@@ -2,7 +2,7 @@
 name: feature-new
 description: Create a GitHub issue and run it through ingest + triage
 disable-model-invocation: true
-argument-hint: [description]
+argument-hint: "[description]"
 allowed-tools: Read Glob Grep Edit Write Bash
 ---
 

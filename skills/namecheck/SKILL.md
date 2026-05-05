@@ -17,7 +17,7 @@ Given one or more candidate names, check if each is free on **npm**, the **GitHu
    - Names may arrive as `$ARGUMENTS` (space-separated) or via `-f <file>`.
    - If none provided, ask the user what to check and stop.
 
-3. **Run the script.** Invoke `skills/namecheck/namecheck.sh` with the names. The script is the source of truth — do not re-implement its logic.
+3. **Run the script.** Invoke `./namecheck.sh` from this skill directory (or use its absolute path) with the names. The script is the source of truth — do not re-implement its logic.
    - One-off: `./namecheck.sh foo bar baz`
    - From file: `./namecheck.sh -f wordlist.txt`
    - Machine-readable: add `--json` when the caller wants to pipe output into something else.

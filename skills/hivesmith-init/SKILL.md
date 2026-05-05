@@ -1,7 +1,7 @@
 ---
 name: hivesmith-init
 description: Scaffold hivesmith templates (features/, AGENTS.md, release.sh) into a project
-argument-hint: [--force]
+argument-hint: "[--force]"
 allowed-tools: Read Glob Write Bash
 ---
 

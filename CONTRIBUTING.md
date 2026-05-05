@@ -45,7 +45,7 @@ Each skill lives under `skills/<name>/` with a `SKILL.md` file. The installer au
 ---
 name: feature-plan                              # must match directory name
 description: One-sentence summary for Claude    # shown in skill autocomplete
-argument-hint: [issue-number]                   # optional; shown after /name
+argument-hint: "[issue-number]"                 # optional; shown after /name
 allowed-tools: Read Glob Grep Edit Bash Agent   # space-separated tool names
 disable-model-invocation: true                  # optional; skill is user-invoked only
 ---

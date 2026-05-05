@@ -2,7 +2,7 @@
 name: feature-triage
 description: Triage a feature — classify, estimate complexity, prioritize
 disable-model-invocation: true
-argument-hint: [issue-number]
+argument-hint: "[issue-number]"
 allowed-tools: Read Glob Grep Edit Bash Agent
 ---
 

@@ -2,7 +2,7 @@
 name: feature-research
 description: Research a feature — explore codebase, document findings
 disable-model-invocation: true
-argument-hint: [issue-number]
+argument-hint: "[issue-number]"
 allowed-tools: Read Glob Grep Edit Bash Agent
 ---
 

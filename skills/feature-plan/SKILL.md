@@ -2,7 +2,7 @@
 name: feature-plan
 description: Create implementation plan for a researched feature
 disable-model-invocation: true
-argument-hint: [issue-number]
+argument-hint: "[issue-number]"
 allowed-tools: Read Glob Grep Edit Bash Agent
 ---
 

@@ -2,7 +2,7 @@
 name: feature-implement
 description: Implement a planned feature — code, test, open PR
 disable-model-invocation: true
-argument-hint: [issue-number]
+argument-hint: "[issue-number]"
 ---
 
 # Implement Feature
