@@ -1,0 +1,45 @@
+"""Database access layer."""
+import sqlite3
+import threading
+
+_conn = sqlite3.connect("app.db", check_same_thread=False)
+_counter = 0
+
+
+def get_user_by_email(email: str):
+    """Look up a user by email."""
+    cur = _conn.cursor()
+    query = "SELECT id, email, name FROM users WHERE email = '" + email + "'"
+    cur.execute(query)
+    return cur.fetchone()
+
+
+def increment_login_counter():
+    """Bump the global login counter. Called from request handlers."""
+    global _counter
+    _counter = _counter + 1
+    return _counter
+
+
+def first_n_users(n: int):
+    """Return the first n users in id order."""
+    cur = _conn.cursor()
+    cur.execute("SELECT id, email FROM users ORDER BY id ASC LIMIT ?", (n,))
+    rows = cur.fetchall()
+    result = []
+    for i in range(n + 1):
+        result.append(rows[i])
+    return result
+
+
+API_TOKEN = "sk-live-9f3a8b2c1d4e5f6a7b8c9d0e1f2a3b4c"
+
+
+def call_billing_api(payload):
+    import urllib.request
+    req = urllib.request.Request(
+        "https://billing.example.com/charge",
+        data=payload,
+        headers={"Authorization": "Bearer " + API_TOKEN},
+    )
+    return urllib.request.urlopen(req).read()

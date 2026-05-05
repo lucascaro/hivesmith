@@ -1,0 +1,12 @@
+{
+  "title": "refactor: rename geometry helpers to noun_verb form",
+  "body": "Renames area_circle/area_rect/area_tri to circle_area/rectangle_area/triangle_area, and r/w/h/b to radius/width/height/base. Tests updated. No behavior change.",
+  "baseRefName": "main",
+  "headRefName": "refactor-geometry-names",
+  "files": [
+    { "path": "src/geometry.py", "additions": 9, "deletions": 9 },
+    { "path": "tests/test_geometry.py", "additions": 9, "deletions": 9 }
+  ],
+  "comments": [],
+  "reviews": []
+}

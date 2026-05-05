@@ -1,0 +1,11 @@
+{
+  "title": "docs: fix typo in README heading",
+  "body": "Installtion -> Installation.",
+  "baseRefName": "main",
+  "headRefName": "fix-readme-typo",
+  "files": [
+    { "path": "README.md", "additions": 1, "deletions": 1 }
+  ],
+  "comments": [],
+  "reviews": []
+}

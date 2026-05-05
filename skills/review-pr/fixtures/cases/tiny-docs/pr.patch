@@ -1,0 +1,13 @@
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -2,7 +2,7 @@
+
+ A small library for managing widgets.
+
+-## Installtion
++## Installation
+
+ Run `pip install widget` to install.
+

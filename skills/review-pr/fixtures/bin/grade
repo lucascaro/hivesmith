@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Grade a review-pr fixture run.
+
+Compares actual JSON findings (the array the skill produced, or the full
+review with a 'findings' key) against expected.yaml ground truth.
+
+Exits 0 on pass, 1 on regression.
+"""
+import json
+import sys
+import re
+from pathlib import Path
+
+
+def load_yaml(path):
+    """Tiny YAML subset parser — handles the shapes used in expected.yaml.
+
+    Avoids a PyYAML dependency. Supports: scalars, nested mappings via indent,
+    list-of-mappings via '- ', list-of-scalars via '[a, b]' inline.
+    """
+    text = path.read_text()
+    lines = [ln for ln in text.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    return _parse_block(lines, 0)[0]
+
+
+def _parse_block(lines, indent):
+    result = {}
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        cur_indent = len(ln) - len(ln.lstrip())
+        if cur_indent < indent:
+            break
+        if cur_indent > indent:
+            i += 1
+            continue
+        stripped = ln.strip()
+        if stripped.startswith("- "):
+            return _parse_list(lines, indent)
+        key, _, val = stripped.partition(":")
+        key = key.strip()
+        val = val.strip()
+        if val == "":
+            sub_lines = lines[i + 1:]
+            child, consumed = _parse_block_or_list(sub_lines, indent + 2)
+            result[key] = child
+            i += 1 + consumed
+        else:
+            result[key] = _scalar(val)
+            i += 1
+    return result, i
+
+
+def _parse_block_or_list(lines, indent):
+    for ln in lines:
+        cur = len(ln) - len(ln.lstrip())
+        if cur < indent:
+            return {}, 0
+        if cur == indent:
+            if ln.strip().startswith("- "):
+                return _parse_list(lines, indent)
+            return _parse_block(lines, indent)
+    return {}, 0
+
+
+def _parse_list(lines, indent):
+    items = []
+    i = 0
+    cur_item_lines = None
+    while i < len(lines):
+        ln = lines[i]
+        cur = len(ln) - len(ln.lstrip())
+        if cur < indent:
+            break
+        if cur == indent and ln.strip().startswith("- "):
+            if cur_item_lines is not None:
+                items.append(_finalize_item(cur_item_lines, indent + 2))
+            rest = ln.strip()[2:]
+            cur_item_lines = []
+            if rest:
+                cur_item_lines.append(" " * (indent + 2) + rest)
+        else:
+            if cur_item_lines is not None:
+                cur_item_lines.append(ln)
+        i += 1
+    if cur_item_lines is not None:
+        items.append(_finalize_item(cur_item_lines, indent + 2))
+    return items, i
+
+
+def _finalize_item(lines, indent):
+    if len(lines) == 1 and ":" not in lines[0]:
+        return _scalar(lines[0].strip())
+    parsed, _ = _parse_block(lines, indent)
+    return parsed
+
+
+def _scalar(s):
+    if s.startswith("[") and s.endswith("]"):
+        inner = s[1:-1].strip()
+        if not inner:
+            return []
+        return [_scalar(x.strip()) for x in inner.split(",")]
+    if s.startswith('"') and s.endswith('"'):
+        return s[1:-1]
+    try:
+        return int(s)
+    except ValueError:
+        pass
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    if s.lower() in ("true", "false"):
+        return s.lower() == "true"
+    return s
+
+
+def normalize_findings(actual):
+    """Accept either a raw list or {findings: [...], verdict: ...}."""
+    if isinstance(actual, list):
+        return actual, None
+    if isinstance(actual, dict):
+        return actual.get("findings", []), actual.get("verdict")
+    raise ValueError("actual JSON must be a list or object")
+
+
+def matches_must_find(spec, finding):
+    if finding.get("file") != spec["file"]:
+        return False
+    line = finding.get("line", 0)
+    lo, hi = spec["line_range"]
+    if not (lo <= line <= hi):
+        return False
+    cat = spec.get("category", "").lower()
+    if cat and cat not in finding.get("category", "").lower():
+        return False
+    blob = (finding.get("title", "") + " " + finding.get("why", "")).lower()
+    keywords = spec.get("keywords", []) or []
+    if keywords and not all(k.lower() in blob for k in keywords):
+        return False
+    return True
+
+
+def matches_must_not_find(spec, finding):
+    if finding.get("file") != spec["file"]:
+        return False
+    return True
+
+
+def main():
+    if len(sys.argv) != 3:
+        print("usage: grade <case-name> <actual.json>", file=sys.stderr)
+        sys.exit(64)
+    case_name, actual_path = sys.argv[1], sys.argv[2]
+    here = Path(__file__).resolve().parent.parent
+    case_dir = here / "cases" / case_name
+    if not case_dir.is_dir():
+        print(f"grade: no such case: {case_name}", file=sys.stderr)
+        sys.exit(1)
+    expected = load_yaml(case_dir / "expected.yaml")
+    actual_raw = json.loads(Path(actual_path).read_text())
+    findings, verdict = normalize_findings(actual_raw)
+
+    must_find = expected.get("must_find", []) or []
+    must_not_find = expected.get("must_not_find", []) or []
+    expected_verdict = expected.get("verdict")
+    max_findings = expected.get("max_findings", 99)
+
+    caught = []
+    missed = []
+    for spec in must_find:
+        hit = next((f for f in findings if matches_must_find(spec, f)), None)
+        (caught if hit else missed).append(spec)
+
+    false_positives = []
+    for spec in must_not_find:
+        for f in findings:
+            if matches_must_not_find(spec, f):
+                false_positives.append((spec, f))
+
+    over_cap = max(0, len(findings) - max_findings)
+
+    must_count = len(must_find)
+    recall = len(caught) / must_count if must_count else 1.0
+    precision_denom = len(findings) or 1
+    precision_caught_count = len(caught)
+    precision = precision_caught_count / precision_denom if must_count else 1.0
+
+    print(f"=== {case_name} ===")
+    print(f"findings:        {len(findings)}")
+    print(f"recall:          {len(caught)}/{must_count} ({recall:.0%})")
+    print(f"precision:       {precision:.0%} (planted-bug findings / total)")
+    print(f"false positives: {len(false_positives)}")
+    print(f"over cap:        {over_cap}  (cap={max_findings})")
+    print(f"verdict:         actual={verdict!r} expected={expected_verdict!r}")
+
+    fail = False
+    if missed:
+        fail = True
+        print("\nMISSED (regression — skill failed to catch):")
+        for spec in missed:
+            print(f"  - {spec['file']} lines {spec['line_range']} cat={spec.get('category')}")
+    if false_positives:
+        fail = True
+        print("\nFALSE POSITIVES (regression — skill flagged a clean change):")
+        for spec, f in false_positives:
+            print(f"  - {f.get('file')}:{f.get('line')}  {f.get('title')}")
+            print(f"    reason it should not have flagged: {spec.get('reason')}")
+    if expected_verdict and verdict and expected_verdict != verdict:
+        fail = True
+        print(f"\nVERDICT MISMATCH: expected {expected_verdict}, got {verdict}")
+    if over_cap > 0:
+        fail = True
+        print(f"\nNOISE: {over_cap} findings over cap of {max_findings}")
+
+    if fail:
+        print("\nRESULT: FAIL")
+        sys.exit(1)
+    print("\nRESULT: PASS")
+
+
+if __name__ == "__main__":
+    main()

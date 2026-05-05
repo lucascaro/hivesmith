@@ -1,0 +1,6 @@
+verdict: APPROVE
+must_find: []
+must_not_find:
+  - file: README.md
+    reason: typo fix in heading, no behavior change
+max_findings: 1
