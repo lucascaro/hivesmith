@@ -1,0 +1,11 @@
+{
+  "title": "feat: add db access layer",
+  "body": "Initial database access layer with user lookup, login counter, and billing integration.",
+  "baseRefName": "main",
+  "headRefName": "feat-db-layer",
+  "files": [
+    { "path": "app/db.py", "additions": 42, "deletions": 0 }
+  ],
+  "comments": [],
+  "reviews": []
+}

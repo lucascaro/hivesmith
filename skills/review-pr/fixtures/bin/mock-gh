@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Stand-in for `gh`. Routes the subset of commands the review-pr skill uses
+# to the active fixture case dir (FIXTURE_DIR env var).
+set -euo pipefail
+
+if [ -z "${FIXTURE_DIR:-}" ]; then
+  echo "mock-gh: FIXTURE_DIR not set" >&2
+  exit 2
+fi
+if [ ! -d "$FIXTURE_DIR" ]; then
+  echo "mock-gh: FIXTURE_DIR=$FIXTURE_DIR does not exist" >&2
+  exit 2
+fi
+
+cmd="${1:-}"; sub="${2:-}"
+
+case "$cmd $sub" in
+  "pr diff")
+    cat "$FIXTURE_DIR/pr.patch"
+    ;;
+  "pr view")
+    # Ignore --json filtering — return the whole meta blob. Skill reads what it
+    # needs. Real `gh` would project; the difference is harmless here.
+    cat "$FIXTURE_DIR/meta.json"
+    ;;
+  *)
+    echo "mock-gh: unsupported command: $*" >&2
+    exit 64
+    ;;
+esac

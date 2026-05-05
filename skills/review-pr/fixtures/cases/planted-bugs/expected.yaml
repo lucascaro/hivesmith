@@ -1,0 +1,20 @@
+verdict: REQUEST_CHANGES
+must_find:
+  - file: app/db.py
+    line_range: [10, 14]
+    category: security
+    keywords: [sql, injection]
+  - file: app/db.py
+    line_range: [17, 22]
+    category: safety
+    keywords: [race]
+  - file: app/db.py
+    line_range: [25, 33]
+    category: correctness
+    keywords: [off-by-one]
+  - file: app/db.py
+    line_range: [35, 36]
+    category: security
+    keywords: [secret]
+must_not_find: []
+max_findings: 8

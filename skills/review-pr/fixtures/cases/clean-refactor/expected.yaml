@@ -1,0 +1,8 @@
+verdict: APPROVE
+must_find: []
+must_not_find:
+  - file: src/geometry.py
+    reason: pure rename, no behavior change
+  - file: tests/test_geometry.py
+    reason: rename only, all assertions preserved
+max_findings: 1
