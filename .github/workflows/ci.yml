@@ -9,7 +9,7 @@ jobs:
   shellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ludeeus/action-shellcheck@00b27aa7cb85167568cb48a3838b75f4265f2bca  # master as of 2026-04-13
         with:
           scandir: '.'
@@ -22,7 +22,7 @@ jobs:
   install-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Smoke test — with prefix
         run: |
           export HOME="$(mktemp -d)"
@@ -37,7 +37,7 @@ jobs:
   render-correctness:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install with prefix and verify render
         run: |
           export HOME="$(mktemp -d)"
@@ -51,7 +51,7 @@ jobs:
   changelog:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check [Unreleased] section is non-empty
         run: |
           # Extract content between ## [Unreleased] and the next ## [
@@ -69,7 +69,7 @@ jobs:
   install-smoke-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Smoke test — macOS
         run: |
           export HOME="$(mktemp -d)"
