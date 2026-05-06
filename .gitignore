@@ -4,3 +4,9 @@
 .claude/
 .rendered/
 .gstack/
+
+# hive worktrees
+.worktrees
+
+# graphify build artifacts
+graphify-out/
