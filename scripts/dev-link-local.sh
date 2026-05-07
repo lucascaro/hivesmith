@@ -17,6 +17,7 @@
 # Reports a one-line summary: "linked: N, replaced: N, skipped: N, unlinked: N".
 
 set -euo pipefail
+shopt -s nullglob
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_SRC="$REPO_ROOT/skills"
@@ -27,7 +28,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --uninstall) MODE="uninstall"; shift ;;
         --target) TARGET="$REPO_ROOT/${2#./}"; shift 2 ;;
-        --target=*) TARGET="$REPO_ROOT/${1#--target=}"; TARGET="${TARGET#./}"; shift ;;
+        --target=*) arg="${1#--target=}"; TARGET="$REPO_ROOT/${arg#./}"; shift ;;
         -h|--help)
             sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
             exit 0 ;;

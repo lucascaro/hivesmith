@@ -15,9 +15,9 @@ How planning works in this repo.
 
 ## Plan lifecycle
 
-1. **RESEARCH** — `/echo-feature-research` populates the Research section.
-2. **PLAN** — `/echo-feature-plan` populates the Approach, Files, and Tests sections.
-3. **IMPLEMENT** — `/echo-feature-implement` appends to Decision log and Progress as code lands.
+1. **RESEARCH** — `/feature-research` populates the Research section.
+2. **PLAN** — `/feature-plan` populates the Approach, Files, and Tests sections.
+3. **IMPLEMENT** — `/feature-implement` appends to Decision log and Progress as code lands.
 4. **DONE** — on merge, the file moves to `docs/exec-plans/completed/` and Status flips to `completed`.
 
 See [docs/exec-plans/_template.md](docs/exec-plans/_template.md) for the file shape.
