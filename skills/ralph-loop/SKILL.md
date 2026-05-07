@@ -11,6 +11,10 @@ Drive a single PR to convergence by iterating review → respond → re-review. 
 
 This skill is the **inner PR-convergence loop**. It is independent of the feature pipeline — any PR (hand-authored, from `/feature-implement`, or from another tool) can be driven to convergence through it.
 
+## Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. Keep iterating until findings actually clear — don't declare victory after one round of `/autofix` while non-trivial findings still stand. Each pass should fully apply the boil-the-lake stance from `/review-pr` and `/autofix`: every occurrence of every defect, every implementor of every touched contract. The loop ends when the review verdict is `APPROVE` (or `COMMENT` with only MINOR remaining), or when an escalation criterion fires (genuine ocean, contradictory findings, max iterations) — surface those for the user, don't quietly stop. The default bias is toward running the loop to true convergence, not to a comfortable-looking diff.
+
 ## Inputs
 
 - `$ARGUMENTS` first token: PR number. If omitted, detect from the current branch (`gh pr view --json number -q .number`). If neither resolves, stop and tell the user to pass a PR number.

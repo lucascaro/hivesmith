@@ -11,6 +11,10 @@ Perform a thorough review of PR **#$ARGUMENTS**.
 
 The orchestrator (you) does setup once, then fans out to read-only review agents that share a pre-built context bundle. Findings come back as JSON, get verified against the source, deduped, and synthesized into a single review with a deterministic verdict.
 
+## 0. Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. When the complete fix is a **lake** (bounded, achievable in this PR or a small follow-up), the `fix` field of every finding should describe the **complete** fix — every occurrence of the same defect across the diff, every implementation of a touched interface, every call site that breaks under a contract change. Don't suggest "patch this line" when the right fix is "patch all five sites and the helper they should have used." Only treat a finding as an **ocean** (multi-quarter migration, broad contract change, cross-team coordination) when it genuinely is one — and when it is, say so explicitly in `why` and recommend a staged plan rather than smuggling in a band-aid. The default bias is toward recommending all of it, now.
+
 ## 1. Setup
 
 Run these in order. Abort with a clear message on any failure — do not continue with partial context.
@@ -103,6 +107,14 @@ OUTPUT:
       "why":        "<why it matters, 1-3 sentences>",
       "fix":        "<concrete suggested fix, code snippet OK; null for MINOR>"
     }
+
+  BOIL THE LAKE: when the same defect appears at multiple sites in the diff,
+  or when a contract change forces updates at every call site / implementation,
+  the `fix` field must describe the COMPLETE fix (all sites, the helper they
+  should share, every implementor). Do not suggest patching only the cited
+  line when the rest is achievable in the same PR. If the remainder is
+  genuinely a multi-quarter ocean, prefix `why` with "ocean:" and recommend a
+  staged plan in `fix` instead of a band-aid.
 
   If you have zero findings, emit `[]`. Findings under confidence 5 should be
   dropped unless severity would be BLOCKING.
@@ -211,6 +223,7 @@ Deterministic, no vibes:
 - Spot-check 2-3 golden / snapshot files for determinism if any are touched.
 - If the diff touches an interface, verify all implementations are updated.
 - Do not re-flag issues already raised in `prior_comments`.
+- **Boil the lake in the `fix` field.** When the complete fix is achievable (lake), describe the complete fix — every occurrence in the diff, every implementation of a touched interface, every call site affected by a contract change. Only propose a partial fix when the remainder is genuinely an ocean (multi-quarter / cross-cutting), and when so, say "ocean: <reason>" in `why` and recommend a staged plan in `fix`.
 
 ## 9. Cleanup
 
