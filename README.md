@@ -2,15 +2,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A multi-agent dev workflow bundle for Claude Code, Codex, Gemini, Copilot, and Factory. Gives every AI agent in your toolkit a shared feature pipeline, PR review workflow, and release scaffolding — installable into any project in one command.
+A multi-agent dev workflow bundle for Claude Code, Codex, Gemini, Copilot, and Factory. Gives every AI agent in your toolkit a shared harness — a structured `docs/` system of record, a feature pipeline that drives PRs to convergence, and recurring background workflows that keep the codebase legible — installable into any project in one command.
 
-Extracted from the [claude-mux](https://github.com/lucascaro/claude-mux) development process.
+Extracted from the [claude-mux](https://github.com/lucascaro/claude-mux) development process. Layout and loop primitives follow the pattern documented in OpenAI's [*Harness engineering*](https://openai.com/index/harness-engineering/) post.
 
 ## Why
 
 Most AI coding agents have no persistent memory of what's being worked on and no coordination with each other. Hivesmith gives them a shared structure:
 
-- **A feature pipeline** — ingest a GitHub issue, triage it, research the codebase, plan, implement, and ship. Each step is a single slash command; each result is written to `features/` so any agent — Claude, Codex, Gemini — can pick up where another left off.
+- **A repo-as-system-of-record layout** — product specs (the *what/why*) in `docs/product-specs/`, exec plans (the *how*, with append-only Decision log + Progress) in `docs/exec-plans/{active,completed}/`, plus stubs for `DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `golden-principles.md`. `AGENTS.md` is a short table of contents that points into the tree.
+- **A feature pipeline** — ingest a GitHub issue, triage it, research the codebase, plan, implement, and ship. Each step is a single slash command writing to `docs/`. Any agent — Claude, Codex, Gemini — can pick up where another left off.
+- **PR convergence** — `/ralph-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
+- **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs.
 - **A parallel PR review** — three independent review agents (correctness & logic, safety & test isolation, performance & UX consistency) run in parallel and synthesize a single structured verdict.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
@@ -18,31 +21,59 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 
 ### Skills
 
-Invokable as `/feature-*`, `/review-pr`, etc.:
+Invokable as `/feature-*`, `/ralph-loop`, etc.:
+
+**Feature pipeline**
 
 | Skill | What it does |
 |---|---|
 | `/feature-next` | Show pipeline status and recommend the next action |
-| `/feature-ingest <#>` | Ingest a GitHub issue into the local pipeline |
+| `/feature-ingest <#>` | Ingest a GitHub issue into `docs/product-specs/` |
 | `/feature-triage [#]` | Classify type, complexity, and priority |
-| `/feature-research [#]` | Explore the codebase and document findings |
-| `/feature-plan [#]` | Write a concrete implementation plan |
-| `/feature-implement [#]` | Code, test, commit, and open a PR |
+| `/feature-research [#]` | Explore the codebase, create the exec plan |
+| `/feature-plan [#]` | Fill the exec plan's Approach, Files, and Tests sections |
+| `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/ralph-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
-| `/review-pr <#>` | Parallel-agent deep PR review |
+| `/feature-loop [# \| description]` | Drive one feature through TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE with confirmation gates |
+
+**Loop primitives**
+
+| Skill | What it does |
+|---|---|
+| `/ralph-loop [#]` | Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit |
+| `/doc-garden` | Recurring sweep over `docs/` — detect stale docs, broken cross-links, drifted generated content; open one scoped fix-up PR per doc |
+| `/gc-sweep` | Read `golden-principles.md`, scan the codebase for deviations, open small targeted refactor PRs (one principle per PR) |
+
+**Review and release**
+
+| Skill | What it does |
+|---|---|
+| `/review-pr <#>` | Parallel-agent deep PR review (used by `/ralph-loop`) |
+| `/autofix [#]` | Apply safe fixes from review findings, CI failures, or PR comments (used by `/ralph-loop`) |
 | `/changelog-update` | Add an `[Unreleased]` entry to `CHANGELOG.md` |
 | `/release <version>` | Pre-flight checks, version-bump suggestion, runs `scripts/release.sh` |
-| `/hivesmith-init` | Scaffold the pipeline into a project (see below) |
+
+**Setup**
+
+| Skill | What it does |
+|---|---|
+| `/hivesmith-init` | Scaffold the harness layout into a project (see below). `--migrate` splits an existing `features/` layout into `docs/`. |
+| `/namecheck` | Check name availability on npm, GitHub, and popular TLDs |
 
 ### Templates
 
 One-time scaffolding copied into your project by `/hivesmith-init`:
 
-- `features/BACKLOG.md`, `features/templates/FEATURE.md`, `features/ingest.sh` — pipeline tracking
-- `AGENTS.md` skeleton (module map, conventions, test strategy) — or `AGENTS.hivesmith.md` appended to an existing `AGENTS.md`
+- `docs/product-specs/`, `docs/exec-plans/{active,completed}/`, `docs/design-docs/`, `docs/references/`, `docs/generated/` — the system-of-record tree
+- `docs/product-specs/_template.md`, `docs/exec-plans/_template.md` — file shapes the pipeline writes to
+- `docs/exec-plans/tech-debt-tracker.md`, `docs/design-docs/core-beliefs.md`
+- `AGENTS.md` table of contents — or `AGENTS.hivesmith.md` appended to an existing `AGENTS.md`
+- `DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `PRODUCT_SENSE.md`, `PLANS.md`, `FRONTEND.md` — top-level stubs
+- `golden-principles.md` — mechanical rules `/gc-sweep` enforces
 - `CHANGELOG.md` (Keep a Changelog format, `[Unreleased]` section ready)
 - `scripts/release.sh` (stack-agnostic scaffold)
 - `CONTRIBUTING.md` skeleton
+- `features/BACKLOG.md`, `features/templates/FEATURE.md`, `features/ingest.sh` — legacy layout, only scaffolded when explicitly requested or migrating an existing project
 
 ## Requirements
 
@@ -107,11 +138,26 @@ Skills are invokable as `/hivesmith:feature-next`, etc.
 
 Inside any repo, run `/hivesmith-init`. It will:
 
-1. Ask which templates to scaffold (features pipeline, `AGENTS.md`, `scripts/release.sh`, `CONTRIBUTING.md`)
+1. Ask which pieces to scaffold (`docs/` system-of-record tree, top-level stubs, `AGENTS.md`, `scripts/release.sh`, `CONTRIBUTING.md`, optional legacy `features/` layout)
 2. Copy them in with safe defaults
 3. Refuse to overwrite existing files without `--force`
 
-After scaffolding, run `/feature-next` to see the pipeline status and get your first recommended action.
+After scaffolding:
+
+1. Edit `AGENTS.md` to fill in the module map and build/test commands.
+2. Edit `golden-principles.md` to define the rules `/gc-sweep` will enforce (start with 5–10 principles).
+3. Edit `DESIGN.md` to document domains and layers.
+4. Run `/feature-next` to see the pipeline status and get your first recommended action.
+
+### Migrating an existing project
+
+If you already have the legacy `features/` layout, run:
+
+```
+/hivesmith-init --migrate
+```
+
+This splits each `features/<state>/<NNN>-*.md` file into a product spec (`docs/product-specs/`) and an exec plan (`docs/exec-plans/{active,completed}/`), preserving the Decision log and Progress sections verbatim. The legacy `features/` directory is left untouched as a fallback; the pipeline reads `docs/` first and falls back to `features/` for one release.
 
 ## Uninstall
 

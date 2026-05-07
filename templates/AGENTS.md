@@ -1,74 +1,65 @@
 # AGENTS.md
 
-Guidance for AI agents (and humans) working in this repo. Keep this file current — many of the hivesmith skills read it to calibrate their work.
+Table of contents for AI agents (and humans) working in this repo. **Keep this file short.** It is a map, not an encyclopedia. Detailed rules live in the linked files; this file just routes you there.
 
 ## Project Overview
 
-<Describe what this project is, the tech stack, and the core user problem it solves. 2-4 sentences.>
+<2–3 sentences. What this project is, the stack, the core user problem.>
 
-## Module Map
+## How to navigate this repo
 
-<List the top-level packages/directories/modules with one line each describing what lives there. Example:>
+| If you need to know... | Read |
+|------------------------|------|
+| What this project does at a high level | `README.md` |
+| The architectural shape — domains, layers, cross-cutting concerns | [`DESIGN.md`](DESIGN.md) |
+| Project-wide design beliefs | [`docs/design-docs/core-beliefs.md`](docs/design-docs/core-beliefs.md) |
+| Per-decision design rationale | [`docs/design-docs/`](docs/design-docs/index.md) |
+| What's planned and why (product-side) | [`docs/product-specs/`](docs/product-specs/index.md) |
+| What's being built right now (engineering-side) | [`docs/exec-plans/active/`](docs/exec-plans/active/) |
+| What was built and the decisions made along the way | [`docs/exec-plans/completed/`](docs/exec-plans/completed/) |
+| Mechanical rules `gc-sweep` enforces | [`golden-principles.md`](golden-principles.md) |
+| Reliability targets and verification | [`RELIABILITY.md`](RELIABILITY.md) |
+| Security posture and trust boundaries | [`SECURITY.md`](SECURITY.md) |
+| Quality grades per domain/layer | [`QUALITY_SCORE.md`](QUALITY_SCORE.md) |
+| Product taste and tie-breaker heuristics | [`PRODUCT_SENSE.md`](PRODUCT_SENSE.md) |
+| Frontend conventions (if applicable) | [`FRONTEND.md`](FRONTEND.md) |
+| How planning works | [`PLANS.md`](PLANS.md) |
+| Known shortcuts and deferrals | [`docs/exec-plans/tech-debt-tracker.md`](docs/exec-plans/tech-debt-tracker.md) |
+| External docs pulled in for agent context | [`docs/references/`](docs/references/README.md) |
 
-- `src/core/` — domain logic, no I/O
-- `src/api/` — HTTP handlers
-- `src/db/` — persistence layer
-- `cmd/` — CLI entrypoints
-- `tests/` — integration tests
+## Build / Test / Lint
 
-## Key Types / Concepts
-
-<List the 5-10 most important types or concepts a new contributor must understand. One line each.>
-
-## Data Flows
-
-<Describe 2-3 critical data flows end to end — e.g. "Request lifecycle: HTTP → handler → service → repo → DB → response".>
-
-## Build / Test / Lint Commands
-
-All of these must pass before a PR merges. The `/feature-implement` skill runs these.
+All of these must pass before a PR merges. `/feature-implement` runs them.
 
 - **Build:** `<command>`
 - **Lint:** `<command>`
-- **Unit tests:** `<command>`
-- **Integration / functional tests:** `<command>`
+- **Tests:** `<command>`
 - **Everything:** `<single command that runs all of the above>`
 
-## Testing Conventions
+## Module Map
 
-- **Unit tests** live <where>, named <pattern>, and cover <what>.
-- **Integration / functional tests** live <where>, named <pattern>, and cover <what>.
-- Every behavioral change MUST ship with tests. Plans without concrete test function names are incomplete.
-- <Any fixtures, helpers, or golden-file conventions go here.>
+<Top-level packages/directories with one line each.>
 
-## Common Change Patterns
+- `src/<...>` — <...>
 
-<For each recurring change type, describe where code lives and the order of edits. Example:>
+## Workflows
 
-### Adding an API endpoint
-1. Define the request/response types in `src/api/types/`
-2. Add the handler in `src/api/handlers/`
-3. Wire the route in `src/api/router.go`
-4. Add an integration test in `tests/api/`
+This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills:
 
-### Adding a new CLI command
-<…>
+- **Feature pipeline** — `/feature-next` → (`/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/ralph-loop`
+- **PR convergence** — `/ralph-loop` drives review-respond-iterate on any PR until findings clear or it escalates.
+- **Doc gardening** — `/doc-garden` scans `docs/` for staleness and opens fix-up PRs.
+- **Golden-principle GC** — `/gc-sweep` reads `golden-principles.md` and opens small refactor PRs for deviations.
 
-## UX Guidelines
-
-<If the project has a user-facing surface, document any cross-cutting UX rules here. Examples:>
-
-- Every destructive action requires confirmation
-- Error messages must include the actionable next step
-- Status must be visible for any operation taking > 200ms
+The previous flat `features/` layout has moved into `docs/`: specs to `docs/product-specs/`, plans to `docs/exec-plans/{active,completed}/`. `feature-*` skills read the new locations and fall back to `features/` for one release.
 
 ## Documentation Maintenance
 
-- **`CHANGELOG.md`** — update under `[Unreleased]` for every user-visible change (use the `/changelog-update` skill; `/release` stamps the date at release time)
-- **This file (`AGENTS.md`)** — update when module map, conventions, or data flows change
-- **`README.md`** — update for user-visible feature additions or setup changes
-- **`docs/`** — update alongside the feature, not after
+- `CHANGELOG.md` — every user-visible change goes under `[Unreleased]` (use `/changelog-update`; `/release` stamps the date).
+- `AGENTS.md` (this file) — update when the navigation table or workflows change. Otherwise, edit the deeper files.
+- `README.md` — update for user-visible feature additions or setup changes.
+- `docs/` — update alongside the feature, not after. `/doc-garden` will catch drift but it's cheaper to keep it fresh.
 
 ## Commit Style
 
-<Conventional commits recommended: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `release:`. Link issues with `Fixes #<number>`.>
+Conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `release:`. Link issues with `Fixes #<number>`.
