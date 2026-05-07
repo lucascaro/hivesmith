@@ -12,20 +12,27 @@ Create an implementation plan for feature **#$ARGUMENTS** (or the next feature i
 
 ## Steps
 
-1. **Find the feature:** If `$ARGUMENTS` is provided, find the matching file in `features/active/`. If not, read `features/BACKLOG.md` and pick the first feature with Stage = PLAN.
-2. **Read the feature file** — verify the Research section is filled in. If not, tell the user to run `/feature-research` first.
+## Layout resolution
+
+- **Current:** plan at `docs/exec-plans/active/<NNN>-*.md`, spec at `docs/product-specs/<NNN>-*.md`, index at `docs/product-specs/index.md`.
+- **Legacy fallback:** file at `features/active/<NNN>-*.md`, index at `features/BACKLOG.md`. Only when `docs/exec-plans/` does not exist.
+
+1. **Find the plan:** If `$ARGUMENTS` is provided, match the zero-padded prefix in `docs/exec-plans/active/` (legacy: `features/active/`). Otherwise, read the index and pick the first item with Stage = PLAN.
+2. **Read the plan** — verify the Research section is filled in. If not, tell the user to run `/feature-research` first.
 3. **Read `AGENTS.md`** for project conventions — especially the Testing and Documentation Maintenance sections. The plan MUST conform to the test strategy documented there.
 4. **Read referenced files:** Open the relevant code files identified during research to understand the current implementation.
 5. **For complex features (M/L):** Use Plan agents to design the approach, considering trade-offs.
-6. **Write the Plan section** in the feature file:
-   - **Files to Change:** Numbered list with file paths and what to change in each
-   - **Test Strategy:** Concrete, named test functions for every behavioral change — unit tests and integration/functional tests per the conventions in `AGENTS.md`. List each test with its file path, function name, and what it verifies. Follow existing patterns in the project. Do not leave this section vague.
-   - **Risks:** What could go wrong, edge cases to watch for
+6. **Write the Approach section** in the exec plan (legacy: in the feature file's Plan section):
+   - **Approach:** the chosen design and why it beats the obvious alternative.
+   - **Files to change:** numbered list with file paths and what to change in each.
+   - **New files:** path and purpose for any new file.
+   - **Tests:** concrete, named test functions for every behavioral change — unit and integration/functional tests per the conventions in `AGENTS.md`. List each test with file path, function name, and what it verifies. Follow existing patterns in the project. Do not leave this section vague.
+   - **Open questions / risks:** what could go wrong, edge cases, alternatives ruled out.
 7. **Present the plan to the user.** Walk through the key decisions and ask for approval before advancing.
 8. **On approval:**
-   - Update Stage to IMPLEMENT in the feature file
-   - Update Stage to IMPLEMENT in `features/BACKLOG.md`
-   - Update GitHub labels: `gh issue edit <number> --remove-label researching --add-label planned`
+   - Update the plan's Stage to IMPLEMENT.
+   - Update the index's Stage to IMPLEMENT (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`).
+   - Update GitHub labels: `gh issue edit <number> --remove-label researching --add-label planned`.
 9. **Report:** Confirm plan is locked in, remind user to run `/feature-implement <number>` next
 
 ## Rules

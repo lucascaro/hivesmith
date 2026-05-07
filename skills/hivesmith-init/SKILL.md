@@ -1,13 +1,13 @@
 ---
 name: hivesmith-init
-description: Scaffold hivesmith templates (features/, AGENTS.md, release.sh) into a project
-argument-hint: "[--force]"
+description: Scaffold hivesmith templates (docs/, features/, AGENTS.md, release.sh) into a project
+argument-hint: "[--force] [--migrate]"
 allowed-tools: Read Glob Write Bash
 ---
 
 # Initialize hivesmith in a project
 
-Scaffold the hivesmith templates into the current project so the feature-pipeline skills have the files they expect.
+Scaffold the hivesmith templates into the current project so the feature-pipeline skills, loop primitives, and gardening skills have the files they expect.
 
 The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Templates are under `<hivesmith>/templates/`.
 
@@ -20,27 +20,34 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    If not found, tell the user to set `HIVESMITH_DIR` or reinstall.
 
 2. **Detect what's already present** in the current working directory:
-   - `features/BACKLOG.md`
-   - `features/templates/FEATURE.md`
+   - `features/BACKLOG.md` (legacy layout)
+   - `features/templates/FEATURE.md` (legacy layout)
    - `features/ingest.sh`
+   - `docs/product-specs/index.md`
+   - `docs/exec-plans/active/`, `docs/exec-plans/completed/`
+   - `docs/design-docs/`, `docs/references/`, `docs/generated/`
    - `AGENTS.md`
+   - `DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `PRODUCT_SENSE.md`, `PLANS.md`, `FRONTEND.md`, `golden-principles.md`
    - `CONTRIBUTING.md`
    - `CHANGELOG.md`
    - `scripts/release.sh`
 
 3. **Ask the user which pieces to scaffold.** Present a checklist:
-   - [ ] Feature pipeline (`features/` tree + `ingest.sh`) — REQUIRED for feature-* skills to work
-   - [ ] `AGENTS.md` — if missing, scaffold the full skeleton; if present without a hivesmith block, offer to *append* one (see step 5a)
+   - [ ] Repository-as-system-of-record layout (`docs/` tree + top-level stubs) — REQUIRED for the new feature pipeline, doc-garden, and gc-sweep
+   - [ ] Feature pipeline legacy directory (`features/` tree + `ingest.sh`) — only needed if migrating an existing project; new projects can skip it
+   - [ ] `AGENTS.md` — if missing, scaffold the full table-of-contents skeleton; if present without a hivesmith block, offer to *append* one (see step 5a)
    - [ ] `CONTRIBUTING.md` (contributor guide skeleton)
    - [ ] `CHANGELOG.md` (Keep a Changelog seed with `[Unreleased]` section)
    - [ ] `scripts/release.sh` (generic release scaffold)
-   Default-check anything not already present. For `AGENTS.md`, default-check when the file is missing OR exists without the `<!-- BEGIN HIVESMITH -->` marker. For the other files, un-check anything already present (would require `--force`).
+   Default-check anything not already present. For `AGENTS.md`, default-check when the file is missing OR exists without the `<!-- BEGIN HIVESMITH -->` marker. For everything else, un-check anything already present (would require `--force`).
 
 4. **If `--force` is passed**, offer to overwrite existing files — show a diff preview before each overwrite and get confirmation.
 
 5. **Copy selected files** from `<hivesmith>/templates/` into the project, creating directories as needed:
-   - `templates/features/` → `features/` (preserves `BACKLOG.md`, `templates/FEATURE.md`, and creates empty `active/`, `completed/`, `rejected/` dirs)
-   - `templates/features/ingest.sh` → `features/ingest.sh` (chmod +x)
+   - `templates/docs/` → `docs/` (creates `design-docs/`, `exec-plans/{active,completed}/`, `product-specs/`, `references/`, `generated/`; copies `index.md`, `_template.md`, `core-beliefs.md`, `tech-debt-tracker.md`, `README.md` files). Skip any individual destination file that already exists unless `--force` is passed; in that case follow step 4.
+   - `templates/{DESIGN,RELIABILITY,SECURITY,QUALITY_SCORE,PRODUCT_SENSE,PLANS,FRONTEND,golden-principles}.md` → project root. Skip any that already exist (require `--force` to overwrite).
+   - `templates/features/` → `features/` (legacy; only when the user keeps the box checked in step 3). Preserves `BACKLOG.md`, `templates/FEATURE.md`, and creates empty `active/`, `completed/`, `rejected/` dirs.
+   - `templates/features/ingest.sh` → `features/ingest.sh` (chmod +x; legacy)
    - `templates/CONTRIBUTING.md` → `CONTRIBUTING.md`
    - `templates/CHANGELOG.md` → `CHANGELOG.md` (replace `OWNER/REPO` in compare link with the actual GitHub slug if known; otherwise leave as-is for the user to fix)
    - `templates/scripts/release.sh` → `scripts/release.sh` (chmod +x)
@@ -59,18 +66,31 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
      - the full `AGENTS.md` (if the skeleton was freshly scaffolded in step 5a), OR
      - just the appended hivesmith block (if step 5a appended to an existing `AGENTS.md`) — do NOT touch the user's pre-existing content above the `<!-- BEGIN HIVESMITH -->` marker.
      - the scaffolded `CONTRIBUTING.md`.
-   - Known skill names: `feature-triage feature-ingest feature-research feature-plan feature-implement feature-new feature-next changelog-update release review-pr hivesmith-init`.
+   - Known skill names: `feature-triage feature-ingest feature-research feature-plan feature-implement feature-new feature-next feature-loop changelog-update release review-pr autofix ralph-loop doc-garden gc-sweep hivesmith-init namecheck`.
    - Use the same careful match as the installer: only rewrite `/<skill>` when preceded by start-of-line or a non-path character (whitespace, backtick, paren, bracket) and followed by end-of-line or a non-identifier character. Never rewrite `scripts/release.sh` (it's a path, not a slash-command).
    - Do NOT rewrite `CHANGELOG.md`, `features/**`, or `scripts/release.sh` — they don't reference slash-commands.
 
 7. **Report what was created.** List each file with its size. Tell the user:
    - Edit `AGENTS.md` to fill in project-specific module map, build/test commands, and conventions — many other skills read it.
+   - Edit `golden-principles.md` to define the rules `/gc-sweep` will enforce. Keep it short (5–10 principles).
+   - Edit `DESIGN.md` to document domains, layers, and cross-cutting concerns.
    - Edit `scripts/release.sh` to set `PROJECT`, `REPO`, and `BUILD_CMD` at the top.
    - Run `/feature-next` to verify the pipeline is wired up.
+
+8. **Migration mode (`--migrate`).** If invoked with `--migrate`, AND `features/active/` or `features/completed/` exists with at least one `*.md` file:
+   - For each existing feature file `features/<state>/<NNN>-<slug>.md`:
+     - Parse out the front-matter, Description, and Triage sections → write to `docs/product-specs/<NNN>-<slug>.md` using the product-spec template shape (preserving Type, Complexity, Priority, and the Description as the Problem section).
+     - Take the Research, Plan, Implement (decision log + progress) sections → write to `docs/exec-plans/active/<NNN>-<slug>.md` if state is `active`, or `docs/exec-plans/completed/<NNN>-<slug>.md` if state is `completed`. Use the exec-plan template shape; preserve the Decision log and Progress sections verbatim (append-only history).
+     - Cross-link: spec links to plan, plan links to spec.
+   - Append a row to `docs/product-specs/index.md` for each migrated spec.
+   - Do NOT delete the original `features/<state>/*.md` files — leave them in place. Print a final note: "Legacy `features/` directory left untouched as fallback. Delete it once you've verified the migration."
+   - If `--migrate` is invoked but no legacy files are found, report nothing to migrate and stop.
 
 ## Rules
 - Never overwrite without `--force` + per-file user confirmation
 - Never modify a user's existing `AGENTS.md` without an explicit yes to the append prompt in step 5a
 - The hivesmith block in `AGENTS.md` is always bracketed by `<!-- BEGIN HIVESMITH -->` / `<!-- END HIVESMITH -->` so it can be identified, updated, or removed cleanly
-- Preserve any existing content in directories being created (e.g. don't wipe a user's `features/active/` if it's already populated)
-- Create `features/active/`, `features/completed/`, `features/rejected/` as empty dirs with `.gitkeep` if none exist
+- Preserve any existing content in directories being created (e.g. don't wipe a user's `features/active/` if it's already populated, don't wipe a user's `docs/design-docs/` if it has files)
+- Create `features/active/`, `features/completed/`, `features/rejected/` as empty dirs with `.gitkeep` if none exist (legacy)
+- Create `docs/exec-plans/active/`, `docs/exec-plans/completed/`, `docs/references/`, `docs/generated/` as empty dirs with `.gitkeep` if none exist
+- `--migrate` is a one-shot operation — it only writes to `docs/`, never deletes from `features/`

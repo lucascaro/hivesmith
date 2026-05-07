@@ -4,6 +4,19 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
 ## [Unreleased]
 
+### Added
+- **Harness scaffolding.** `hivesmith-init` now lays down a `docs/` system-of-record tree (`design-docs/`, `exec-plans/{active,completed}/`, `product-specs/`, `references/`, `generated/`) and top-level stubs (`DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `PRODUCT_SENSE.md`, `PLANS.md`, `FRONTEND.md`, `golden-principles.md`). `AGENTS.md` is now a ~70-line table of contents pointing into the new tree, following the pattern documented in OpenAI's "Harness engineering" post.
+- `ralph-loop` skill — drives a PR through review → autofix → re-review until findings clear or escalation criteria hit (max iterations, loop-detection, RISKY-fix authorization, repeated CI failure). Independent of the feature pipeline; works on any PR.
+- `doc-garden` skill — recurring sweep over `docs/` for staleness signals (broken cross-links, dead symbol references, generated-doc drift, resolved tech-debt rows). Opens one scoped fix-up PR per doc.
+- `gc-sweep` skill — reads `golden-principles.md`, scans the codebase for deviations, and opens small targeted refactor PRs (one principle violation cluster per PR). Updates `QUALITY_SCORE.md` and tech-debt tracker.
+- `hivesmith-init --migrate` — one-shot migration that splits existing `features/<state>/<NNN>-*.md` files into product specs (`docs/product-specs/`) and exec plans (`docs/exec-plans/{active,completed}/`). Decision log and progress preserved verbatim. Legacy `features/` is left untouched as a fallback.
+
+### Changed
+- **Feature pipeline writes to `docs/` first, falls back to `features/` for one release.** Specs land in `docs/product-specs/`, exec plans in `docs/exec-plans/{active,completed}/`. The historical record (the *what* and *why*) and the engineering log (the *how* with append-only Decision log + Progress) are now separate artifacts. `feature-{ingest,new,triage,research,plan,implement,loop,next}` updated.
+- `feature-implement` and `feature-loop` now drive PR convergence via `/ralph-loop` after opening the PR, rather than stopping at "PR opened". Option 1 in `feature-loop` Gate 5 is the recommended path.
+- `templates/AGENTS.md` rewritten as a table of contents that points into `docs/` and the new top-level stubs, instead of inlining module-map / build-test / convention sections.
+- `templates/AGENTS.hivesmith.md` documents the new `docs/` layout, `ralph-loop`, `doc-garden`, and `gc-sweep`.
+
 ## [0.3.0] — 2026-04-21
 
 ### Changed
