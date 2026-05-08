@@ -9,6 +9,10 @@ allowed-tools: Read Glob Grep Edit Bash Agent AskUserQuestion
 
 Automatically fix what is safely fixable from review findings, CI failures, or PR feedback. Risky or ambiguous items are surfaced for the user to decide.
 
+## Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. When you fix a finding, fix **every occurrence of the same defect in the PR diff**, not just the cited line — same off-by-one in three loops, same missing nil-check at five call sites, same broken contract across every implementor. If a finding's complete fix is a **lake** (bounded, achievable in this PR), apply the complete fix. Only stop short when the remainder is genuinely an **ocean** (multi-quarter migration, cross-cutting contract change, requires coordination); in that case, surface it via `AskUserQuestion` with "ocean: <reason>" rather than silently shipping a partial fix. The default bias is toward fixing all of it, now.
+
 ## Phase 1 — Gather Findings
 
 1. **Read `AGENTS.md`** (if present) to internalize project conventions, build/test/lint commands.

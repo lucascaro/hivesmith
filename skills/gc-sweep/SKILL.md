@@ -11,6 +11,10 @@ Recurring background sweep over the codebase that reads `golden-principles.md`, 
 
 Pattern is from OpenAI's "Harness engineering" post: encode taste once, enforce continuously, pay tech debt in small increments rather than painful bursts.
 
+## Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. A sweep PR sweeps the **whole cluster** it claims to sweep — every occurrence of the deviation in the chosen scope, not 3-of-12 with the rest left as "future work." Small PR boundaries are about reviewability (one principle, one scope), not about leaving the same bug half-fixed. If the cluster is genuinely an **ocean** (cross-module contract change, requires coordination, would balloon the PR past reasonable review size), split it deliberately along a meaningful seam and call that out in the PR description with the staged plan — don't ship a random subset and pretend the cluster is done. The default bias is toward sweeping all of it, now.
+
 ## Inputs
 
 - `--dry-run` — report findings without opening PRs.

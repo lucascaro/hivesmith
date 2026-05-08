@@ -11,6 +11,10 @@ Recurring background sweep over `docs/` and the top-level documentation files. D
 
 This skill is meant to run on a cadence (cron, weekly job, or manual). Each invocation does one full sweep.
 
+## Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. When a doc is stale, the fix-up PR for that doc fixes **every stale section in the doc**, not just the one the scanner first noticed. One-PR-per-doc is about review locality, not about leaving the rest of the doc rotten. If a doc's full re-alignment is a genuine **ocean** (the doc describes a subsystem mid-rewrite, or fixing it requires answering an open product question), say so in the PR description, mark the unaddressed sections with a single TODO referencing the open question, and propose a staged plan — don't quietly ship a partial pass. The default bias is toward fully aligning the doc, now.
+
 ## Scope
 
 By default scans:

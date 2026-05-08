@@ -17,6 +17,8 @@ This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills. Ke
 - `/doc-garden` — scans `docs/` for staleness against the code, opens fix-up PRs.
 - `/gc-sweep` — reads `golden-principles.md`, opens small refactor PRs for deviations.
 
+**Philosophy: boil the lake.** Completeness is cheap when AI does the work. When a complete fix or implementation is a *lake* (bounded, achievable in the current change), do all of it — don't recommend or accept partial shortcuts and don't park the rest as "future work." Only treat something as an *ocean* (multi-quarter migration, cross-cutting contract change, requires coordination) if it genuinely is one — and when it is, say so explicitly and propose a staged plan rather than half-doing it. The default bias is toward doing all of it, now. Skills that consume this stance: `/review-pr`, `/autofix`, `/gc-sweep`, `/doc-garden`, `/feature-plan`, `/feature-implement`, `/ralph-loop`.
+
 **Repository layout:**
 - `docs/product-specs/` — what to build and why (the historical record).
 - `docs/exec-plans/active/` — what's being built right now (decision logs append-only).

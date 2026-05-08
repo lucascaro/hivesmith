@@ -9,6 +9,10 @@ argument-hint: "[issue-number]"
 
 Implement feature **#$ARGUMENTS** (or the next feature in IMPLEMENT stage if no argument given).
 
+## Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. Implement the **full plan** — code, tests, docs, changelog, migrations of every affected call site. Don't leave `TODO: also handle X` stubs when X is in-scope per the plan, and don't ship a "happy path only" version when edge cases were named. If a piece of the plan turns out to be a genuine **ocean** (the plan underestimated; the change touches contracts the plan didn't anticipate), stop and re-plan — surface it via `AskUserQuestion` rather than silently shipping a partial implementation under the original issue. The default bias is toward implementing all of it, now.
+
 ## Layout resolution
 
 - **Current:** plan at `docs/exec-plans/active/<NNN>-*.md`, spec at `docs/product-specs/<NNN>-*.md`, index at `docs/product-specs/index.md`.

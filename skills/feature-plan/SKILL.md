@@ -10,6 +10,10 @@ allowed-tools: Read Glob Grep Edit Bash Agent
 
 Create an implementation plan for feature **#$ARGUMENTS** (or the next feature in PLAN stage if no argument given).
 
+## Philosophy: boil the lake
+
+Completeness is cheap when AI does the work. When the complete design is a **lake** (bounded by the feature's stated scope, achievable in this implementation), plan the complete design — every entry point, every edge case, the migration of every existing call site, the tests and docs that go with it. Don't plan a "minimal viable" version that silently parks half the spec as "future work" when the full version is achievable now. If part of the design is genuinely an **ocean** (multi-quarter migration, requires product decisions still in flight, cross-team coordination), call it out as an explicit deferred section with a staged plan and the trigger that would unfreeze it — don't smuggle it in as a TODO. The default bias is toward planning all of it, now.
+
 ## Steps
 
 ## Layout resolution
