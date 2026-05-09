@@ -55,13 +55,14 @@ For iteration `i` from 1 to `--max-iterations`:
    > Do exactly this, in order:
    >
    > 1. `PRE_SHA=$(gh pr view <PR> --json headRefOid -q .headRefOid)`
-   > 2. Run `/review-pr <PR>`. Capture the full BLOCKING / IMPORTANT / MINOR / Verdict output.
+   > 2. Invoke the `Skill` tool with `skill: "hivesmith:review-pr"` and `args: "<PR>"`. Capture the full BLOCKING / IMPORTANT / MINOR / Verdict output from the result. Do **not** paraphrase the review or hand-write your own — the `Skill` invocation is the only way the loop runs review-pr.
    > 3. Compute `findings_hash`: lowercase-hex SHA-256 over the sorted, newline-joined `file|line|category|title` tuples across all BLOCKING + IMPORTANT findings. (No findings → empty string.)
    > 4. Decide the next action from the verdict:
    >    - `APPROVE` → stop. No autofix, no push.
    >    - `COMMENT` → if strict mode is true, treat as `REQUEST_CHANGES`; otherwise stop.
-   >    - `REQUEST_CHANGES` → run `/autofix <PR>`. Then `git push`. Set `POST_SHA` from `gh pr view`. If `POST_SHA == PRE_SHA`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
+   >    - `REQUEST_CHANGES` → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. If `POST_SHA == PRE_SHA`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
    >    - If autofix surfaces RISKY items it would not auto-apply, list them in `risky_surfaced` and set `escalate_reason: "risky fix needs human decision"`.
+   >    - If either `Skill` invocation fails (tool error, missing skill, malformed result), set `escalate_reason: "skill invocation failed: <which> — <error>"` and return immediately.
    > 5. Return your result as a single fenced ```json block as the **last** thing in your reply, with this exact shape (omit optional fields when not applicable):
    >    ```json
    >    {
@@ -142,5 +143,5 @@ If, after the loop converges with `APPROVE`, the orchestrator detects the PR has
 - Never overwrite the user's pre-authorization. If the user said "do not change file X", autofix's RISKY classifier should hold — escalate instead.
 - Always push after autofix runs and CI completes before re-reviewing — re-reviewing the old diff wastes a turn.
 - Loop budget is finite. Five iterations is the default; more than that suggests the harness, not the loop, needs work.
-- Run review-pr and autofix as full skill invocations, not by inlining their prompts. They evolve independently and the loop should track them.
+- Run review-pr and autofix as full skill invocations via the `Skill` tool (plugin-qualified: `hivesmith:review-pr`, `hivesmith:autofix`), not by inlining their prompts or relying on slash-command syntax inside sub-agents. They evolve independently and the loop should track them.
 - Each iteration runs in a fresh sub-agent context. The orchestrator keeps only the result envelope (`verdict`, `findings_hash`, short `findings_summary`, `escalate_reason`) — never the raw review prose, diffs, or CI logs. This keeps the orchestrator's per-iteration footprint flat regardless of iteration count.

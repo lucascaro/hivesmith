@@ -15,7 +15,10 @@ jobs:
           scandir: '.'
           additional_files: >-
             install.sh
+            scripts/dev-link-local.sh
+            scripts/release.sh
             skills/feature-ingest/ingest.sh
+            skills/namecheck/namecheck.sh
             templates/features/ingest.sh
             templates/scripts/release.sh
 

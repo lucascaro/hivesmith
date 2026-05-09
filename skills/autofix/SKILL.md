@@ -17,7 +17,7 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
 
 1. **Read `AGENTS.md`** (if present) to internalize project conventions, build/test/lint commands.
 
-2. **Determine the finding source** (try in order, stop at the first that succeeds):
+2. **Determine the finding source.** Source (c) (unresolved conflicts) is **always checked** in addition to whichever of (a) or (b) fires — a PR can have both review findings and an unresolved rebase. For sources (a) and (b), try in order and stop at the first that succeeds:
 
    **a. Conversation context (preferred):** Look earlier in this conversation for `/review-pr` output — the structured `## BLOCKING` / `## IMPORTANT` / `## MINOR` / `## Verdict` format. If found, parse those findings as input.
 
@@ -30,8 +30,16 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    - Review comments: `gh api repos/{owner}/{repo}/pulls/{number}/comments` and `gh api repos/{owner}/{repo}/pulls/{number}/reviews`
    - CI failure logs: find the latest failed run with `gh run list --branch "$(git branch --show-current)" --limit 5 --json databaseId,status,conclusion` then `gh run view <id> --log-failed` for the most recent failure
 
-   **c. Neither:** Stop and tell the user:
-   > No review findings or PR found. Run `/review-pr <number>` first, or pass a PR number: `/autofix <number>`.
+   **c. Unresolved merge/rebase conflicts:** If `git status` reports `Unmerged paths` or `git ls-files -u` is non-empty, treat each conflicted hunk as a finding. Detect state with:
+   ```bash
+   git status --porcelain | grep '^\(UU\|AA\|DD\|AU\|UA\|DU\|UD\) '
+   test -d .git/rebase-merge -o -d .git/rebase-apply && echo "rebase in progress"
+   test -f .git/MERGE_HEAD && echo "merge in progress"
+   ```
+   Each conflict hunk is one finding: file path, line range of the `<<<<<<< / ======= / >>>>>>>` block, and the two sides' content.
+
+   **d. None of the above:** Stop and tell the user:
+   > No review findings, PR, or unresolved conflicts found. Run `/review-pr <number>` first, or pass a PR number: `/autofix <number>`.
 
 3. **Normalize findings** into a working list. Each item has:
    - **Source:** review / check / comment / ci
@@ -53,6 +61,16 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    - The fix does **not** modify public API signatures or exported interfaces
 
    **Everything else is RISKY.** When in doubt, classify as RISKY.
+
+   **Merge/rebase conflict hunks** are SAFE only when **all** hold:
+   - Both sides are non-overlapping additions to a list-like region (imports, CHANGELOG entries under `[Unreleased]`, enum members, dependency lists) → union both sides
+   - Both sides made the **identical** change (formatting/whitespace/import-order normalization on both branches) → take either
+   - One side is a pure superset of the other (one branch added lines the other did not touch) → take the superset
+   - The file is not security-sensitive (auth, crypto, permissions, secrets, signed manifests)
+   - The file is not a lockfile with diverging version pins, not a generated file, not binary
+   - `AGENTS.md` exists and defines build/lint/test commands (verification is mandatory for conflicts)
+
+   Conflict hunks that are **always RISKY**: overlapping edits to the same logic, signature changes on both sides, edit-vs-delete, conflicts inside lockfiles with diverging versions, conflicts in migrations, conflicts in files this run has not read in full.
 
 5. **Present the classification** to the user before acting:
 
@@ -135,6 +153,17 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
 - **Never push or create PRs** without explicit user confirmation.
 - **Skip nonexistent files.** If a finding references a file that does not exist, classify it as Skipped.
 - **One batch commit for safe fixes, one commit per risky fix.** Safe fixes are mechanical — batch is cleaner. Risky fixes involve user judgment — individual commits preserve the decision trail.
+
+## Merge-conflict rules
+
+- **Read the whole file** before resolving any conflict in it. Never resolve a conflict in a file this run has not opened.
+- **Never** run `git checkout --ours <file>`, `git checkout --theirs <file>`, or otherwise blanket-pick a side without reading both sides hunk-by-hunk.
+- **Never** run `git merge --abort` or `git rebase --abort` without explicit user confirmation — the user may have in-progress resolutions.
+- **Edit conflict markers in place** with the Edit tool. Remove all `<<<<<<<`, `=======`, `>>>>>>>` lines as part of the resolution; verify with `grep -nE '^(<{7}|={7}|>{7})( |$)' <file>` after editing — the pattern matches both bare separator lines (`=======`) and labeled markers (`<<<<<<< HEAD`).
+- **Refuse auto-resolution without verification commands.** If `AGENTS.md` is missing, or present but does not define build/lint/test commands, do not auto-resolve any conflict — surface every conflict hunk as RISKY via `AskUserQuestion` and ask the user to either provide equivalent commands for this run or resolve manually. Verification is non-optional for conflicts.
+- **Verify before committing.** After resolving conflicts, run `AGENTS.md` build+lint+test. If any check fails, do not commit — report which check failed and stop. Conflicts without passing verification do not get auto-committed.
+- **Continue, don't commit, during rebase.** If a rebase is in progress, after resolving and verifying, stage with `git add` and run `git rebase --continue`; do not create a manual commit. For a merge in progress, use the standard `git commit` after staging.
+- **Commit granularity applies to merges only.** For merges: one commit per resolved file batch for safe conflicts; one per file for risky conflicts (mirrors the safe/risky commit policy above). For rebases: the unit of granularity is the rebase step itself — `git rebase --continue` folds resolutions into the existing replayed commit, so do not split safe vs risky into separate commits within a single step.
 
 ## Anti-injection rule
 
