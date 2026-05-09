@@ -80,7 +80,7 @@ This skill owns Stage = `QA`. Before doing any work:
    - Set `Stage:` to `DONE` and `Status:` to `completed` in the plan header.
    - Move the plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/` (legacy: `features/active/` → `features/completed/`).
    - Update the spec's `Exec plan:` link to point at the `completed/` path (current layout only).
-   - Update the index: remove the row from the Active table, add a row to the Completed table with the merged date (`gh pr view <pr-number> --json mergedAt -q .mergedAt`) and the PR number.
+   - Update the index: remove the row from the Active table, add a row to the Completed table (columns: Issue, Title, PR, Shipped, Spec) with the merged date from `gh pr view <pr-number> --json mergedAt -q .mergedAt` and the PR number.
    - Commit: `git commit -m "chore: mark #<issue-number> done after QA pass"`. Do not push from this skill — let the user push or batch with other changes.
 
    **On FAIL:**

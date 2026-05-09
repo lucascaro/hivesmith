@@ -10,9 +10,9 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 ## Completed
 
-| Issue | Title | Shipped | Spec |
-|-------|-------|---------|------|
-| #<n> | <title> | <date> | [<slug>](<slug>.md) |
+| Issue | Title | PR | Shipped | Spec |
+|-------|-------|----|---------|------|
+| #<n> | <title> | #<pr> | <date> | [<slug>](<slug>.md) |
 
 ## Rejected
 
@@ -24,5 +24,5 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 - Stage is owned by the exec plan, not the spec — when stage changes, update this index from the plan.
 - Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/ralph-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation. `DONE` = QA verdict PASS recorded.
-- A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `exec-plans/completed/` on QA PASS; the spec stays put.
+- A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `docs/exec-plans/completed/` on QA PASS; the spec stays put.
 - `feature-next` reads from this file's Active table, ordered by priority.

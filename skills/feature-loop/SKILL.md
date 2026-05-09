@@ -135,7 +135,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 ## Phase 5: Implement
 
 36. Read `AGENTS.md` for build, lint, and test commands. All invocations below come from there.
-37. Check if the plan has a PR link in its Status fields. If it does, check `gh pr view <number> --json state` — if merged, skip to step 45 (mark done on main branch).
+37. Check if the plan has a PR link in its header. If it does, check `gh pr view <number> --json state` — if merged, advance Stage → QA in plan + index, then jump to Phase 7 (QA). Do not run any code mutations from this phase on an already-merged feature.
 38. Create a feature branch: `git checkout -b feature/<issue-number>-<slug>`.
 39. Implement the plan:
     - Follow the Approach and Files-to-change sections.

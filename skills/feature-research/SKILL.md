@@ -18,7 +18,7 @@ This skill owns Stage = `RESEARCH`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = RESEARCH.
-3. Read the index row's `Stage:` (and the plan's `Stage:` field if a plan already exists). If neither says `RESEARCH`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill. Never silently process the wrong stage.
+3. Read the index row's `Stage:`. (At the start of RESEARCH the exec plan does not yet exist — this skill creates it. So the index row is the source of truth here. If a plan already exists from a partial prior run, also read its `Stage:` field; either being `RESEARCH` is sufficient to proceed.) If the index row is not at `RESEARCH`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill. Never silently process the wrong stage.
 
 ## Layout resolution
 
