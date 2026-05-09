@@ -28,8 +28,20 @@ gh pr diff "$PR" > "$DIFF" || { echo "ABORT: gh pr diff failed for #$PR"; exit 1
 gh pr view "$PR" --json title,body,baseRefName,headRefName,files,comments,reviews > "$META" \
   || { echo "ABORT: gh pr view failed for #$PR"; exit 1; }
 [ -s "$DIFF" ] || { echo "ABORT: empty diff for #$PR"; exit 1; }
+THREADS=$(mktemp -t pr-${PR}-threads.XXXXXX.json)
+gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){
+  repository(owner:$owner,name:$repo){
+    pullRequest(number:$pr){
+      reviewThreads(first:100, after:$cursor){
+        pageInfo{ hasNextPage endCursor }
+        nodes{ id isResolved comments(first:1){nodes{ body path line url author{login} }} }}}}}' \
+  -F pr="$PR" -f owner=<owner> -f repo=<repo> > "$THREADS" \
+  || { echo "ABORT: reviewThreads query failed for #$PR"; exit 1; }
+# (Paginate $THREADS if pageInfo.hasNextPage is true.)
+[ -s "$DIFF" ] || { echo "ABORT: empty diff for #$PR"; exit 1; }
 echo "DIFF=$DIFF"
 echo "META=$META"
+echo "THREADS=$THREADS"
 wc -l "$DIFF"
 ```
 
@@ -37,7 +49,7 @@ Then:
 
 1. Read `AGENTS.md` if present. Extract the sections relevant to the changed files (module map, conventions, key types, data flows). Save the extract — agents share it.
 2. Read `$META`. Categorize each changed file: `prod-code | tests | config | ci | docs | generated`.
-3. Read prior PR review comments from `$META`. These are issues humans already raised — agents should not re-flag them.
+3. Read prior PR review comments from `$META` and review **threads** from `$THREADS`. Pass them to agents as context, not as a suppression list — reviewers must still independently flag any issue they see, regardless of whether a human or Copilot already raised it. Downstream dedup happens by `thread_id` (carried in `prior_threads`). The only allowed suppression is when a prior thread is already `isResolved == true` with a concrete resolution comment — those go in `resolved_threads` so agents know the issue is closed.
 4. Detect base branch from `$META.baseRefName`. If not `main` / `master`, note it; the diff is already correct, but flag stacked-PR context in the final review.
 
 ## 2. Triage gate
@@ -65,7 +77,13 @@ ContextBundle {
   files: [
     { path, category, loc_added, loc_removed }
   ]
-  prior_comments:   [string]       # human comments already on the PR
+  prior_comments:   [string]       # flat human/bot comments already on the PR (context only)
+  prior_threads: [               # unresolved review threads, with thread_id for dedup
+    { thread_id, file, line, author, body, url }
+  ]
+  resolved_threads: [            # already-resolved threads — issues a reviewer may suppress
+    { thread_id, file, line, author, body, url }
+  ]
   agents_md_excerpt: string        # relevant sections, or "" if no AGENTS.md
   conventions_summary: string      # 3-5 bullets distilled from AGENTS.md
 }
@@ -92,10 +110,11 @@ PROCEDURE:
   2. For each finding you intend to report, OPEN the cited file at the cited
      line and confirm the issue is real. If you cannot verify it from the
      current source, drop the finding.
-  3. Existing PR comments are not a reason to drop a finding. If you
-     independently identify the same issue, still report it — downstream
-     dedup happens by `thread_id`. Only suppress when the prior comment
-     thread is already resolved with a clear resolution.
+  3. Existing PR comments and `prior_threads` are not a reason to drop a
+     finding. If you independently identify the same issue, still report
+     it — downstream dedup happens by `thread_id`. The only allowed
+     suppression: the issue appears in `resolved_threads` (already
+     resolved upstream with a concrete resolution).
   4. Stay strictly within your dimension. Other agents cover other dimensions.
 
 OUTPUT:
@@ -225,11 +244,11 @@ Deterministic, no vibes:
 - Do flag tests that don't actually test what they claim.
 - Spot-check 2-3 golden / snapshot files for determinism if any are touched.
 - If the diff touches an interface, verify all implementations are updated.
-- Existing PR comments are not a reason to drop a finding — if you independently identify the same issue, still report it. Downstream dedup happens by `thread_id`. Only suppress when the prior thread is already resolved with a clear resolution. (This is the load-bearing rule that keeps reviewers from going blind to issues a human or Copilot already raised.)
+- Existing PR comments and `prior_threads` are not a reason to drop a finding — if you independently identify the same issue, still report it. Downstream dedup happens by `thread_id`. The only allowed suppression is `resolved_threads` (issues already resolved upstream with a concrete resolution). (This is the load-bearing rule that keeps reviewers from going blind to issues a human or Copilot already raised.)
 - **Boil the lake in the `fix` field.** When the complete fix is achievable (lake), describe the complete fix — every occurrence in the diff, every implementation of a touched interface, every call site affected by a contract change. Only propose a partial fix when the remainder is genuinely an ocean (multi-quarter / cross-cutting), and when so, say "ocean: <reason>" in `why` and recommend a staged plan in `fix`.
 
 ## 9. Cleanup
 
 ```bash
-rm -f "$DIFF" "$META" "$bundle_path" 2>/dev/null || true
+rm -f "$DIFF" "$META" "$THREADS" "$bundle_path" 2>/dev/null || true
 ```

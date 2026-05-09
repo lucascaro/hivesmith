@@ -27,18 +27,20 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    ```
    If a PR exists, fetch all three:
    - Failed checks: `gh pr checks $PR_NUMBER`
-   - **Review threads** (preferred over flat comments — gives `isResolved` + `thread_id` so threads can be resolved later):
+   - **Review threads** (preferred over flat comments — gives `isResolved` + `thread_id` so threads can be resolved later). Note: `gh api graphql` sends `-f` values as `String`, which GitHub accepts for `ID!` scalars — use `-f` (not `-F`) for thread/comment IDs throughout this skill.
      ```bash
-     gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!){
+     gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){
        repository(owner:$owner,name:$repo){
          pullRequest(number:$pr){
-           reviewThreads(first:100){
+           reviewThreads(first:100, after:$cursor){
+             pageInfo{ hasNextPage endCursor }
              nodes{ id isResolved isOutdated
                comments(first:20){
+                 pageInfo{ hasNextPage endCursor }
                  nodes{ id author{login} body path line url }}}}}}}' \
        -f owner=<owner> -f repo=<repo> -F pr=<PR>
      ```
-     Each `reviewThreads.nodes` entry where `isResolved == false` enters the working list as a finding with `Source: thread`, `thread_id` (the GraphQL node id), `is_copilot` (true when the first author login is `copilot-pull-request-reviewer`, `github-copilot[bot]`, or matches `*copilot*[bot]`), `path`, `line`, body, URL. Outdated threads (`isOutdated == true`) are surfaced but flagged — the cited line may have moved; verify before fixing.
+     Paginate threads: if `reviewThreads.pageInfo.hasNextPage` is true, re-run with `-f cursor=<endCursor>` and concat until exhausted (otherwise PRs with >100 threads silently lose findings, defeating the gate). For any thread whose `comments.pageInfo.hasNextPage` is true, paginate that thread's comments separately by node id (`node(id:"<tid>"){ ... on PullRequestReviewThread { comments(first:20, after:$ccursor){...} } }`) until exhausted. Each `reviewThreads.nodes` entry where `isResolved == false` enters the working list as a finding with `Source: thread`, `thread_id` (the GraphQL node id), `is_copilot` (true when the first comment's author login ends with `[bot]` AND case-insensitively contains `copilot` — covers `copilot-pull-request-reviewer`, `github-copilot[bot]`, and future variants), `path`, `line`, body, URL. Outdated threads (`isOutdated == true`) are surfaced but flagged — the cited line may have moved; verify before fixing.
    - CI failure logs: find the latest failed run with `gh run list --branch "$(git branch --show-current)" --limit 5 --json databaseId,status,conclusion` then `gh run view <id> --log-failed` for the most recent failure
 
    **c. Unresolved merge/rebase conflicts:** If `git status` reports `Unmerged paths` or `git ls-files -u` is non-empty, treat each conflicted hunk as a finding. Detect state with:
@@ -111,7 +113,7 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    1. description — reason (e.g., no file reference, architectural concern, too vague)
    ```
 
-   If there are zero safe fixes and zero risky fixes, report that nothing is actionable and stop.
+   If there are zero safe fixes, zero risky fixes, **and** zero `DOES_NOT_APPLY` threads, report that nothing is actionable and stop. If there are zero code fixes but one or more `DOES_NOT_APPLY` threads, **do not stop** — skip Phase 3 (Apply Safe Fixes) and Phase 4 (Risky), jump straight to step 8a to post the captured rationale as the reply and resolve each `DOES_NOT_APPLY` thread, then continue to Phase 5 verification. Stranding `DOES_NOT_APPLY` threads open would defeat the convergence gate.
 
 ## Phase 3 — Apply Safe Fixes
 
@@ -162,6 +164,8 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
 
     Also process `DOES_NOT_APPLY` threads here: post the concrete rationale
     captured during classification as the reply, then resolve the thread.
+    `DOES_NOT_APPLY` threads do not require a preceding commit — run this
+    step even on a code-fix-empty run that only carried thread rationales.
     Treat Copilot threads identically to human threads — the rule is the
     same.
 

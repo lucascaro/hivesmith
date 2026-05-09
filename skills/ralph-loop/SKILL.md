@@ -56,22 +56,24 @@ For iteration `i` from 1 to `--max-iterations`:
    >
    > 1. `PRE_SHA=$(gh pr view <PR> --json headRefOid -q .headRefOid)`
    > 2. Invoke the `Skill` tool with `skill: "hivesmith:review-pr"` and `args: "<PR>"`. Capture the full BLOCKING / IMPORTANT / MINOR / Verdict output from the result. Do **not** paraphrase the review or hand-write your own — the `Skill` invocation is the only way the loop runs review-pr.
-   > 3. Fetch unresolved review threads (used as a parallel finding stream — the loop cannot APPROVE while any are open):
+   > 3. Fetch unresolved review threads (used as a parallel finding stream — the loop cannot APPROVE while any are open). `PullRequestReviewThread` has no `url` field — the URL lives on the first comment. Author info is needed for `copilot_threads_open`:
    >    ```bash
-   >    gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!){
+   >    gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){
    >      repository(owner:$owner,name:$repo){
    >        pullRequest(number:$pr){
-   >          reviewThreads(first:100){nodes{ id isResolved url }}}}}' \
+   >          reviewThreads(first:100, after:$cursor){
+   >            pageInfo{ hasNextPage endCursor }
+   >            nodes{ id isResolved comments(first:1){nodes{ url author{login} }} }}}}}' \
    >      -f owner=<owner> -f repo=<repo> -F pr=<PR>
    >    ```
-   >    Filter to `isResolved == false`. Capture `unresolved_thread_ids` (sorted) and `unresolved_thread_urls`.
+   >    Paginate: if `pageInfo.hasNextPage` is true, re-run with `-f cursor=<endCursor>` and concat results until exhausted. (Without pagination, PRs with >100 threads would silently let the gate pass.) Filter to `isResolved == false`. Each thread's URL is `comments.nodes[0].url`; its author login is `comments.nodes[0].author.login`. Capture `unresolved_thread_ids` (sorted) and `unresolved_thread_urls`. Count `copilot_threads_open` as unresolved threads whose first-comment author login ends with `[bot]` AND case-insensitively contains `copilot` (covers `copilot-pull-request-reviewer`, `github-copilot[bot]`, and future variants).
    > 4. Compute `findings_hash`: lowercase-hex SHA-256 over the sorted, newline-joined `file|line|category|title` tuples across all BLOCKING + IMPORTANT findings, **followed by** the sorted unresolved `thread_id`s on their own lines. (No findings and no unresolved threads → empty string.) Including thread ids ensures the loop-detection guard fires when the same set of unresolved threads sits two iterations in a row.
    > 5. Decide the next action from the verdict:
    >    - `APPROVE` with **zero unresolved threads** → stop. No autofix, no push.
    >    - `APPROVE` with unresolved threads → coerce to `REQUEST_CHANGES`. Reviewer agents had nothing to say, but Copilot / human threads are still open and must be closed by autofix (fix or reply-and-resolve with a concrete reason).
    >    - `COMMENT` → if strict mode is true OR there are unresolved threads, treat as `REQUEST_CHANGES`; otherwise stop.
-   >    - `REQUEST_CHANGES` (including coerced) → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. If `POST_SHA == PRE_SHA` AND there were no thread-side actions (no replies/resolves), set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
-   >    - After autofix, re-query unresolved threads (same GraphQL call) and record `unresolved_threads_post`. Read autofix's Phase 5 summary `Threads:` line as a cross-check — they should agree.
+   >    - `REQUEST_CHANGES` (including coerced) → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. Determine whether autofix took any thread-side actions by parsing the `Threads:` breakdown in autofix's Phase 5 summary (specifically the `Fixed:` and `Resolved with rationale:` counts — sum > 0 means thread-side actions occurred). If `POST_SHA == PRE_SHA` AND the parsed `Fixed + Resolved with rationale` total is `0`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
+   >    - After autofix, re-query unresolved threads (same paginated GraphQL call) and record `unresolved_threads_post`. Cross-check against autofix's Phase 5 `Threads:` line `Still open:` count. If the two disagree, **trust the GraphQL re-query as source of truth** and set `escalate_reason: "autofix Threads summary disagrees with GraphQL re-query"`.
    >    - If autofix surfaces RISKY items it would not auto-apply, list them in `risky_surfaced` and set `escalate_reason: "risky fix needs human decision"`.
    >    - If either `Skill` invocation fails (tool error, missing skill, malformed result), set `escalate_reason: "skill invocation failed: <which> — <error>"` and return immediately.
    > 6. Return your result as a single fenced ```json block as the **last** thing in your reply, with this exact shape (omit optional fields when not applicable):
