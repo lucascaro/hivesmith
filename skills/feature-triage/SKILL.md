@@ -12,6 +12,14 @@ Triage feature **#$ARGUMENTS** (or the next untriaged feature if no argument giv
 
 Triage edits the **product spec**, never the exec plan. The spec records the *what* and *why*; classification (Type, Complexity, Priority) is part of that.
 
+## Cold-start guard
+
+This skill owns Stage = `TRIAGE`. Before doing any work:
+
+1. Resolve layout (current → legacy fallback).
+2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = TRIAGE.
+3. Read the index row's `Stage:`. If it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage.
+
 ## Layout resolution
 
 - **Current:** spec at `docs/product-specs/<NNN>-*.md`, index at `docs/product-specs/index.md`.

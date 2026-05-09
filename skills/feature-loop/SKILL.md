@@ -8,7 +8,9 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 # Feature Loop
 
-Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE — pausing for user confirmation before any mutation.
+Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE — pausing for user confirmation before any mutation.
+
+`REVIEW` = PR open, `/ralph-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation against the spec's acceptance criteria. `DONE` = QA verdict PASS recorded.
 
 **Input:**
 - A number → resume the matching active feature from its current stage
@@ -31,7 +33,14 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
    - **`$ARGUMENTS` is a number:** Find the plan whose name starts with the zero-padded number (current: `docs/exec-plans/active/<NNN>-*.md`; legacy: `features/active/<NNN>-*.md`). If only the spec exists (current layout, plan not yet created), the stage is TRIAGE. Read the file to get the current Stage. Jump to the phase for that stage.
    - **`$ARGUMENTS` is text:** Treat it as a feature description. Go to Phase 1 (new issue).
    - **No argument:** Read the index. Pick the first row in the Active table (highest priority). Find its plan/feature file, read the Stage, and jump to the phase for that stage.
-3. If the feature is already at DONE, report that and stop.
+3. Stage → phase mapping (skip earlier phases when resuming):
+   - `TRIAGE` → Phase 2
+   - `RESEARCH` → Phase 3
+   - `PLAN` → Phase 4
+   - `IMPLEMENT` → Phase 5
+   - `REVIEW` → Phase 6
+   - `QA` → Phase 7
+   - `DONE` → report completed and stop.
 
 ## Phase 1: New Issue (description input only)
 
@@ -138,36 +147,41 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 41. Commit the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
 42. **[Gate 5 — confirm push and PR convergence]** Use AskUserQuestion to ask:
     > "Push branch, open PR, and drive convergence?"
-    > 1. Yes — push, create PR, run /ralph-loop until converged or escalated
-    > 2. Yes — push, create PR, run /review-pr once (no convergence loop)
-    > 3. Yes — push, create PR, skip review
-    > 4. No — leave branch local (no push)
+    > 1. Yes — push, create PR, advance to REVIEW (run /ralph-loop)
+    > 2. Yes — push, create PR, run /review-pr once (no convergence loop), leave at REVIEW
+    > 3. Yes — push, create PR, skip review, leave at REVIEW
+    > 4. No — leave branch local (no push), Stage stays IMPLEMENT
 
 43. If options 1–3:
     - `git push -u origin <branch>`.
     - `gh pr create` referencing the issue — capture the PR number from the output.
     - Apply GitHub label: `gh issue edit <number> --remove-label planned --add-label implementing`.
-44. Run the chosen review path:
-    - If option 1: run `/ralph-loop <pr-number>`. If it escalates, surface the reason and stop — do not advance to DONE.
-    - If option 2: run `/review-pr <pr-number>` once.
-    - If option 3 or 4: skip review.
-45. Update the index and move the plan (only if a PR was opened AND, for option 1, ralph-loop converged):
-    - Append a Progress entry to the plan: `Converged via /ralph-loop on <date>` (option 1) or `PR opened, review skipped` (option 3).
-    - Set Stage to DONE and Status to completed in the plan.
-    - Move the plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/` (legacy: `features/active/` → `features/completed/`).
-    - Update the spec's Exec plan link to point at the completed/ path (current layout only).
-    - Update the index: remove the Active table row, renumber remaining rows sequentially, add a Completed table row with the real PR number and today's date as the merge-date placeholder.
-    - Commit: `git commit -m "chore: mark #<issue-number> complete, update backlog"`.
-    - Push: `git push`.
+    - Record the PR + branch in the plan header (set the `PR:` and `Branch:` fields), update Stage → REVIEW in plan + index.
+44. Continue to Phase 6 (Review) for option 1, or run `/review-pr <pr-number>` once for option 2 and stop. Option 3 stops here. Option 4 stops at IMPLEMENT.
 
-    If option 4 was chosen (no push), skip steps 43–45 entirely — leave the plan at IMPLEMENT and the index unchanged.
+## Phase 6: Review
 
-## Phase 6: Done
+45. Run `/ralph-loop <pr-number>`. The loop writes a per-iteration line to the plan's **PR convergence ledger** so a fresh harness can pick up later. If it escalates, surface the reason and stop — do not advance to QA.
+46. **[Gate 6 — confirm merge]** When ralph-loop reports APPROVE, use AskUserQuestion to ask:
+    > "Convergence reached. Merge the PR now?"
+    > 1. Yes — merge with `gh pr merge --squash`
+    > 2. No — leave PR open (Stage stays REVIEW)
+47. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). Update Stage → QA in plan + index. Apply GitHub label: `gh issue edit <number> --remove-label implementing --add-label qa`.
+48. Continue to Phase 7 (QA).
 
-46. Print a summary:
+## Phase 7: QA
+
+49. Invoke `/feature-qa <issue-number>`. That skill validates the merged change against the spec's acceptance criteria, writes a `## QA verdict` entry to the plan, and decides PASS / FAIL / NEEDS_FOLLOWUP.
+50. **On PASS:** `/feature-qa` advances Stage → DONE, moves the plan to `completed/`, updates the index. This phase is complete.
+51. **On FAIL or NEEDS_FOLLOWUP:** `/feature-qa` records the verdict but leaves Stage at QA and opens follow-up issues. Surface this to the user — do not loop here.
+
+## Phase 8: Done
+
+52. Print a summary:
     - Feature: #<issue-number> — <title>
-    - Stages completed this run (e.g. "TRIAGE → RESEARCH → PLAN → IMPLEMENT")
-    - PR link (if opened)
+    - Stages completed this run (e.g. "TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE")
+    - PR link
+    - QA verdict
 
 ## Rules
 

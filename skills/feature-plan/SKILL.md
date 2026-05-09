@@ -10,6 +10,14 @@ allowed-tools: Read Glob Grep Edit Bash Agent
 
 Create an implementation plan for feature **#$ARGUMENTS** (or the next feature in PLAN stage if no argument given).
 
+## Cold-start guard
+
+This skill owns Stage = `PLAN`. Before doing any work:
+
+1. Resolve layout (current → legacy fallback).
+2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = PLAN.
+3. Read `Stage:` from the plan file. If it is not `PLAN`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill (`/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-implement` for IMPLEMENT, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage.
+
 ## Philosophy: boil the lake
 
 Completeness is cheap when AI does the work. When the complete design is a **lake** (bounded by the feature's stated scope, achievable in this implementation), plan the complete design — every entry point, every edge case, the migration of every existing call site, the tests and docs that go with it. Don't plan a "minimal viable" version that silently parks half the spec as "future work" when the full version is achievable now. If part of the design is genuinely an **ocean** (multi-quarter migration, requires product decisions still in flight, cross-team coordination), call it out as an explicit deferred section with a staged plan and the trigger that would unfreeze it — don't smuggle it in as a TODO. The default bias is toward planning all of it, now.

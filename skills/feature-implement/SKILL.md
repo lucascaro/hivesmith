@@ -9,6 +9,14 @@ argument-hint: "[issue-number]"
 
 Implement feature **#$ARGUMENTS** (or the next feature in IMPLEMENT stage if no argument given).
 
+## Cold-start guard
+
+This skill owns Stage = `IMPLEMENT`. Before doing any work:
+
+1. Resolve layout (current → legacy fallback per the section below).
+2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = IMPLEMENT.
+3. Read `Stage:` from the plan file. If it is not `IMPLEMENT`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage — the file is the source of truth, not the caller.
+
 ## Philosophy: boil the lake
 
 Completeness is cheap when AI does the work. Implement the **full plan** — code, tests, docs, changelog, migrations of every affected call site. Don't leave `TODO: also handle X` stubs when X is in-scope per the plan, and don't ship a "happy path only" version when edge cases were named. If a piece of the plan turns out to be a genuine **ocean** (the plan underestimated; the change touches contracts the plan didn't anticipate), stop and re-plan — surface it via `AskUserQuestion` rather than silently shipping a partial implementation under the original issue. The default bias is toward implementing all of it, now.
@@ -36,21 +44,16 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
     - `git push -u origin <branch>`.
     - Create PR with `gh pr create` referencing the issue — capture the PR number from the output.
     - Update GitHub labels: `gh issue edit <number> --remove-label planned --add-label implementing`.
-9. **Drive PR convergence with `/ralph-loop`** (only if a PR was opened). Invoke `/ralph-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. If the loop escalates, surface the reason to the user — do not continue with backlog updates.
-10. **On convergence (verdict APPROVE):**
-    - Append a final Progress entry to the plan: `Converged via /ralph-loop on <date>`.
-    - Set Stage to `DONE` in the plan and Status to `completed`.
-    - Move the plan file from `docs/exec-plans/active/` to `docs/exec-plans/completed/` (legacy: `features/active/` → `features/completed/`).
-    - Update the index: remove the row from Active, add to Completed with the PR number and today's date as the merge-date placeholder.
-    - The product spec stays in `docs/product-specs/` — do not move or delete it. Update its Exec plan link to point at the completed/ path.
-    - Commit these changes: `git commit -m "chore: mark #<issue-number> complete, update backlog"`.
-    - Push: `git push`.
+    - Record the PR + branch in the plan header (`PR:` and `Branch:` fields).
+    - **Advance Stage → REVIEW** in the plan and the index. This skill does not own DONE — that is owned by `/feature-qa` after QA PASS.
+9. **Drive PR convergence with `/ralph-loop`** (only if a PR was opened). Invoke `/ralph-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. `/ralph-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
+10. **On ralph-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop` Phase 6 (Gate 6) or by hand. Stage stays at REVIEW until merge; on merge, `/ralph-loop` (or `/feature-loop`) advances Stage → QA, and `/feature-qa` is responsible for the final move to DONE and the plan-file relocation.
 
-    If the user declined to open a PR, skip steps 9–10 — leave the plan file at IMPLEMENT and the index unchanged.
+   If the user declined to open a PR, skip steps 9–10 — leave the plan file at IMPLEMENT and the index unchanged.
 
 ## Already-Merged Detection
 
-Before starting implementation, check if the plan has a PR link in its Status fields. If it does, check if that PR is merged (`gh pr view <number> --json state`). If merged, run step 10 (move-to-completed + index update) on the current branch (main) and skip the rest.
+Before starting implementation, check if the plan has a PR link in its header. If it does, check if that PR is merged (`gh pr view <number> --json state`). If merged: advance Stage → QA in plan + index (if not already there) and tell the user to run `/feature-qa <issue-number>`. Do not run any code mutations from this skill on an already-merged feature.
 
 ## Rules
 - Do not skip tests — all checks defined in `AGENTS.md` must pass before committing.

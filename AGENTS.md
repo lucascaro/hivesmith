@@ -9,9 +9,15 @@ This repository uses Graphify to maintain a structural map of its logic and asse
 
 This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills. Keep the build/test commands below current — skills read this block to calibrate their work.
 
-**Feature pipeline:** `/feature-next` → (`/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/ralph-loop`
+**Feature pipeline:** `/feature-next` → (`/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/ralph-loop` → `/feature-qa`
 
-**PR convergence:** `/ralph-loop` drives review → autofix → re-review on any PR until findings clear or escalation criteria hit. Independent of the feature pipeline.
+Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/ralph-loop` driving convergence (writes a per-iteration line to the plan's `## PR convergence ledger`). `QA` = PR merged, `/feature-qa` validating against the spec's `## Success criteria` (writes `## QA verdict`). `DONE` = QA PASS; plan moved to `docs/exec-plans/completed/`. Each stage skill reads `Stage:` from the plan/index and refuses if mismatched, so any skill can be run cold from a fresh agent context.
+
+**PR convergence:** `/ralph-loop` drives review → autofix → re-review on any PR until findings clear or escalation criteria hit. Independent of the feature pipeline. When a matching exec plan exists, ralph-loop appends per-iteration entries to the plan's `## PR convergence ledger` so a fresh harness run can resume mid-loop.
+
+**Post-merge validation:** `/feature-qa` runs build/lint/test plus checks against the spec's `## Success criteria` and `## Non-goals`. PASS advances Stage → DONE and moves the plan to `completed/`; FAIL/NEEDS_FOLLOWUP opens follow-up issues and holds at QA.
+
+**Feedback loop tooling:** `/feedback-loop audit` scores the app's production-feedback loop on six dimensions (instrumentation, error visibility, user voice, metrics, triage cadence, closure of loop) and writes a date-stamped report under `docs/design-docs/`. `/feedback-loop design` proposes fixes for low-scoring dimensions and auto-creates TRIAGE specs to track them.
 
 **Background workflows:**
 - `/doc-garden` — scans `docs/` for staleness against the code, opens fix-up PRs.
