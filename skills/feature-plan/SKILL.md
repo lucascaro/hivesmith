@@ -16,7 +16,7 @@ This skill owns Stage = `PLAN`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = PLAN.
-3. Read `Stage:` from the plan file. If it is not `PLAN`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill (`/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-implement` for IMPLEMENT, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage.
+3. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by PLAN stage — `/feature-research` creates it). The plan is authoritative; the index is a secondary view. If plan Stage is not `PLAN`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill (`/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-implement` for IMPLEMENT, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). If the plan is missing entirely, tell the user to run `/feature-research <N>` first. Never silently process the wrong stage.
 
 ## Philosophy: boil the lake
 

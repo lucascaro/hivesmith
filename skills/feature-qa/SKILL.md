@@ -22,7 +22,7 @@ This skill owns Stage = `QA`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = QA.
-3. Read `Stage:` from the plan file. If it is not `QA`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill. Never silently process the wrong stage.
+3. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by QA stage). The plan is authoritative; the index is a secondary view. If plan Stage is not `QA`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill. Never silently process the wrong stage.
 4. Verify the PR (from the plan's `PR:` header field) is merged: `gh pr view <pr-number> --json state -q .state` should be `MERGED`. If it is `OPEN`, tell the user to drive convergence and merge first via `/ralph-loop` and `/feature-loop`. If it is `CLOSED` and not merged, refuse — the feature was abandoned.
 
 ## Layout resolution

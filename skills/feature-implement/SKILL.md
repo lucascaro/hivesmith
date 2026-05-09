@@ -16,7 +16,7 @@ This skill owns Stage = `IMPLEMENT`. Before doing any work:
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = IMPLEMENT.
 3. **Already-merged short-circuit (runs first, regardless of Stage).** If the plan has a `PR:` link in its header, run `gh pr view <pr-number> --json state -q .state`. If the result is `MERGED`: advance Stage → `QA` in plan + index (if not already there), tell the user to run `/feature-qa <issue-number>`, and exit. Do not run any code mutations from this skill on an already-merged feature. This handles partial prior runs where the PR got opened and merged but Stage wasn't advanced.
-4. Read `Stage:` from the plan file. If it is not `IMPLEMENT`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage — the file is the source of truth, not the caller.
+4. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by IMPLEMENT stage). The plan is authoritative; the index is a secondary view. If plan Stage is not `IMPLEMENT`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage — the file is the source of truth, not the caller.
 
 ## Philosophy: boil the lake
 
