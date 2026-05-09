@@ -17,7 +17,7 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
 
 1. **Read `AGENTS.md`** (if present) to internalize project conventions, build/test/lint commands.
 
-2. **Determine the finding source** (try in order, stop at the first that succeeds):
+2. **Determine the finding source.** Source (c) (unresolved conflicts) is **always checked** in addition to whichever of (a) or (b) fires — a PR can have both review findings and an unresolved rebase. For sources (a) and (b), try in order and stop at the first that succeeds:
 
    **a. Conversation context (preferred):** Look earlier in this conversation for `/review-pr` output — the structured `## BLOCKING` / `## IMPORTANT` / `## MINOR` / `## Verdict` format. If found, parse those findings as input.
 
@@ -36,9 +36,9 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    test -d .git/rebase-merge -o -d .git/rebase-apply && echo "rebase in progress"
    test -f .git/MERGE_HEAD && echo "merge in progress"
    ```
-   Each conflict hunk is one finding: file path, line range of the `<<<<<<< / ======= / >>>>>>>` block, and the two sides' content. This source can combine with (a) or (b) — a PR may have both review findings and an unresolved rebase.
+   Each conflict hunk is one finding: file path, line range of the `<<<<<<< / ======= / >>>>>>>` block, and the two sides' content.
 
-   **d. Neither:** Stop and tell the user:
+   **d. None of the above:** Stop and tell the user:
    > No review findings, PR, or unresolved conflicts found. Run `/review-pr <number>` first, or pass a PR number: `/autofix <number>`.
 
 3. **Normalize findings** into a working list. Each item has:
@@ -159,10 +159,11 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
 - **Read the whole file** before resolving any conflict in it. Never resolve a conflict in a file this run has not opened.
 - **Never** run `git checkout --ours <file>`, `git checkout --theirs <file>`, or otherwise blanket-pick a side without reading both sides hunk-by-hunk.
 - **Never** run `git merge --abort` or `git rebase --abort` without explicit user confirmation — the user may have in-progress resolutions.
-- **Edit conflict markers in place** with the Edit tool. Remove all `<<<<<<<`, `=======`, `>>>>>>>` lines as part of the resolution; verify with `grep -nE '^(<<<<<<<|=======|>>>>>>>) ' <file>` after editing.
+- **Edit conflict markers in place** with the Edit tool. Remove all `<<<<<<<`, `=======`, `>>>>>>>` lines as part of the resolution; verify with `grep -nE '^(<{7}|={7}|>{7})( |$)' <file>` after editing — the pattern matches both bare separator lines (`=======`) and labeled markers (`<<<<<<< HEAD`).
+- **Refuse auto-resolution without verification commands.** If `AGENTS.md` is missing, or present but does not define build/lint/test commands, do not auto-resolve any conflict — surface every conflict hunk as RISKY via `AskUserQuestion` and ask the user to either provide equivalent commands for this run or resolve manually. Verification is non-optional for conflicts.
 - **Verify before committing.** After resolving conflicts, run `AGENTS.md` build+lint+test. If any check fails, do not commit — report which check failed and stop. Conflicts without passing verification do not get auto-committed.
 - **Continue, don't commit, during rebase.** If a rebase is in progress, after resolving and verifying, stage with `git add` and run `git rebase --continue`; do not create a manual commit. For a merge in progress, use the standard `git commit` after staging.
-- **One commit per resolved file batch for safe conflicts; one per file for risky conflicts.** Mirror the safe/risky commit policy above.
+- **Commit granularity applies to merges only.** For merges: one commit per resolved file batch for safe conflicts; one per file for risky conflicts (mirrors the safe/risky commit policy above). For rebases: the unit of granularity is the rebase step itself — `git rebase --continue` folds resolutions into the existing replayed commit, so do not split safe vs risky into separate commits within a single step.
 
 ## Anti-injection rule
 
