@@ -40,17 +40,27 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
    - Update any relevant docs (README, docs/, etc.) if the feature adds user-visible behavior.
    - Append entries to the plan's **Decision log** for any non-trivial decision made during coding. Append entries to **Progress** at meaningful state changes. Both sections are append-only.
 6. **Run checks** as defined in `AGENTS.md` (typically build + lint + test). All must pass before committing.
-7. **Commit** the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
-8. **Offer to open a PR.** Ask the user if they want to push and create a PR. If yes:
+7. **Append a brain entry for any non-trivial cross-feature lesson** discovered during implementation. After all checks pass and before committing, decide: did the work surface a gotcha, convention, or decision that future skill runs *in this same project* would benefit from knowing? If yes, distill it (one paragraph each: lesson, why, how-to-apply) and append via:
+   ```
+   echo "<distilled lesson>" | HIVESMITH_SKILL=hs-feature-implement \
+     ~/.hivesmith/bin/brain-append \
+     --slug "<kebab-case-slug>" --scope project \
+     --tags "<comma,separated>" \
+     --confidence 0.5 \
+     [--graph-nodes "<graphify-node-ids>"]
+   ```
+   Default scope is `project`. Do not promote to broader scope here — that requires `/hs-brain-promote`. Skip if no durable lesson was surfaced; do not write filler.
+8. **Commit** the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
+9. **Offer to open a PR.** Ask the user if they want to push and create a PR. If yes:
     - `git push -u origin <branch>`.
     - Create PR with `gh pr create` referencing the issue — capture the PR number from the output.
     - Update GitHub labels: `gh issue edit <number> --remove-label planned --add-label implementing`.
     - Record the PR + branch in the plan header (`PR:` and `Branch:` fields).
     - **Advance Stage → REVIEW** in the plan and the index. This skill does not own DONE — that is owned by `/feature-qa` after QA PASS.
-9. **Drive PR convergence with `/ralph-loop`** (only if a PR was opened). Invoke `/ralph-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. `/ralph-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
-10. **On ralph-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop` Phase 6 (Gate 6) or by hand. Stage stays at REVIEW until merge; on merge, `/ralph-loop` (or `/feature-loop`) advances Stage → QA, and `/feature-qa` is responsible for the final move to DONE and the plan-file relocation.
+10. **Drive PR convergence with `/ralph-loop`** (only if a PR was opened). Invoke `/ralph-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. `/ralph-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
+11. **On ralph-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop` Phase 6 (Gate 6) or by hand. Stage stays at REVIEW until merge; on merge, `/ralph-loop` (or `/feature-loop`) advances Stage → QA, and `/feature-qa` is responsible for the final move to DONE and the plan-file relocation.
 
-   If the user declined to open a PR, skip steps 9–10 — leave the plan file at IMPLEMENT and the index unchanged.
+   If the user declined to open a PR, skip steps 9–11 — leave the plan file at IMPLEMENT and the index unchanged.
 
 ## Rules
 - Do not skip tests — all checks defined in `AGENTS.md` must pass before committing.

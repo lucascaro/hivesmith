@@ -70,14 +70,32 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - Use the same careful match as the installer: only rewrite `/<skill>` when preceded by start-of-line or a non-path character (whitespace, backtick, paren, bracket) and followed by end-of-line or a non-identifier character. Never rewrite `scripts/release.sh` (it's a path, not a slash-command).
    - Do NOT rewrite `CHANGELOG.md`, `features/**`, or `scripts/release.sh` — they don't reference slash-commands.
 
-7. **Report what was created.** List each file with its size. Tell the user:
+7. **Initialize the hive brain (cross-project, lazy)** by sourcing the brain lib and calling `brain_lazy_init`:
+   ```
+   if [ -f "$HIVESMITH_DIR/scripts/brain/lib.sh" ]; then
+       (. "$HIVESMITH_DIR/scripts/brain/lib.sh" && brain_lazy_init)
+   fi
+   ```
+   This creates `~/.hivesmith/brain/` (a git repo), seeded from `templates/brain/`. It's idempotent — safe to call on re-runs and existing brains.
+
+8. **Suggest installing graphify** if the user hasn't already. Brain entries can `[[wikilink]]` graphify nodes for code-structure context, and brain references stay rot-free when graphify auto-updates the per-project graph. Print:
+   ```
+   Tip: install graphify alongside hivesmith for per-project code-structure memory.
+        Brain entries can reference graphify nodes via [[wikilinks]]; the gardener
+        validates these references on each run.
+        See: https://github.com/lucascaro/graphify
+   ```
+   (Print only the text — do not run an install command without confirmation.)
+
+9. **Report what was created.** List each file with its size. Tell the user:
    - Edit `AGENTS.md` to fill in project-specific module map, build/test commands, and conventions — many other skills read it.
    - Edit `golden-principles.md` to define the rules `/gc-sweep` will enforce. Keep it short (5–10 principles).
    - Edit `DESIGN.md` to document domains, layers, and cross-cutting concerns.
    - Edit `scripts/release.sh` to set `PROJECT`, `REPO`, and `BUILD_CMD` at the top.
+   - The hive brain at `~/.hivesmith/brain/` will accumulate cross-project lessons. Use `/hs-brain-promote` to broaden a project lesson, `/hs-brain-garden` to tidy.
    - Run `/feature-next` to verify the pipeline is wired up.
 
-8. **Migration mode (`--migrate`).** If invoked with `--migrate`, AND `features/active/` or `features/completed/` exists with at least one `*.md` file:
+10. **Migration mode (`--migrate`).** If invoked with `--migrate`, AND `features/active/` or `features/completed/` exists with at least one `*.md` file:
    - For each existing feature file `features/<state>/<NNN>-<slug>.md`:
      - Parse out the front-matter, Description, and Triage sections → write to `docs/product-specs/<NNN>-<slug>.md` using the product-spec template shape (preserving Type, Complexity, Priority, and the Description as the Problem section).
      - Take the Research, Plan, Implement (decision log + progress) sections → write to `docs/exec-plans/active/<NNN>-<slug>.md` if state is `active`, or `docs/exec-plans/completed/<NNN>-<slug>.md` if state is `completed`. Use the exec-plan template shape; preserve the Decision log and Progress sections verbatim (append-only history).

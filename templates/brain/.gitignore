@@ -1,0 +1,5 @@
+# Hivesmith brain — placeholder gitignore.
+# All entry files should be committed. Add patterns here only for local
+# tooling artifacts (e.g. .DS_Store, editor swap files).
+.DS_Store
+*.swp

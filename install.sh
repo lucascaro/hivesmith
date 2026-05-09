@@ -566,6 +566,58 @@ if [[ -n "$PREFIX" ]]; then
     say "Prefix: \"$PREFIX\" (stored in $CONFIG)"
 fi
 
+# ---- Brain helpers -------------------------------------------------------
+# Symlink scripts/brain/{lib.sh,read.sh,append.sh,redact.sh,index.sh,yaml.py}
+# into ~/.hivesmith/bin/ so skills can invoke them by stable absolute path
+# regardless of $PREFIX or where the hivesmith repo is cloned.
+
+if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
+    BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
+    run mkdir -p "$BRAIN_BIN_DIR"
+    declare -a brain_links=(
+        "scripts/brain/read.sh:brain-read"
+        "scripts/brain/append.sh:brain-append"
+        "scripts/brain/index.sh:brain-index"
+        "scripts/brain/redact.sh:brain-redact"
+        "scripts/brain/lib.sh:brain-lib.sh"
+        "scripts/brain/yaml.py:brain-yaml.py"
+        "skills/brain-promote/promote.sh:brain-promote"
+        "skills/brain-garden/garden.sh:brain-garden"
+    )
+    for pair in "${brain_links[@]}"; do
+        src_rel="${pair%%:*}"
+        link_name="${pair##*:}"
+        src="$HIVESMITH_DIR/$src_rel"
+        [[ -f "$src" ]] || continue
+        link="$BRAIN_BIN_DIR/$link_name"
+        if [[ -L "$link" ]]; then
+            existing="$(readlink "$link")"
+            [[ "$existing" == "$src" ]] && continue
+            run rm -f "$link"
+        elif [[ -e "$link" ]]; then
+            continue  # don't clobber a real file
+        fi
+        run ln -s "$src" "$link"
+    done
+fi
+
+if [[ "$MODE" == "uninstall" ]]; then
+    BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
+    if [[ -d "$BRAIN_BIN_DIR" ]]; then
+        for link_name in brain-read brain-append brain-index brain-redact brain-lib.sh brain-yaml.py brain-promote brain-garden; do
+            link="$BRAIN_BIN_DIR/$link_name"
+            if [[ -L "$link" ]]; then
+                target="$(readlink "$link")"
+                if [[ "$target" == "$HIVESMITH_DIR/"* ]]; then
+                    run rm -f "$link"
+                fi
+            fi
+        done
+        # Remove the dir if empty.
+        rmdir "$BRAIN_BIN_DIR" 2>/dev/null || true
+    fi
+fi
+
 # ---- Auto-upgrade --------------------------------------------------------
 
 if [[ "$MODE" == "install" ]]; then
