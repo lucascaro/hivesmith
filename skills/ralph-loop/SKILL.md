@@ -20,6 +20,16 @@ Completeness is cheap when AI does the work. Keep iterating until findings actua
 - `$ARGUMENTS` first token: PR number. If omitted, detect from the current branch (`gh pr view --json number -q .number`). If neither resolves, stop and tell the user to pass a PR number.
 - `--max-iterations N` (default 5): hard stop on iteration count.
 
+## Cold-start: read the convergence ledger
+
+Before iterating, locate the matching exec plan (current: `docs/exec-plans/active/<NNN>-*.md` where `<NNN>` is derived from `gh pr view <PR> --json body,title` — look for `Fixes #<n>` / `Closes #<n>` in the PR body, or match the branch name `feature/<n>-*`). If a plan is found:
+
+1. Read its `## PR convergence ledger` section. The last line gives `prev_findings_hash` (the hex value) — seed the loop-detection guard with it instead of starting empty.
+2. Read its `Stage:` field. If Stage is not `REVIEW`, set it to `REVIEW` (this is a no-op if already correct).
+3. Throughout iteration, **append** one line per iteration to the ledger. Never rewrite or delete prior entries.
+
+If no matching plan is found (PR was hand-authored, not from the feature pipeline), skip the ledger entirely and run the loop with an empty `prev_findings_hash`. This is fine — the ledger is an optimization, not a requirement.
+
 ## 1. Resolve the PR
 
 ```bash
@@ -75,7 +85,15 @@ For iteration `i` from 1 to `--max-iterations`:
 
 3. **Loop-detection guard.** If `envelope.findings_hash` is non-empty and equals `prev_findings_hash`, escalate with reason `"loop-detection guard: identical findings two iterations in a row"`. Otherwise set `prev_findings_hash = envelope.findings_hash`.
 
-4. **Branch on verdict:**
+4. **Append to the plan ledger** (only if a matching plan was found in the cold-start step). Add one line to the plan's `## PR convergence ledger` section:
+
+   ```
+   - **<YYYY-MM-DD> iter <i>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short post_sha or pre_sha>.
+   ```
+
+   This is append-only. The orchestrator writes the line; the worker does not (the worker has no knowledge of the plan file).
+
+5. **Branch on verdict:**
    - `APPROVE` — done. Exit the loop and go to §4.
    - `COMMENT` with strict off — done. Exit the loop and go to §4.
    - `escalate_reason` non-empty — escalate with that reason (see §3).
@@ -114,6 +132,10 @@ Final verdict: APPROVE | ESCALATED
 ## Findings remaining (if escalated)
 <bullet list>
 ```
+
+## 4a. On merge (best-effort post-loop hook)
+
+If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into ralph-loop after merging): if a matching plan was found in the cold-start step and its Stage is `REVIEW`, advance Stage → `QA` in both the plan header and the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
 
 ## 5. Rules
 

@@ -12,6 +12,14 @@ Research feature **#$ARGUMENTS** (or the next feature in RESEARCH stage if no ar
 
 Research is the first stage that touches the **exec plan**. This skill creates `docs/exec-plans/active/<NNN>-<slug>.md` from the template and populates its Research section.
 
+## Cold-start guard
+
+This skill owns Stage = `RESEARCH`. Before doing any work:
+
+1. Resolve layout (current → legacy fallback).
+2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = RESEARCH.
+3. **Plan-over-index precedence.** If an exec plan already exists for this issue (partial prior RESEARCH run), the plan's `Stage:` field is authoritative — refuse unless plan Stage is `RESEARCH`. If the plan does not yet exist (the normal RESEARCH start case), fall back to the index row's `Stage:` and refuse unless it is `RESEARCH`. Never proceed when plan and index disagree — a stale index hiding an advanced plan would otherwise run research over already-done work. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage.
+
 ## Layout resolution
 
 - **Current:** spec at `docs/product-specs/<NNN>-*.md`, plan at `docs/exec-plans/active/<NNN>-*.md`, plan template at `docs/exec-plans/_template.md`, index at `docs/product-specs/index.md`.
