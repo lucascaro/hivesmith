@@ -71,7 +71,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 13. Classify:
     - **Type:** `bug` or `enhancement`
     - **Complexity:** `S` (< 1 day, few files), `M` (1-3 days, moderate scope), `L` (3+ days, significant changes)
-    - **Priority:** recommend where this sits in the backlog (P1 = top) relative to existing items in `features/BACKLOG.md`
+    - **Priority:** recommend where this sits in the backlog (P1 = top) relative to existing items in `docs/product-specs/index.md` (current) or `features/BACKLOG.md` (legacy fallback)
 14. **[Gate 2 — confirm triage]** Present type, complexity, and priority recommendation. Use AskUserQuestion to ask:
     > "Approve this triage classification?"
     > 1. Yes — save and advance to RESEARCH
