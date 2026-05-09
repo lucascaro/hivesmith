@@ -22,6 +22,7 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 - `feature-implement` and `feature-loop` now drive PR convergence via `/ralph-loop` after opening the PR, rather than stopping at "PR opened". Option 1 in `feature-loop` Gate 5 is the recommended path.
 - `templates/AGENTS.md` rewritten as a table of contents that points into `docs/` and the new top-level stubs, instead of inlining module-map / build-test / convention sections.
 - `templates/AGENTS.hivesmith.md` documents the new `docs/` layout, `ralph-loop`, `doc-garden`, and `gc-sweep`.
+- **Existing PR review threads are no longer ignored by `ralph-loop`.** `autofix` now fetches review *threads* via the GitHub GraphQL API (with `isResolved` + `thread_id`), treats every unresolved thread as a finding, and closes each one by either applying a fix and replying `Fixed in <SHA>.` + resolving the thread, or replying with a concrete rationale and resolving. Threads without a specific articulable rationale are surfaced as RISKY rather than silently dismissed. `ralph-loop` cannot return `APPROVE` while any thread remains unresolved; the unresolved-thread set is incorporated into the loop-detection hash, and at max iterations the loop escalates with the open thread URLs. `review-pr` no longer drops a finding just because it appears in `prior_comments` — reviewers re-flag independently identified issues so dedup happens by `thread_id` downstream. Closes the gap that twice let dangerous Copilot/human comments survive a "converged" PR.
 
 ## [0.3.0] — 2026-04-21
 

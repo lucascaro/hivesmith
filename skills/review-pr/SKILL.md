@@ -92,7 +92,10 @@ PROCEDURE:
   2. For each finding you intend to report, OPEN the cited file at the cited
      line and confirm the issue is real. If you cannot verify it from the
      current source, drop the finding.
-  3. Skip anything already raised in `prior_comments`.
+  3. Existing PR comments are not a reason to drop a finding. If you
+     independently identify the same issue, still report it — downstream
+     dedup happens by `thread_id`. Only suppress when the prior comment
+     thread is already resolved with a clear resolution.
   4. Stay strictly within your dimension. Other agents cover other dimensions.
 
 OUTPUT:
@@ -222,7 +225,7 @@ Deterministic, no vibes:
 - Do flag tests that don't actually test what they claim.
 - Spot-check 2-3 golden / snapshot files for determinism if any are touched.
 - If the diff touches an interface, verify all implementations are updated.
-- Do not re-flag issues already raised in `prior_comments`.
+- Existing PR comments are not a reason to drop a finding — if you independently identify the same issue, still report it. Downstream dedup happens by `thread_id`. Only suppress when the prior thread is already resolved with a clear resolution. (This is the load-bearing rule that keeps reviewers from going blind to issues a human or Copilot already raised.)
 - **Boil the lake in the `fix` field.** When the complete fix is achievable (lake), describe the complete fix — every occurrence in the diff, every implementation of a touched interface, every call site affected by a contract change. Only propose a partial fix when the remainder is genuinely an ocean (multi-quarter / cross-cutting), and when so, say "ocean: <reason>" in `why` and recommend a staged plan in `fix`.
 
 ## 9. Cleanup
