@@ -42,6 +42,14 @@ need() { command -v "$1" >/dev/null 2>&1 || { printf 'error: %s not found on PAT
 
 usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; }
 
+# Sleep for an exponential-backoff interval with jitter.
+#   backoff_sleep <attempt> <base> <jitter>
+# Sleeps base * 2^attempt + rand()*jitter seconds. attempt is 1-indexed.
+# shellcheck disable=SC2329  # called from check_* in background subshells
+backoff_sleep() {
+  sleep "$(awk -v a="$1" -v b="$2" -v j="$3" 'BEGIN{srand(); printf "%.2f", b*(2^a) + rand()*j}')"
+}
+
 # ---------- arg parsing ----------
 FILE=""
 CONCURRENCY=6
@@ -266,7 +274,7 @@ check_npm() {
     esac
     attempt=$((attempt + 1))
     [ "$attempt" -gt "$RETRIES" ] && { printf 'error'; return; }
-    sleep "$(awk -v a="$attempt" 'BEGIN{srand(); printf "%.2f", 0.3*(2^a) + rand()*0.4}')"
+    backoff_sleep "$attempt" 0.3 0.4
   done
 }
 
@@ -287,7 +295,7 @@ check_github() {
     printf '%s' "$out" | grep -q 'HTTP 404' && { printf 'free'; return; }
     attempt=$((attempt + 1))
     [ "$attempt" -gt "$RETRIES" ] && { printf 'error'; return; }
-    sleep "$(awk -v a="$attempt" 'BEGIN{srand(); printf "%.2f", 0.4*(2^a) + rand()*0.5}')"
+    backoff_sleep "$attempt" 0.4 0.5
   done
 }
 
@@ -314,7 +322,7 @@ check_domain() {
       esac
       attempt=$((attempt + 1))
       [ "$attempt" -gt "$RETRIES" ] && break
-      sleep "$(awk -v a="$attempt" 'BEGIN{srand(); printf "%.2f", 0.5*(2^a) + rand()*0.5}')"
+      backoff_sleep "$attempt" 0.5 0.5
     done
     printf 'error'; return
   fi
@@ -339,7 +347,7 @@ check_domain_whois() {
     fi
     attempt=$((attempt + 1))
     [ "$attempt" -gt "$RETRIES" ] && { printf 'error'; return; }
-    sleep "$(awk -v a="$attempt" 'BEGIN{srand(); printf "%.2f", 0.5*(2^a) + rand()*0.5}')"
+    backoff_sleep "$attempt" 0.5 0.5
   done
 }
 
@@ -349,7 +357,7 @@ TLDS_SPACE="${TLDS[*]:-}"
 
 ORIGINALS_SPACE="${ORIGINALS[*]:-}"
 
-export -f check_one check_npm check_github check_domain check_domain_whois rdap_base_for_tld
+export -f check_one check_npm check_github check_domain check_domain_whois rdap_base_for_tld backoff_sleep
 export RETRIES CHECK_DOMAINS TLDS_SPACE RDAP_CACHE ORIGINALS_SPACE SUGGEST
 
 # ---------- fan out ----------
