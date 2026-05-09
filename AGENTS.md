@@ -33,7 +33,7 @@ This repo dogfoods hivesmith on itself. Project-local skill symlinks live under 
 
 **Build / test / lint commands** — `/feature-implement` expects all of these to pass before opening a PR:
 
-- **Lint:** `shellcheck install.sh skills/feature-ingest/ingest.sh templates/features/ingest.sh templates/scripts/release.sh scripts/dev-link-local.sh` (mirrors `.github/workflows/ci.yml` shellcheck job).
+- **Lint:** `shellcheck install.sh scripts/dev-link-local.sh scripts/release.sh skills/feature-ingest/ingest.sh skills/namecheck/namecheck.sh templates/features/ingest.sh templates/scripts/release.sh` (mirrors `.github/workflows/ci.yml` shellcheck job).
 - **Install smoke:** `HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update --dry-run` (then repeat with `--prefix ""`).
 - **Render correctness:** `HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update` then `grep -q '/hs-feature-plan' .rendered/hs-/skills/hs-feature-research/SKILL.md` and `! grep -q '/feature-plan\b' .rendered/hs-/skills/hs-feature-research/SKILL.md`.
 - **review-pr regression suite:** `skills/review-pr/fixtures/bin/run-case <case>` (graded LLM harness; run when changing `skills/review-pr/`).
