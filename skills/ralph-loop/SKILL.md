@@ -56,14 +56,27 @@ For iteration `i` from 1 to `--max-iterations`:
    >
    > 1. `PRE_SHA=$(gh pr view <PR> --json headRefOid -q .headRefOid)`
    > 2. Invoke the `Skill` tool with `skill: "hivesmith:review-pr"` and `args: "<PR>"`. Capture the full BLOCKING / IMPORTANT / MINOR / Verdict output from the result. Do **not** paraphrase the review or hand-write your own — the `Skill` invocation is the only way the loop runs review-pr.
-   > 3. Compute `findings_hash`: lowercase-hex SHA-256 over the sorted, newline-joined `file|line|category|title` tuples across all BLOCKING + IMPORTANT findings. (No findings → empty string.)
-   > 4. Decide the next action from the verdict:
-   >    - `APPROVE` → stop. No autofix, no push.
-   >    - `COMMENT` → if strict mode is true, treat as `REQUEST_CHANGES`; otherwise stop.
-   >    - `REQUEST_CHANGES` → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. If `POST_SHA == PRE_SHA`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
+   > 3. Fetch unresolved review threads (used as a parallel finding stream — the loop cannot APPROVE while any are open). `PullRequestReviewThread` has no `url` field — the URL lives on the first comment. Author info is needed for `copilot_threads_open`:
+   >    ```bash
+   >    gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){
+   >      repository(owner:$owner,name:$repo){
+   >        pullRequest(number:$pr){
+   >          reviewThreads(first:100, after:$cursor){
+   >            pageInfo{ hasNextPage endCursor }
+   >            nodes{ id isResolved comments(first:1){nodes{ url author{login} }} }}}}}' \
+   >      -f owner=<owner> -f repo=<repo> -F pr=<PR>
+   >    ```
+   >    Paginate: if `pageInfo.hasNextPage` is true, re-run with `-f cursor=<endCursor>` and concat results until exhausted. (Without pagination, PRs with >100 threads would silently let the gate pass.) Filter to `isResolved == false`. Each thread's URL is `comments.nodes[0].url`; its author login is `comments.nodes[0].author.login`. Capture `unresolved_thread_ids` (sorted) and `unresolved_thread_urls`. Count `copilot_threads_open` as unresolved threads whose first-comment author login ends with `[bot]` AND case-insensitively contains `copilot` (covers `copilot-pull-request-reviewer`, `github-copilot[bot]`, and future variants).
+   > 4. Compute `findings_hash`: lowercase-hex SHA-256 over the sorted, newline-joined `file|line|category|title` tuples across all BLOCKING + IMPORTANT findings, **followed by** the sorted unresolved `thread_id`s on their own lines. (No findings and no unresolved threads → empty string.) Including thread ids ensures the loop-detection guard fires when the same set of unresolved threads sits two iterations in a row.
+   > 5. Decide the next action from the verdict:
+   >    - `APPROVE` with **zero unresolved threads** → stop. No autofix, no push.
+   >    - `APPROVE` with unresolved threads → coerce to `REQUEST_CHANGES`. Reviewer agents had nothing to say, but Copilot / human threads are still open and must be closed by autofix (fix or reply-and-resolve with a concrete reason).
+   >    - `COMMENT` → if strict mode is true OR there are unresolved threads, treat as `REQUEST_CHANGES`; otherwise stop.
+   >    - `REQUEST_CHANGES` (including coerced) → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. Determine whether autofix took any thread-side actions by parsing the `Threads:` breakdown in autofix's Phase 5 summary (specifically the `Fixed:` and `Resolved with rationale:` counts — sum > 0 means thread-side actions occurred). If `POST_SHA == PRE_SHA` AND the parsed `Fixed + Resolved with rationale` total is `0`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
+   >    - After autofix, re-query unresolved threads (same paginated GraphQL call) and record `unresolved_threads_post`. Cross-check against autofix's Phase 5 `Threads:` line `Still open:` count. If the two disagree, **trust the GraphQL re-query as source of truth** and set `escalate_reason: "autofix Threads summary disagrees with GraphQL re-query"`.
    >    - If autofix surfaces RISKY items it would not auto-apply, list them in `risky_surfaced` and set `escalate_reason: "risky fix needs human decision"`.
    >    - If either `Skill` invocation fails (tool error, missing skill, malformed result), set `escalate_reason: "skill invocation failed: <which> — <error>"` and return immediately.
-   > 5. Return your result as a single fenced ```json block as the **last** thing in your reply, with this exact shape (omit optional fields when not applicable):
+   > 6. Return your result as a single fenced ```json block as the **last** thing in your reply, with this exact shape (omit optional fields when not applicable):
    >    ```json
    >    {
    >      "verdict": "APPROVE | COMMENT | REQUEST_CHANGES",
@@ -76,6 +89,10 @@ For iteration `i` from 1 to `--max-iterations`:
    >      "ci_status": "passed | failed | not_run",
    >      "ci_failure": "<one line, only if failed>",
    >      "risky_surfaced": [],
+   >      "unresolved_threads_pre": 0,
+   >      "unresolved_threads_post": 0,
+   >      "unresolved_thread_urls": [],
+   >      "copilot_threads_open": 0,
    >      "escalate_reason": ""
    >    }
    >    ```
@@ -88,16 +105,18 @@ For iteration `i` from 1 to `--max-iterations`:
 4. **Append to the plan ledger** (only if a matching plan was found in the cold-start step). Add one line to the plan's `## PR convergence ledger` section:
 
    ```
-   - **<YYYY-MM-DD> iter <i>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short post_sha or pre_sha>.
+   - **<YYYY-MM-DD> iter <i>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; threads_open: <post>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short post_sha or pre_sha>.
    ```
 
    This is append-only. The orchestrator writes the line; the worker does not (the worker has no knowledge of the plan file).
 
 5. **Branch on verdict:**
-   - `APPROVE` — done. Exit the loop and go to §4.
-   - `COMMENT` with strict off — done. Exit the loop and go to §4.
+   - `APPROVE` AND `unresolved_threads_post == 0` — done. Exit the loop and go to §4.
+   - `APPROVE` with `unresolved_threads_post > 0` — never exit here. Continue to iteration `i+1` so autofix gets another pass at the open threads. If the next iteration's worker still cannot close them and we hit max iterations, §3 fires.
+   - `COMMENT` with strict off AND `unresolved_threads_post == 0` — done. Exit the loop and go to §4.
+   - `COMMENT` with `unresolved_threads_post > 0` — continue (same reasoning as APPROVE-with-threads).
    - `escalate_reason` non-empty — escalate with that reason (see §3).
-   - Otherwise — append a short line to `iteration_results` (`#i: <verdict>, <N> findings, pushed=<bool>`) and continue to iteration `i+1`.
+   - Otherwise — append a short line to `iteration_results` (`#i: <verdict>, <N> findings, threads=<post>, pushed=<bool>`) and continue to iteration `i+1`.
 
 ## 3. Escalation criteria
 
@@ -110,6 +129,7 @@ Stop the loop and surface to the user when any of these hit:
 - A finding is classified RISKY by autofix and would change behavior in a way the user has not pre-authorized.
 - A reviewer dimension explicitly disagreed with another (e.g. Security says block, UX says it's fine and the fix conflicts) — surface both rationales.
 - The iteration sub-agent returned a non-empty `escalate_reason` (autofix made no changes, required CI failed, RISKY fix needs human decision, etc.) — propagate that reason verbatim.
+- Max iterations reached AND `unresolved_threads_post > 0` — escalate with reason `"unresolved review threads remain (N): <urls>"` listing every open thread URL. This is the load-bearing case: it's what stops the loop from quietly converging while Copilot or human comments sit open.
 
 When escalating, post a single PR comment summarizing:
 - Iteration count reached.
@@ -144,4 +164,5 @@ If, after the loop converges with `APPROVE`, the orchestrator detects the PR has
 - Always push after autofix runs and CI completes before re-reviewing — re-reviewing the old diff wastes a turn.
 - Loop budget is finite. Five iterations is the default; more than that suggests the harness, not the loop, needs work.
 - Run review-pr and autofix as full skill invocations via the `Skill` tool (plugin-qualified: `hivesmith:review-pr`, `hivesmith:autofix`), not by inlining their prompts or relying on slash-command syntax inside sub-agents. They evolve independently and the loop should track them.
-- Each iteration runs in a fresh sub-agent context. The orchestrator keeps only the result envelope (`verdict`, `findings_hash`, short `findings_summary`, `escalate_reason`) — never the raw review prose, diffs, or CI logs. This keeps the orchestrator's per-iteration footprint flat regardless of iteration count.
+- Each iteration runs in a fresh sub-agent context. The orchestrator keeps only the result envelope (`verdict`, `findings_hash`, short `findings_summary`, thread counts, `escalate_reason`) — never the raw review prose, diffs, or CI logs. This keeps the orchestrator's per-iteration footprint flat regardless of iteration count.
+- **Unresolved review threads block APPROVE.** Existing PR review comments — including Copilot's automated review — are findings, not context. Autofix owns resolving them (apply a fix and reply `Fixed in <SHA>.`, or reply with a concrete reason and resolve the thread). The loop only enforces the gate: while any thread remains unresolved, the loop keeps running, and at max iterations it escalates with the open thread URLs. Copilot threads get the same treatment as human threads — never silently ignored.
