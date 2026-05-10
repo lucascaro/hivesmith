@@ -19,9 +19,15 @@ Skills call:
 - `~/.hivesmith/bin/brain-read` — emits a project-context-filtered slice of `INDEX.md` plus the HOT tier, wrapped in untrusted-data delimiters. Capped by `BRAIN_BUDGET_TOKENS` (default 8000).
 - `~/.hivesmith/bin/brain-append` — writes a new entry after redaction. Defaults to `scope=project`.
 
-Two user-facing skills:
+For browsing and querying directly:
 
-- `/hs-brain-promote <slug>` — broaden an entry's scope (project → user / ecosystem / universal). The only path that broadens scope.
+- `~/.hivesmith/bin/brain-list [--scope ...] [--ecosystem ...] [--tag ...] [--project] [--paths-only]` — enumerate entries with optional filters. Output: `slug \t scope-label \t rel-path \t first-body-line`.
+- `~/.hivesmith/bin/brain-search <terms> [--rank] [--limit N] [--paths-only]` — case-insensitive AND-search across slug, tags, and body.
+
+User-facing skills:
+
+- `/hs-brain-ask <question>` — natural-language Q&A. Searches the brain and answers with citations.
+- `/hs-brain-promote [<slug>]` — broaden an entry's scope (project → user / ecosystem / universal). The only path that broadens scope. With no slug, presents a picker.
 - `/hs-brain-garden` — regenerate `INDEX.md`, archive entries past `valid_until`, validate `graph_nodes:` references against per-project `graphify-out/graph.json`, surface promotion candidates.
 
 ## Trust boundary

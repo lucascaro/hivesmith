@@ -26,6 +26,8 @@ jobs:
             scripts/brain/append.sh
             scripts/brain/redact.sh
             scripts/brain/index.sh
+            scripts/brain/list.sh
+            scripts/brain/search.sh
             scripts/brain/test/run-all.sh
             skills/brain-promote/promote.sh
             skills/brain-garden/garden.sh

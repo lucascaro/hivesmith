@@ -581,6 +581,8 @@ if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
         "scripts/brain/append.sh:brain-append"
         "scripts/brain/index.sh:brain-index"
         "scripts/brain/redact.sh:brain-redact"
+        "scripts/brain/list.sh:brain-list"
+        "scripts/brain/search.sh:brain-search"
         "scripts/brain/lib.sh:brain-lib.sh"
         "scripts/brain/yaml.py:brain-yaml.py"
         "skills/brain-promote/promote.sh:brain-promote"
@@ -606,7 +608,7 @@ fi
 if [[ "$MODE" == "uninstall" ]]; then
     BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
     if [[ -d "$BRAIN_BIN_DIR" ]]; then
-        for link_name in brain-read brain-append brain-index brain-redact brain-lib.sh brain-yaml.py brain-promote brain-garden; do
+        for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden; do
             link="$BRAIN_BIN_DIR/$link_name"
             if [[ -L "$link" ]]; then
                 target="$(readlink "$link")"

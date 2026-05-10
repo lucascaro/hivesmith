@@ -1,7 +1,7 @@
 ---
 name: brain-promote
 description: "Promote a hive-brain entry to broader scope (project → user / ecosystem / universal)"
-argument-hint: "<slug-or-path> [--to <scope>] [--ecosystem <lang>]"
+argument-hint: "[<slug-or-path>] [--to <scope>] [--ecosystem <lang>]"
 allowed-tools: Read Edit Bash
 ---
 
@@ -15,7 +15,16 @@ Without an explicit gate, lessons learned in one repo can leak into prompts for 
 
 ## Steps
 
-1. **Resolve the entry.** `$ARGUMENTS` may be a slug (looked up under `~/.hivesmith/brain/`), a relative path (`project/<hash>/<slug>`), or an absolute path. If ambiguous, list matches and stop.
+1. **Resolve the entry.**
+   - If `$ARGUMENTS` is **empty**, run `~/.hivesmith/bin/brain-list` to enumerate
+     candidates and present them via AskUserQuestion as a picker (each option:
+     `slug · scope · first-body-line`). Filter the list to entries that *can*
+     be promoted: exclude `scope=universal` (already at the top) and anything
+     under `unverified/` (needs manual review first). If the list is long,
+     show the most recent ~15 and offer "(more)".
+   - Otherwise treat `$ARGUMENTS` as a slug (looked up under
+     `~/.hivesmith/brain/`), a relative path (`project/<hash>/<slug>`), or an
+     absolute path. If ambiguous, list matches and stop.
 
 2. **Read the entry** (Read tool) and present:
    - Current scope, repo (if any), tags, confidence.
