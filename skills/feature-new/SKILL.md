@@ -54,9 +54,9 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
    If found, warn and stop.
 7. Generate filename: zero-pad the number to 3 digits, slugify the title (lowercase, hyphens, max 50 chars). Example: `069-add-dark-mode-toggle.md`.
 8. Read the spec template (current: `docs/product-specs/_template.md`; legacy: `features/templates/FEATURE.md`).
-9. **Current layout:** Create the spec at `docs/product-specs/<filename>` filling in title, issue number, Problem section from the issue body (or drafted body if no GitHub issue). Type/Complexity/Priority left blank for triage. Append a row to the Active table in `docs/product-specs/index.md`:
+9. **Current layout:** Create the spec at `docs/product-specs/<filename>` filling in title, issue number, Problem section from the issue body (or drafted body if no GitHub issue). Type/Complexity/Priority left blank for triage. The spec uses a bullet line (not front matter) for the issue field: `- **Issue:** #<number>` when a GitHub issue exists. When no GitHub issue exists, write `- **Issue:** —` (no leading `#` — avoid `#—`). The legacy template's `- **GitHub Issue:** ...` field follows the same rule. Append a row to the Active table in `docs/product-specs/index.md`:
    - With GitHub issue: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
-   - Without GitHub issue: `| — | — | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |` (and set `Issue: —` in the spec front matter)
+   - Without GitHub issue: `| — | — | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |` (bare em-dash, no leading `#`)
    **Legacy layout:** Create the feature file at `features/active/<filename>` and append to `features/BACKLOG.md` Active table (same `—` substitution when no GitHub issue exists).
 
 ### Phase 4: Triage

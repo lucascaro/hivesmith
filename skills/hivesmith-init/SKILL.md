@@ -83,7 +83,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
      ```toml
      [github]
      # One of: "opt-out" (create by default), "opt-in" (skip by default), "ask" (no default).
-     # /feature-new and /feature-loop honor this when prompting at their Gate 1.
+     # The feature pipeline skills honor this when prompting at Gate 1.
      create_issues = "<value>"
      ```
    - Create the `.hivesmith/` directory if missing. This file is committed (project-level policy).
