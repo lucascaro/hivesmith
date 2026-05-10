@@ -18,7 +18,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = TRIAGE.
-3. **Index-only at TRIAGE.** No exec plan exists yet at TRIAGE (`/feature-research` creates the first plan). The index row is the source of truth. If a plan unexpectedly exists already (someone jumped ahead) and its Stage is past TRIAGE, refuse — the workflow is out of order. Otherwise read the index row's `Stage:`; if it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/ralph-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage.
+3. **Index-only at TRIAGE.** No exec plan exists yet at TRIAGE (`/feature-research` creates the first plan). The index row is the source of truth. If a plan unexpectedly exists already (someone jumped ahead) and its Stage is past TRIAGE, refuse — the workflow is out of order. Otherwise read the index row's `Stage:`; if it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage.
 
 ## Layout resolution
 

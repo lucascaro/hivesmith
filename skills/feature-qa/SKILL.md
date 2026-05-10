@@ -10,11 +10,11 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent AskUserQuestion
 
 Validate feature **#$ARGUMENTS** (or the next feature in QA stage if no argument given) against its spec's success criteria. This is the final stage of the feature pipeline: only when QA returns `PASS` does the plan advance to `DONE` and move to `completed/`.
 
-This skill assumes the PR has already merged and the change is on the default branch. It does **not** run on open PRs — `/ralph-loop` owns that.
+This skill assumes the PR has already merged and the change is on the default branch. It does **not** run on open PRs — `/review-loop` owns that.
 
 ## Philosophy: boil the lake
 
-QA is the last chance to catch a partial implementation that slipped past `/review-pr` and `/ralph-loop`. Every success criterion in the spec, every test the plan promised, every build/lint/test command in `AGENTS.md` — run them all. Don't declare PASS on a "looks fine" basis when the spec lists checks you didn't run. If a check is genuinely an **ocean** (requires production telemetry, end-user signal, or infrastructure not in this repo), record it under `NEEDS_FOLLOWUP` with what would close it — don't quietly skip it.
+QA is the last chance to catch a partial implementation that slipped past `/review-pr` and `/review-loop`. Every success criterion in the spec, every test the plan promised, every build/lint/test command in `AGENTS.md` — run them all. Don't declare PASS on a "looks fine" basis when the spec lists checks you didn't run. If a check is genuinely an **ocean** (requires production telemetry, end-user signal, or infrastructure not in this repo), record it under `NEEDS_FOLLOWUP` with what would close it — don't quietly skip it.
 
 ## Cold-start guard
 
@@ -23,7 +23,7 @@ This skill owns Stage = `QA`. Before doing any work:
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = QA.
 3. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by QA stage). The plan is authoritative; the index is a secondary view. If plan Stage is not `QA`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill. Never silently process the wrong stage.
-4. Verify the PR (from the plan's `PR:` header field) is merged: `gh pr view <pr-number> --json state -q .state` should be `MERGED`. If it is `OPEN`, tell the user to drive convergence and merge first via `/ralph-loop` and `/feature-loop`. If it is `CLOSED` and not merged, refuse — the feature was abandoned.
+4. Verify the PR (from the plan's `PR:` header field) is merged: `gh pr view <pr-number> --json state -q .state` should be `MERGED`. If it is `OPEN`, tell the user to drive convergence and merge first via `/review-loop` and `/feature-loop`. If it is `CLOSED` and not merged, refuse — the feature was abandoned.
 
 ## Layout resolution
 

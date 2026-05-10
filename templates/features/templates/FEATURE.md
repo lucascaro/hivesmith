@@ -41,7 +41,7 @@
 
 ## PR convergence ledger
 
-<Append-only. One entry per `/ralph-loop` iteration.>
+<Append-only. One entry per `/review-loop` iteration.>
 
 - **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short-sha>.
 

@@ -12,9 +12,9 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 
 - **A repo-as-system-of-record layout** — product specs (the *what/why*) in `docs/product-specs/`, exec plans (the *how*, with append-only Decision log + Progress) in `docs/exec-plans/{active,completed}/`, plus stubs for `DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `golden-principles.md`. `AGENTS.md` is a short table of contents that points into the tree.
 - **A feature pipeline** — ingest a GitHub issue, triage it, research the codebase, plan, implement, and ship. Each step is a single slash command writing to `docs/`. Any agent — Claude, Codex, Gemini — can pick up where another left off.
-- **PR convergence** — `/ralph-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
+- **PR convergence** — `/review-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
 - **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs.
-- **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-research` / `feature-plan` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `ralph-loop`. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
+- **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-research` / `feature-plan` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `review-loop`. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
 - **A parallel PR review** — three independent review agents (correctness & logic, safety & test isolation, performance & UX consistency) run in parallel and synthesize a single structured verdict.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
@@ -22,7 +22,7 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 
 ### Skills
 
-Invokable as `/feature-*`, `/ralph-loop`, etc.:
+Invokable as `/feature-*`, `/review-loop`, etc.:
 
 **Feature pipeline**
 
@@ -33,7 +33,7 @@ Invokable as `/feature-*`, `/ralph-loop`, etc.:
 | `/feature-triage [#]` | Classify type, complexity, and priority |
 | `/feature-research [#]` | Explore the codebase, create the exec plan |
 | `/feature-plan [#]` | Fill the exec plan's Approach, Files, and Tests sections |
-| `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/ralph-loop` |
+| `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/review-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
 | `/feature-loop [# \| description]` | Drive one feature through TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE with confirmation gates |
 
@@ -41,7 +41,7 @@ Invokable as `/feature-*`, `/ralph-loop`, etc.:
 
 | Skill | What it does |
 |---|---|
-| `/ralph-loop [#]` | Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit |
+| `/review-loop [#]` | Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit |
 | `/doc-garden` | Recurring sweep over `docs/` — detect stale docs, broken cross-links, drifted generated content; open one scoped fix-up PR per doc |
 | `/gc-sweep` | Read `golden-principles.md`, scan the codebase for deviations, open small targeted refactor PRs (one principle per PR) |
 | `/brain-ask <question>` | Search the brain and answer with citations |
@@ -52,8 +52,8 @@ Invokable as `/feature-*`, `/ralph-loop`, etc.:
 
 | Skill | What it does |
 |---|---|
-| `/review-pr <#>` | Parallel-agent deep PR review (used by `/ralph-loop`) |
-| `/autofix [#]` | Apply safe fixes from review findings, CI failures, or PR comments (used by `/ralph-loop`) |
+| `/review-pr <#>` | Parallel-agent deep PR review (used by `/review-loop`) |
+| `/autofix [#]` | Apply safe fixes from review findings, CI failures, or PR comments (used by `/review-loop`) |
 | `/changelog-update` | Add an `[Unreleased]` entry to `CHANGELOG.md` |
 | `/release <version>` | Pre-flight checks, version-bump suggestion, runs `scripts/release.sh` |
 
