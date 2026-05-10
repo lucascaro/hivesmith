@@ -67,18 +67,44 @@ list_args=(--scope "$SCOPE_FILTER")
 read -ra TERMS <<< "$QUERY"
 
 score_file() {
-    # Counts per-term matches (case-insensitive) across slug+tags+body.
-    # Returns a single integer score; 0 if any term misses.
-    local f="$1" total=0 t hits
-    local content
-    content="$(cat "$f")"
-    for t in "${TERMS[@]}"; do
-        # `grep -ic` counts lines, not occurrences — close enough for ranking.
-        hits="$(printf '%s' "$content" | grep -ic -- "$t" || true)"
-        [ "$hits" -eq 0 ] && return 1
-        total=$(( total + hits ))
-    done
-    printf '%d' "$total"
+    # Total case-insensitive *literal* occurrence count across all terms.
+    # Returns non-zero (skipping output) if any term has zero hits — AND semantics.
+    # Single awk pass per file regardless of term count, and counts occurrences
+    # not lines, so ranking reflects density.
+    local f="$1"
+    local out
+    # Pack TERMS into a control-char-separated string awk can split safely.
+    out="$(awk -v terms="$(IFS=$'\x1f'; printf '%s' "${TERMS[*]}")" '
+        BEGIN {
+            n = split(terms, t, "\x1f")
+            for (i = 1; i <= n; i++) {
+                tlow[i] = tolower(t[i])
+                hits[i] = 0
+                tlen[i] = length(tlow[i])
+            }
+        }
+        {
+            line = tolower($0)
+            for (i = 1; i <= n; i++) {
+                if (tlen[i] == 0) continue
+                p = 1
+                while ((j = index(substr(line, p), tlow[i])) > 0) {
+                    hits[i]++
+                    p = p + j  # advance past this match
+                }
+            }
+        }
+        END {
+            total = 0
+            for (i = 1; i <= n; i++) {
+                if (tlen[i] > 0 && hits[i] == 0) exit 1
+                total += hits[i]
+            }
+            print total
+        }
+    ' "$f")" || return 1
+    [ -n "$out" ] || return 1
+    printf '%s' "$out"
 }
 
 tmp_results="$(mktemp)"
