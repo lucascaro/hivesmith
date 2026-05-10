@@ -6,13 +6,12 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
-| P1 | #11 | Add hive brain — a second brain for hivesmith | QA | [011-add-hive-brain-second-brain-for-hivesmith](011-add-hive-brain-second-brain-for-hivesmith.md) |
 
 ## Completed
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
-| #<n> | <title> | #<pr> | <date> | [<slug>](<slug>.md) |
+| #11 | Add hive brain — a second brain for hivesmith | #12 | 2026-05-10 | [011-add-hive-brain-second-brain-for-hivesmith](011-add-hive-brain-second-brain-for-hivesmith.md) |
 
 ## Rejected
 
