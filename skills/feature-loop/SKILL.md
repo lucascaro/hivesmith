@@ -44,25 +44,31 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
 ## Phase 1: New Issue (description input only)
 
+3a. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
+
 4. Draft a GitHub issue from the description:
    - **Title:** concise, imperative (e.g. "Add dark mode toggle")
    - **Body:** a `## Description` section explaining the problem and desired behavior (2-4 sentences)
-5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask:
-   > "Create this GitHub issue?"
-   > 1. Yes — create it as shown
-   > 2. Edit the title
-   > 3. Edit the body
-   > 4. Cancel
+5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask "Create this GitHub issue?" with these options, where the *recommended* option depends on the policy from step 3a:
+   - `opt-out` → Recommended: "Create the issue as shown"
+   - `opt-in` → Recommended: "Skip GitHub, write spec locally only"
+   - `ask` → no recommendation
 
-   For options 2 or 3, prompt for the new value and loop back to show the updated draft. For option 4, stop.
-6. Run `gh issue create --title "..." --body "..."` and capture the new issue number.
+   Options (always present all four):
+   1. Create the issue as shown
+   2. Skip GitHub, write spec locally only
+   3. Edit the title or body
+   4. Cancel
+
+   For option 3, prompt for the new value and loop back to show the updated draft. For option 4, stop.
+6. **If the user chose "Create the issue":** run `gh issue create --title "..." --body "..."` and capture the new issue number. **If the user chose "Skip GitHub":** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Note in your local state whether a GitHub issue was created.
 7. Check for duplicates by zero-padded prefix: any `<NNN>-*.md` in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (current) or `features/{active,completed}/` (legacy). If found, warn and stop.
-8. Generate filename: zero-pad issue number to 3 digits, slugify title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`.
-9. **Current layout:** Read `docs/product-specs/_template.md`. Create `docs/product-specs/<filename>` filling in title, issue number, Problem section from issue body. Type/Complexity/Priority left blank for triage.
+8. Generate filename: zero-pad number to 3 digits, slugify title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`.
+9. **Current layout:** Read `docs/product-specs/_template.md`. Create `docs/product-specs/<filename>` filling in title, issue number (or `—` if no GitHub issue), Problem section from issue body. Type/Complexity/Priority left blank for triage.
    **Legacy layout:** Read `features/templates/FEATURE.md`. Create `features/active/<filename>`.
 10. Append a new row to the Active table in the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`):
-    Current: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
-    Legacy: `| — | #<number> | <title> | TRIAGE | — |`
+    - With GitHub issue: Current: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`; Legacy: `| — | #<number> | <title> | TRIAGE | — |`
+    - Without GitHub issue: replace `#<number>` with `—` in both layouts.
 11. Continue to Phase 2 (Triage).
 
 ## Phase 2: Triage
@@ -83,7 +89,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
     For options 2–4, prompt for the new value, update the classification, and re-present before asking again. For option 5, stop.
 15. Update the spec / feature file: set Type, Complexity, Priority.
 16. Update the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`): fill in complexity and priority, reorder rows by priority (P1 first), update Stage to RESEARCH.
-17. Apply GitHub label: `gh issue edit <number> --add-label triaged`.
+17. Apply GitHub label: if a GitHub issue exists for this feature (created in Phase 1 step 6, or pre-existing when resuming a numeric input), run `gh issue edit <number> --add-label triaged`. Skip when the spec was created locally without a GitHub issue (index row shows `—` instead of `#<number>`).
 18. Continue to Phase 3 (Research).
 
 ## Phase 3: Research
