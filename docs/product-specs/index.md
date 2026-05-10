@@ -6,6 +6,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
+| P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | IMPLEMENT | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
 
 ## Completed
 
@@ -22,6 +23,6 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 ## Conventions
 
 - Stage is owned by the exec plan, not the spec — when stage changes, update this index from the plan.
-- Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/ralph-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation. `DONE` = QA verdict PASS recorded.
+- Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/review-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation. `DONE` = QA verdict PASS recorded.
 - A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `docs/exec-plans/completed/` on QA PASS; the spec stays put.
 - `feature-next` reads from this file's Active table, ordered by priority.

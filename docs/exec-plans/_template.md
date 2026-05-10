@@ -50,7 +50,7 @@
 
 ## PR convergence ledger
 
-<Append-only. One entry per `/ralph-loop` iteration so a fresh harness run can pick up where the previous one left off without rereading PR comments. Keep entries one line each.>
+<Append-only. One entry per `/review-loop` iteration so a fresh harness run can pick up where the previous one left off without rereading PR comments. Keep entries one line each.>
 
 - **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short-sha>.
 

@@ -130,7 +130,7 @@ Propose a concrete feedback loop for this app. Walks the six dimensions, asking 
    ```
 
 4. **Auto-create follow-up specs** for each dimension's proposed fix. For each, run a script-equivalent of `/feature-new` (write directly — do not invoke another skill from inside this one):
-   - **Always create a real GitHub issue first** with `gh issue create --title "feedback-loop: <dimension> — <one-line>" --body "<the proposal text from docs/design-docs/feedback-loop.md>"`. Capture the issue number from the output. Never invent a placeholder number — the spec filename must match a real GitHub issue or the rest of the pipeline (triage labels, PR auto-link, ralph-loop) will collide with future issues. If `gh` is not configured, stop and tell the user to run `gh auth login` first; do not proceed.
+   - **Always create a real GitHub issue first** with `gh issue create --title "feedback-loop: <dimension> — <one-line>" --body "<the proposal text from docs/design-docs/feedback-loop.md>"`. Capture the issue number from the output. Never invent a placeholder number — the spec filename must match a real GitHub issue or the rest of the pipeline (triage labels, PR auto-link, review-loop) will collide with future issues. If `gh` is not configured, stop and tell the user to run `gh auth login` first; do not proceed.
    - Filename: `<NNN>-feedback-<dimension>.md` where `<NNN>` is the new issue number zero-padded to 3 digits.
    - Fill `docs/product-specs/_template.md` with the proposed fix as the Problem and Desired behavior.
    - Append to the index Active table at Stage = TRIAGE.

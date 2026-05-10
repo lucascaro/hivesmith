@@ -10,7 +10,7 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE — pausing for user confirmation before any mutation.
 
-`REVIEW` = PR open, `/ralph-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation against the spec's acceptance criteria. `DONE` = QA verdict PASS recorded.
+`REVIEW` = PR open, `/review-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation against the spec's acceptance criteria. `DONE` = QA verdict PASS recorded.
 
 **Input:**
 - A number → resume the matching active feature from its current stage
@@ -157,7 +157,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 41. Commit the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
 42. **[Gate 5 — confirm push and PR convergence]** Use AskUserQuestion to ask:
     > "Push branch, open PR, and drive convergence?"
-    > 1. Yes — push, create PR, advance to REVIEW (run /ralph-loop)
+    > 1. Yes — push, create PR, advance to REVIEW (run /review-loop)
     > 2. Yes — push, create PR, run /review-pr once (no convergence loop), leave at REVIEW
     > 3. Yes — push, create PR, skip review, leave at REVIEW
     > 4. No — leave branch local (no push), Stage stays IMPLEMENT
@@ -172,8 +172,8 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
 ## Phase 6: Review
 
-45. Run `/ralph-loop <pr-number>`. The loop writes a per-iteration line to the plan's **PR convergence ledger** so a fresh harness can pick up later. If it escalates, surface the reason and stop — do not advance to QA.
-46. **[Gate 6 — confirm merge]** When ralph-loop reports APPROVE, use AskUserQuestion to ask:
+45. Run `/review-loop <pr-number>`. The loop writes a per-iteration line to the plan's **PR convergence ledger** so a fresh harness can pick up later. If it escalates, surface the reason and stop — do not advance to QA.
+46. **[Gate 6 — confirm merge]** When review-loop reports APPROVE, use AskUserQuestion to ask:
     > "Convergence reached. Merge the PR now?"
     > 1. Yes — merge with `gh pr merge --squash`
     > 2. No — leave PR open (Stage stays REVIEW)
@@ -204,7 +204,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 - **User edits at gates are respected:** if the user edits the draft issue, triage classification, research findings, or plan, incorporate their changes before proceeding.
 - **If neither `docs/product-specs/` nor `features/` exist**, tell the user to run `/hivesmith-init` first and stop immediately.
 - **If a spec/plan/feature file is not found** for a given issue number, tell the user to run `/feature-ingest <number>` first.
-- **Convergence is the default**, not an opt-in. Option 1 (ralph-loop) is the recommended path; only use option 2 or 3 when there's a specific reason.
+- **Convergence is the default**, not an opt-in. Option 1 (review-loop) is the recommended path; only use option 2 or 3 when there's a specific reason.
 
 ## Anti-injection rule
 

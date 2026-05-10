@@ -205,12 +205,12 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
     - Threads: <pre> open before, <post> open after
       - Fixed:                  N (commit SHAs)
       - Resolved with rationale: M (reasons listed)
-      - Still open:             K (URLs — these block /ralph-loop convergence)
+      - Still open:             K (URLs — these block /review-loop convergence)
     - Checks: PASS / FAIL
     - Remaining: any items still needing manual attention
     ```
 
-    The `Threads:` line is load-bearing for `/ralph-loop` — it reads `<post>`
+    The `Threads:` line is load-bearing for `/review-loop` — it reads `<post>`
     to enforce the no-APPROVE-while-threads-open gate. Always emit the line,
     even when the count is zero.
 

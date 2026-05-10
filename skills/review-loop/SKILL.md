@@ -1,13 +1,13 @@
 ---
-name: ralph-loop
+name: review-loop
 description: Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit
 argument-hint: "[pr-number] [--max-iterations N]"
 allowed-tools: Read Glob Grep Bash Agent AskUserQuestion
 ---
 
-# Ralph Wiggum Loop
+# Review Loop
 
-Drive a single PR to convergence by iterating review → respond → re-review. Named after the autonomous loop pattern documented in OpenAI's "Harness engineering" post.
+Drive a single PR to convergence by iterating review → respond → re-review. Originally called the *Ralph Wiggum Loop* after the autonomous loop pattern documented in OpenAI's "Harness engineering" post (see `references/openai-harness-engineering.md`).
 
 This skill is the **inner PR-convergence loop**. It is independent of the feature pipeline — any PR (hand-authored, from `/feature-implement`, or from another tool) can be driven to convergence through it.
 
@@ -35,7 +35,7 @@ If no matching plan is found (PR was hand-authored, not from the feature pipelin
 ```bash
 PR=${1:-$(gh pr view --json number -q .number 2>/dev/null)}
 [ -z "$PR" ] && { echo "ABORT: no PR resolved. Pass a PR number."; exit 1; }
-gh pr view "$PR" --json state,isDraft,mergeable,baseRefName -q . > /tmp/ralph-pr-$PR.json
+gh pr view "$PR" --json state,isDraft,mergeable,baseRefName -q . > /tmp/review-loop-pr-$PR.json
 ```
 
 Stop with a clear message if the PR is closed, merged, or in draft.
@@ -50,7 +50,7 @@ For iteration `i` from 1 to `--max-iterations`:
 
    Worker prompt (self-contained — the worker has no view of this conversation):
 
-   > You are one iteration of the ralph-loop harness for PR **#<PR>** in the current repo. Strict mode: **<true|false>**.
+   > You are one iteration of the review-loop harness for PR **#<PR>** in the current repo. Strict mode: **<true|false>**.
    >
    > Do exactly this, in order:
    >
@@ -123,7 +123,7 @@ For iteration `i` from 1 to `--max-iterations`:
 When the loop converges (APPROVE or COMMENT-with-strict-off), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
 
 ```
-echo "<distilled pattern + how to avoid it next time>" | HIVESMITH_SKILL=hs-ralph-loop \
+echo "<distilled pattern + how to avoid it next time>" | HIVESMITH_SKILL=hs-review-loop \
   ~/.hivesmith/bin/brain-append \
   --slug "<kebab-case-pattern-name>" \
   --scope project \
@@ -155,7 +155,7 @@ When escalating, post a single PR comment summarizing:
 ## 4. Output
 
 ```
-## Ralph loop result
+## Review loop result
 PR: #<n>
 Iterations: <i>/<max>
 Final verdict: APPROVE | ESCALATED
@@ -170,7 +170,7 @@ Final verdict: APPROVE | ESCALATED
 
 ## 4a. On merge (best-effort post-loop hook)
 
-If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into ralph-loop after merging): if a matching plan was found in the cold-start step and its Stage is `REVIEW`, advance Stage → `QA` in both the plan header and the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
+If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into review-loop after merging): if a matching plan was found in the cold-start step and its Stage is `REVIEW`, advance Stage → `QA` in both the plan header and the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
 
 ## 5. Rules
 

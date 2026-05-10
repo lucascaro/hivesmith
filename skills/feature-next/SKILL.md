@@ -33,7 +33,7 @@ Feature Pipeline Status
 5. Check for un-ingested GitHub issues: run `gh issue list --state open --json number,title` and compare against existing spec/plan files (current layout: `docs/product-specs/`, `docs/exec-plans/{active,completed}/`; legacy: `features/active/` and `features/completed/`).
 6. Recommend the next action based on priority. Stages later in the pipeline take precedence — work in flight clears first:
    - If there are QA-stage items → "Run `/feature-qa <number>` to validate the merged feature"
-   - If there are REVIEW-stage items → "Run `/ralph-loop <pr-number>` to drive PR convergence (or `/feature-loop <number>` to resume from REVIEW with merge gate)"
+   - If there are REVIEW-stage items → "Run `/review-loop <pr-number>` to drive PR convergence (or `/feature-loop <number>` to resume from REVIEW with merge gate)"
    - If there are IMPLEMENT-stage items → "Run `/feature-implement <number>` to implement"
    - If there are PLAN-stage items → "Run `/feature-plan <number>` to create implementation plan"
    - If there are RESEARCH-stage items → "Run `/feature-research <number>` to research"
