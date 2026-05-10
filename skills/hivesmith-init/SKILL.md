@@ -72,6 +72,22 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - Use the same careful match as the installer: only rewrite `/<skill>` when preceded by start-of-line or a non-path character (whitespace, backtick, paren, bracket) and followed by end-of-line or a non-identifier character. Never rewrite `scripts/release.sh` (it's a path, not a slash-command).
    - Do NOT rewrite `CHANGELOG.md`, `features/**`, or `scripts/release.sh` — they don't reference slash-commands.
 
+6a. **Ensure `.hivesmith/config.toml` exists** — per-project policy file.
+   - If `.hivesmith/config.toml` already exists, skip silently (it is user-owned; never overwrite without `--force` + per-file confirmation).
+   - Otherwise, use AskUserQuestion to ask:
+     > "How should hivesmith handle GitHub issue creation in this project?"
+     > 1. Opt-out — create by default, ask before skipping (Recommended)
+     > 2. Opt-in — skip by default, ask before creating
+     > 3. Always ask — no default, prompt every time
+   - Map the choice to a value (`opt-out`, `opt-in`, or `ask`) and write `.hivesmith/config.toml`:
+     ```toml
+     [github]
+     # One of: "opt-out" (create by default), "opt-in" (skip by default), "ask" (no default).
+     # The feature pipeline skills honor this when prompting at Gate 1.
+     create_issues = "<value>"
+     ```
+   - Create the `.hivesmith/` directory if missing. This file is committed (project-level policy).
+
 7. **Initialize the hive brain (cross-project, lazy)** by sourcing the brain lib and calling `brain_lazy_init`:
    ```
    if [ -f "$HIVESMITH_DIR/scripts/brain/lib.sh" ]; then
@@ -94,6 +110,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - Edit `golden-principles.md` to define the rules `/gc-sweep` will enforce. Keep it short (5–10 principles).
    - Edit `DESIGN.md` to document domains, layers, and cross-cutting concerns.
    - Edit `scripts/release.sh` to set `PROJECT`, `REPO`, and `BUILD_CMD` at the top.
+   - Edit `.hivesmith/config.toml` to change the GitHub issue creation policy later (`opt-out` / `opt-in` / `ask`).
    - The hive brain at `~/.hivesmith/brain/` will accumulate cross-project lessons. Use `/hs-brain-promote` to broaden a project lesson, `/hs-brain-garden` to tidy.
    - Run `/feature-next` to verify the pipeline is wired up.
 
@@ -115,3 +132,4 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
 - Create `features/active/`, `features/completed/`, `features/rejected/` as empty dirs with `.gitkeep` if none exist (legacy)
 - Create `docs/exec-plans/active/`, `docs/exec-plans/completed/`, `docs/references/`, `docs/generated/` as empty dirs with `.gitkeep` if none exist
 - `--migrate` is a one-shot operation — it only writes to `docs/`, never deletes from `features/`
+- `.hivesmith/config.toml` is user-owned (unlike the AGENTS.md hivesmith block, which is owned by init). Never overwrite it without `--force` + per-file user confirmation. The init question in step 6a only fires when the file is absent.

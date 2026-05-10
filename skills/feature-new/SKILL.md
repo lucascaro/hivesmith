@@ -16,14 +16,30 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 
 ### Phase 1: Draft the issue
 
-1. Based on the description in `$ARGUMENTS`, draft a GitHub issue:
+1. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out` (current behavior).
+
+2. Based on the description in `$ARGUMENTS`, draft a GitHub issue:
    - **Title:** concise, imperative (e.g. "Add dark mode toggle")
    - **Body:** a `## Description` section explaining the problem and desired behavior (2-4 sentences)
-2. Present the proposed title and body to the user. Wait for confirmation or edits before proceeding.
 
-### Phase 2: Create the issue on GitHub
+3. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask "Create this GitHub issue?" with these options, where the *recommended* option depends on the policy from step 1:
+   - `opt-out` → Recommended: "Create the issue as shown"
+   - `opt-in` → Recommended: "Skip GitHub, write spec locally only"
+   - `ask` → no recommendation
 
-3. Run `gh issue create --title "..." --body "..."` and capture the new issue number from the output.
+   Options (always present all four):
+   1. Create the issue as shown
+   2. Skip GitHub, write spec locally only
+   3. Edit the title or body
+   4. Cancel
+
+   For option 3, prompt for the new value and loop back. For option 4, stop.
+
+### Phase 2: Create the issue (or allocate a local number)
+
+4. **If the user chose "Create the issue":** run `gh issue create --title "..." --body "..."` and capture the issue number from the output. Continue with step 5.
+
+   **If the user chose "Skip GitHub":** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Skip step 5 (do not run `gh issue view`); use the drafted title/body verbatim. Note in your local state that no GitHub issue exists for this feature.
 
 ### Phase 3: Ingest into feature pipeline
 
@@ -31,16 +47,17 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 - **Current:** spec at `docs/product-specs/<NNN>-<slug>.md`, index at `docs/product-specs/index.md`, template at `docs/product-specs/_template.md`.
 - **Legacy fallback:** file at `features/active/<NNN>-<slug>.md`, index at `features/BACKLOG.md`, template at `features/templates/FEATURE.md`. Only when `docs/product-specs/` does not exist.
 
-4. Run `gh issue view <number> --json number,title,body,labels` to fetch the issue.
-5. Check for duplicates by zero-padded prefix:
+5. **If a GitHub issue was created in step 4**, run `gh issue view <number> --json number,title,body,labels` to fetch the canonical issue text. **If the user chose "Skip GitHub"**, skip this step and use the drafted title/body from step 2 directly.
+6. Check for duplicates by zero-padded prefix:
    - Current: any `<NNN>-*.md` in `docs/product-specs/` or `docs/exec-plans/{active,completed}/`.
    - Legacy: any `<NNN>-*.md` in `features/active/` or `features/completed/`.
    If found, warn and stop.
-6. Generate filename: zero-pad the issue number to 3 digits, slugify the title (lowercase, hyphens, max 50 chars). Example: `069-add-dark-mode-toggle.md`.
-7. Read the spec template (current: `docs/product-specs/_template.md`; legacy: `features/templates/FEATURE.md`).
-8. **Current layout:** Create the spec at `docs/product-specs/<filename>` filling in title, issue number, Problem section from the issue body. Type/Complexity/Priority left blank for triage. Append a row to the Active table in `docs/product-specs/index.md`:
-   `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
-   **Legacy layout:** Create the feature file at `features/active/<filename>` and append to `features/BACKLOG.md` Active table.
+7. Generate filename: zero-pad the number to 3 digits, slugify the title (lowercase, hyphens, max 50 chars). Example: `069-add-dark-mode-toggle.md`.
+8. Read the spec template (current: `docs/product-specs/_template.md`; legacy: `features/templates/FEATURE.md`).
+9. **Current layout:** Create the spec at `docs/product-specs/<filename>` filling in title, issue number, Problem section from the issue body (or drafted body if no GitHub issue). Type/Complexity/Priority left blank for triage. The spec uses a bullet line (not front matter) for the issue field: `- **Issue:** #<number>` when a GitHub issue exists. When no GitHub issue exists, write `- **Issue:** —` (no leading `#` — avoid `#—`). The legacy template's `- **GitHub Issue:** ...` field follows the same rule. Append a row to the Active table in `docs/product-specs/index.md`:
+   - With GitHub issue: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
+   - Without GitHub issue: `| — | — | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |` (bare em-dash, no leading `#`)
+   **Legacy layout:** Create the feature file at `features/active/<filename>` and append to `features/BACKLOG.md` Active table (same `—` substitution when no GitHub issue exists).
 
 ### Phase 4: Triage
 
@@ -56,19 +73,19 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
     - Set the priority number and complexity in the Active table row.
     - Reorder rows by priority (P1 at top).
     - Update Stage to RESEARCH.
-16. **Update GitHub label:** `gh issue edit <number> --add-label triaged`.
+16. **Update GitHub label:** if a GitHub issue was created in step 4, run `gh issue edit <number> --add-label triaged`. Skip this step entirely when the user chose "Skip GitHub".
 
 ### Phase 5: Report
 
 17. Summarize what was created:
-    - GitHub issue number and URL.
+    - GitHub issue number and URL (or "no GitHub issue — local-only" when skipped).
     - Spec / feature file path.
     - Type, complexity, priority.
     - Current stage (RESEARCH).
 18. Remind user to run `/feature-research <number>` next.
 
 ## Rules
-- Always show the proposed issue contents and get user confirmation before creating on GitHub.
+- Always show the proposed issue contents at Gate 1; whether GitHub creation is the recommended default is governed by `.hivesmith/config.toml`'s `[github] create_issues` value (`opt-out` / `opt-in` / `ask`; default `opt-out` when missing).
 - Always show triage classification and get user confirmation before writing changes.
 - Single feature at a time.
 - Follow existing filename conventions (3-digit zero-pad, slugified title, max 50 chars).

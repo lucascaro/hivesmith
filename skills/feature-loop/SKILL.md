@@ -17,6 +17,8 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
 - Text → create a new GitHub issue first, then run the full pipeline
 - Nothing → pick the highest-priority active feature from the index
 
+**GitHub issue gating (applies to every phase below).** Whenever a step calls `gh issue edit <number> ...` (to add/remove labels) or otherwise references the issue on GitHub, **first check whether a GitHub issue actually exists for this feature**. The feature has a GitHub issue when it was created via the "Create the issue" path in Phase 1 (or was resumed from a numeric input that exists on GitHub); it does NOT have a GitHub issue when the user chose "Skip GitHub" in Phase 1 (the index row shows `—` instead of `#<number>` and the locally-allocated number is not a GitHub issue number). When no GitHub issue exists, **skip every `gh issue edit` / `gh pr` issue-linking step** silently — labels are only meaningful on GitHub. This rule overrides any later phase that names `gh issue edit` without restating the gate.
+
 ## Layout resolution
 
 Prefer the current layout, fall back to legacy for one release:
@@ -44,25 +46,33 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
 ## Phase 1: New Issue (description input only)
 
+3a. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
+
 4. Draft a GitHub issue from the description:
    - **Title:** concise, imperative (e.g. "Add dark mode toggle")
    - **Body:** a `## Description` section explaining the problem and desired behavior (2-4 sentences)
-5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask:
-   > "Create this GitHub issue?"
-   > 1. Yes — create it as shown
-   > 2. Edit the title
-   > 3. Edit the body
-   > 4. Cancel
+5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask "Create this GitHub issue?" with these options, where the *recommended* option depends on the policy from step 3a:
+   - `opt-out` → Recommended: "Create the issue as shown"
+   - `opt-in` → Recommended: "Skip GitHub, write spec locally only"
+   - `ask` → no recommendation
 
-   For options 2 or 3, prompt for the new value and loop back to show the updated draft. For option 4, stop.
-6. Run `gh issue create --title "..." --body "..."` and capture the new issue number.
+   Options (always present all four):
+   1. Create the issue as shown
+   2. Skip GitHub, write spec locally only
+   3. Edit the title or body
+   4. Cancel
+
+   For option 3, prompt for the new value and loop back to show the updated draft. For option 4, stop.
+6. **If the user chose "Create the issue":** run `gh issue create --title "..." --body "..."` and capture the new issue number. **If the user chose "Skip GitHub":** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Note in your local state whether a GitHub issue was created.
 7. Check for duplicates by zero-padded prefix: any `<NNN>-*.md` in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (current) or `features/{active,completed}/` (legacy). If found, warn and stop.
-8. Generate filename: zero-pad issue number to 3 digits, slugify title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`.
-9. **Current layout:** Read `docs/product-specs/_template.md`. Create `docs/product-specs/<filename>` filling in title, issue number, Problem section from issue body. Type/Complexity/Priority left blank for triage.
+8. Generate filename: zero-pad number to 3 digits, slugify title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`.
+9. **Current layout:** Read `docs/product-specs/_template.md`. Create `docs/product-specs/<filename>` filling in title, the Issue bullet line (see below), and the Problem section from the issue body when a GitHub issue exists, or from the drafted body when GitHub was skipped. Type/Complexity/Priority left blank for triage.
    **Legacy layout:** Read `features/templates/FEATURE.md`. Create `features/active/<filename>`.
+
+   The spec uses a bullet line (not front matter) for the issue field: `- **Issue:** #<number>` when a GitHub issue exists. When no GitHub issue exists, write `- **Issue:** —` (no leading `#` — avoid `#—`). The legacy template's `- **GitHub Issue:** ...` field follows the same rule.
 10. Append a new row to the Active table in the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`):
-    Current: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
-    Legacy: `| — | #<number> | <title> | TRIAGE | — |`
+    - With GitHub issue: Current: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`; Legacy: `| — | #<number> | <title> | TRIAGE | — |`
+    - Without GitHub issue: substitute `—` (bare em-dash, no leading `#`) for the `#<number>` cell in both layouts.
 11. Continue to Phase 2 (Triage).
 
 ## Phase 2: Triage
@@ -83,7 +93,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
     For options 2–4, prompt for the new value, update the classification, and re-present before asking again. For option 5, stop.
 15. Update the spec / feature file: set Type, Complexity, Priority.
 16. Update the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`): fill in complexity and priority, reorder rows by priority (P1 first), update Stage to RESEARCH.
-17. Apply GitHub label: `gh issue edit <number> --add-label triaged`.
+17. Apply GitHub label: if a GitHub issue exists for this feature (created in Phase 1 step 6, or pre-existing when resuming a numeric input), run `gh issue edit <number> --add-label triaged`. Skip when the spec was created locally without a GitHub issue (index row shows `—` instead of `#<number>`).
 18. Continue to Phase 3 (Research).
 
 ## Phase 3: Research
@@ -107,7 +117,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
     For option 2, continue the investigation and re-present findings before asking again. For option 3, stop.
 25. Update Stage → PLAN in the plan/feature file and the index.
-26. Apply GitHub label: `gh issue edit <number> --remove-label triaged --add-label researching`.
+26. Apply GitHub label (only when a GitHub issue exists — see the gating rule near the top of this file): `gh issue edit <number> --remove-label triaged --add-label researching`.
 27. Continue to Phase 4 (Plan).
 
 ## Phase 4: Plan
@@ -129,7 +139,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
     For option 2, prompt for what to change, update the plan, and re-present before asking again. For option 3, stop.
 33. Update Stage → IMPLEMENT in the plan/feature file and the index.
-34. Apply GitHub label: `gh issue edit <number> --remove-label researching --add-label planned`.
+34. Apply GitHub label (only when a GitHub issue exists — see the gating rule near the top of this file): `gh issue edit <number> --remove-label researching --add-label planned`.
 35. Continue to Phase 5 (Implement).
 
 ## Phase 5: Implement
@@ -155,7 +165,8 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 43. If options 1–3:
     - `git push -u origin <branch>`.
     - `gh pr create` referencing the issue — capture the PR number from the output.
-    - Apply GitHub label: `gh issue edit <number> --remove-label planned --add-label implementing`.
+    - Apply GitHub label (only when a GitHub issue exists — see the gating rule near the top of this file): `gh issue edit <number> --remove-label planned --add-label implementing`.
+    - When opening the PR, only include `Fixes #<number>` / issue-linking syntax in the PR body when a GitHub issue exists.
     - Record the PR + branch in the plan header (set the `PR:` and `Branch:` fields), update Stage → REVIEW in plan + index.
 44. Continue to Phase 6 (Review) for option 1, or run `/review-pr <pr-number>` once for option 2 and stop. Option 3 stops here. Option 4 stops at IMPLEMENT.
 
@@ -166,7 +177,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
     > "Convergence reached. Merge the PR now?"
     > 1. Yes — merge with `gh pr merge --squash`
     > 2. No — leave PR open (Stage stays REVIEW)
-47. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). Update Stage → QA in plan + index. Apply GitHub label: `gh issue edit <number> --remove-label implementing --add-label qa`.
+47. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). Update Stage → QA in plan + index. Apply GitHub label (only when a GitHub issue exists — see the gating rule near the top of this file): `gh issue edit <number> --remove-label implementing --add-label qa`.
 48. Continue to Phase 7 (QA).
 
 ## Phase 7: QA

@@ -5,6 +5,8 @@ This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills. Ke
 
 **Feature pipeline:** `/feature-next` → (`/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/ralph-loop` → `/feature-qa`
 
+**Issue-creation policy:** `.hivesmith/config.toml` sets `[github] create_issues` to `opt-out` (create by default), `opt-in` (skip by default), or `ask` (no default). `/feature-new` and `/feature-loop` honor this at their Gate 1 — the recommended option flips based on the policy, and the user can always override. Default when the file is missing: `opt-out`.
+
 Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/ralph-loop` driving convergence (writes a per-iteration line to the plan's `## PR convergence ledger`). `QA` = PR merged, `/feature-qa` validating against the spec's `## Success criteria` (writes `## QA verdict`). `DONE` = QA PASS; plan moved to `docs/exec-plans/completed/`. Each stage skill reads `Stage:` from the plan/index and refuses if mismatched, so any skill can be run cold from a fresh agent context.
 
 **PR convergence:** `/ralph-loop` drives review → autofix → re-review on any PR until findings clear or escalation criteria hit. Independent of the feature pipeline. When a matching exec plan exists, ralph-loop appends per-iteration entries to the plan's `## PR convergence ledger` so a fresh harness run can resume mid-loop.
