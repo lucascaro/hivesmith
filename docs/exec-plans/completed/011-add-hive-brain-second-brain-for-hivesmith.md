@@ -2,8 +2,8 @@
 
 - **Spec:** [docs/product-specs/011-add-hive-brain-second-brain-for-hivesmith.md](../../product-specs/011-add-hive-brain-second-brain-for-hivesmith.md)
 - **Issue:** #11
-- **Stage:** QA
-- **Status:** active
+- **Stage:** DONE
+- **Status:** completed
 - **PR:** [#12](https://github.com/lucascaro/hivesmith/pull/12)
 - **Branch:** feature/11-add-hive-brain (merged + deleted)
 
@@ -454,3 +454,17 @@ A test runner `scripts/brain/test/run-all.sh` invokes 2-10 and reports pass/fail
 ## Open questions
 
 See "Open questions for PLAN" in the Research section above.
+
+## QA verdict
+
+- **2026-05-10** — verdict: PASS; checks: 5 passed / 0 failed / 0 followups; followups: none; one-line: hive brain shipped end-to-end — schema, helpers, redaction, retrieval filtering, explicit promotion, six skill integrations, all gates green.
+  - 2026-05-10 dimensions:
+    - build/lint/test — PASS — shellcheck (17 files) ok; `scripts/brain/test/run-all.sh` 13/13; install smoke (`--prefix hs-` + `--prefix ""`) ok; render correctness ok; CHANGELOG `[Unreleased]` non-empty
+    - acceptance — PASS — schema (templates/brain/SCHEMA.md:10), read/write+filter (scripts/brain/read.sh:97-99,131; append.sh:67,115), redaction (redact.sh:14-44 — AKIA/ghp_/PEM masked, 30-line fence rejected), explicit promotion (skills/brain-promote/SKILL.md gates via AskUserQuestion), 3 readers + 3 writers + cross-repo isolation (test_append_isolation, test_read_filter)
+    - non-goals — PASS — no embedding/vector/Mem0/Letta/Zep/daemon code; AGENTS.md/CLAUDE.md untouched; brain wrapped as `<project-memory untrusted="true">`
+    - regression — PASS — install.sh `--no-auto-update` alias preserved; hivesmith-init steps additively inserted; 6 skill SKILL.md edits well-formed and renumbered; golden-principles.md #7 added cleanly. Note: 884c10f is a follow-up regression fix triggered by #11 (hardcoded skill list drift) — replaced with runtime enumeration.
+    - doc accuracy — PASS — CHANGELOG, README, AGENTS.md HIVESMITH block, templates/AGENTS.hivesmith.md, golden-principles.md #7, templates/brain/{SCHEMA,README}.md, skills/brain-{promote,garden}/SKILL.md all present and substantive
+
+## Progress (post-merge)
+
+- **2026-05-10** — QA PASS. Stage → DONE; plan moved to `docs/exec-plans/completed/`.

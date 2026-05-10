@@ -4,7 +4,7 @@
 - **Type:** enhancement
 - **Complexity:** M
 - **Priority:** P1
-- **Exec plan:** [docs/exec-plans/active/011-add-hive-brain-second-brain-for-hivesmith.md](../exec-plans/active/011-add-hive-brain-second-brain-for-hivesmith.md)
+- **Exec plan:** [docs/exec-plans/completed/011-add-hive-brain-second-brain-for-hivesmith.md](../exec-plans/completed/011-add-hive-brain-second-brain-for-hivesmith.md)
 
 ## Problem
 
