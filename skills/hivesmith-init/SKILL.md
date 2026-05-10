@@ -67,7 +67,8 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
      - the full `AGENTS.md` (if the skeleton was freshly scaffolded in step 5a), OR
      - just the hivesmith block (when step 5a appended or refreshed it) — do NOT touch the user's content outside the `<!-- BEGIN HIVESMITH -->` / `<!-- END HIVESMITH -->` markers. The diff comparison in step 5a must run **after** this prefix rewrite so it doesn't false-positive on prefix differences.
      - the scaffolded `CONTRIBUTING.md`.
-   - Known skill names: `feature-triage feature-ingest feature-research feature-plan feature-implement feature-new feature-next feature-loop changelog-update release review-pr autofix ralph-loop doc-garden gc-sweep hivesmith-init namecheck`.
+   - **Enumerate skill names dynamically** from the hivesmith repo — do NOT hardcode a list. The set of slash-commands to consider is every immediate subdirectory of `<HIVESMITH_DIR>/skills/` that contains a `SKILL.md`. One-liner: `find "$HIVESMITH_DIR/skills" -mindepth 2 -maxdepth 2 -name SKILL.md -print0 | xargs -0 -n1 dirname | xargs -n1 basename`. This keeps the rewrite self-maintaining as new skills are added.
+   - **Sort the enumerated list longest-first** before applying substitutions, so a shorter name (`feature-new`) can never partially match a longer one (`feature-next`).
    - Use the same careful match as the installer: only rewrite `/<skill>` when preceded by start-of-line or a non-path character (whitespace, backtick, paren, bracket) and followed by end-of-line or a non-identifier character. Never rewrite `scripts/release.sh` (it's a path, not a slash-command).
    - Do NOT rewrite `CHANGELOG.md`, `features/**`, or `scripts/release.sh` — they don't reference slash-commands.
 
