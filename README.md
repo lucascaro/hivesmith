@@ -14,6 +14,7 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 - **A feature pipeline** — ingest a GitHub issue, triage it, research the codebase, plan, implement, and ship. Each step is a single slash command writing to `docs/`. Any agent — Claude, Codex, Gemini — can pick up where another left off.
 - **PR convergence** — `/ralph-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
 - **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs.
+- **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-research` / `feature-plan` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `ralph-loop`. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
 - **A parallel PR review** — three independent review agents (correctness & logic, safety & test isolation, performance & UX consistency) run in parallel and synthesize a single structured verdict.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
@@ -43,6 +44,8 @@ Invokable as `/feature-*`, `/ralph-loop`, etc.:
 | `/ralph-loop [#]` | Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit |
 | `/doc-garden` | Recurring sweep over `docs/` — detect stale docs, broken cross-links, drifted generated content; open one scoped fix-up PR per doc |
 | `/gc-sweep` | Read `golden-principles.md`, scan the codebase for deviations, open small targeted refactor PRs (one principle per PR) |
+| `/brain-garden` | Tend `~/.hivesmith/brain/`: regenerate the index, archive expired entries, surface promotion + dedupe candidates |
+| `/brain-promote <slug>` | Broaden a brain entry's scope (project → user / ecosystem / universal). The only path that broadens scope. |
 
 **Review and release**
 

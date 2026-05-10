@@ -21,6 +21,14 @@ jobs:
             skills/namecheck/namecheck.sh
             templates/features/ingest.sh
             templates/scripts/release.sh
+            scripts/brain/lib.sh
+            scripts/brain/read.sh
+            scripts/brain/append.sh
+            scripts/brain/redact.sh
+            scripts/brain/index.sh
+            scripts/brain/test/run-all.sh
+            skills/brain-promote/promote.sh
+            skills/brain-garden/garden.sh
 
   install-smoke:
     runs-on: ubuntu-latest
@@ -50,6 +58,16 @@ jobs:
           grep -q '/hs-feature-plan' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
           ! grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
           grep -q 'scripts/release.sh' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-release/SKILL.md"
+
+  brain-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run brain test suite
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "ci"
+          bash scripts/brain/test/run-all.sh
 
   changelog:
     runs-on: ubuntu-latest

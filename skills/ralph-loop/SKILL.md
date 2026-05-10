@@ -111,12 +111,27 @@ For iteration `i` from 1 to `--max-iterations`:
    This is append-only. The orchestrator writes the line; the worker does not (the worker has no knowledge of the plan file).
 
 5. **Branch on verdict:**
-   - `APPROVE` AND `unresolved_threads_post == 0` — done. Exit the loop and go to §4.
+   - `APPROVE` AND `unresolved_threads_post == 0` — done. Exit the loop, append a brain entry (see §3.5) if a durable lesson was surfaced this run, then go to §4.
    - `APPROVE` with `unresolved_threads_post > 0` — never exit here. Continue to iteration `i+1` so autofix gets another pass at the open threads. If the next iteration's worker still cannot close them and we hit max iterations, §3 fires.
-   - `COMMENT` with strict off AND `unresolved_threads_post == 0` — done. Exit the loop and go to §4.
+   - `COMMENT` with strict off AND `unresolved_threads_post == 0` — done. Same path as APPROVE.
    - `COMMENT` with `unresolved_threads_post > 0` — continue (same reasoning as APPROVE-with-threads).
-   - `escalate_reason` non-empty — escalate with that reason (see §3).
+   - `escalate_reason` non-empty — escalate with that reason (see §3). **Do NOT append a brain entry on escalation** — non-converged runs are unreliable.
    - Otherwise — append a short line to `iteration_results` (`#i: <verdict>, <N> findings, threads=<post>, pushed=<bool>`) and continue to iteration `i+1`.
+
+## 3.5 Brain append on convergence
+
+When the loop converges (APPROVE or COMMENT-with-strict-off), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
+
+```
+echo "<distilled pattern + how to avoid it next time>" | HIVESMITH_SKILL=hs-ralph-loop \
+  ~/.hivesmith/bin/brain-append \
+  --slug "<kebab-case-pattern-name>" \
+  --scope project \
+  --tags "review,autofix,<dimension>" \
+  --confidence 0.5
+```
+
+Do not log run-specifics (which file, which PR) — those are in git history. Capture the *pattern*. Skip if the cleared findings were one-offs with no transferable lesson — silence is fine.
 
 ## 3. Escalation criteria
 
