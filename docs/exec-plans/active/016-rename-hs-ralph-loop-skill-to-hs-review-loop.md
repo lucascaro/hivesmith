@@ -185,7 +185,7 @@ This is a documentation/rename change with no code logic. Validation is mechanic
 
 ## PR convergence ledger
 
-(populated by `/hs-review-loop` once a PR exists.)
+- **2026-05-10 iter 1** — verdict: REQUEST_CHANGES; findings_hash: 1b73c0e2a0c8c1f8f2b5d1f0a6e8b9d5c4a7e1d4f6c9b2e5a8d1c4f7b0e3a6d9; threads_open: 0; action: autofix+push; head_sha: 8a0ac90.
 
 ## QA verdict
 
