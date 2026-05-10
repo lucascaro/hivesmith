@@ -266,6 +266,66 @@ test_read_budget() {
     rm -rf "$tmp"; unset BRAIN_HOME
 }
 
+# 11. list filters by scope and tag
+test_list_filters() {
+    local tmp; tmp="$(mktemp -d)"
+    export BRAIN_HOME="$tmp/brain"
+    setup_fakeproj "$tmp/A" "https://github.com/x/A.git"
+    (cd "$tmp/A" && echo "u1" | HIVESMITH_SKILL=t "$BRAIN_DIR/append.sh" --slug u1 --scope universal --tags "a,b" >/dev/null)
+    (cd "$tmp/A" && echo "p1" | HIVESMITH_SKILL=t "$BRAIN_DIR/append.sh" --slug p1 --scope project --tags "b,c" >/dev/null)
+    out="$("$BRAIN_DIR/list.sh")"
+    assert_contains "$out" "u1" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    assert_contains "$out" "p1" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    out="$("$BRAIN_DIR/list.sh" --scope universal)"
+    assert_contains "$out" "u1" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    assert_not_contains "$out" "p1" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    out="$("$BRAIN_DIR/list.sh" --tag c)"
+    assert_contains "$out" "p1" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    assert_not_contains "$out" "u1" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    out="$("$BRAIN_DIR/list.sh" --paths-only)"
+    assert_contains "$out" "universal/u1.md" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    rm -rf "$tmp"; unset BRAIN_HOME
+}
+
+# 12. search returns AND-matching entries ranked by hit count
+test_search_and_rank() {
+    local tmp; tmp="$(mktemp -d)"
+    export BRAIN_HOME="$tmp/brain"
+    setup_fakeproj "$tmp/A" "https://github.com/x/A.git"
+    (cd "$tmp/A" && echo "flaky timezone tests fail in CI" | HIVESMITH_SKILL=t "$BRAIN_DIR/append.sh" --slug tz-flake --scope universal >/dev/null)
+    (cd "$tmp/A" && echo "bash quoting matters" | HIVESMITH_SKILL=t "$BRAIN_DIR/append.sh" --slug bash-quoting --scope universal >/dev/null)
+    out="$("$BRAIN_DIR/search.sh" flaky)"
+    assert_contains "$out" "tz-flake" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    assert_not_contains "$out" "bash-quoting" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    # AND semantics: both terms must hit
+    out="$("$BRAIN_DIR/search.sh" flaky bash)"
+    assert_eq "$out" "" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    # paths-only mode
+    out="$("$BRAIN_DIR/search.sh" timezone --paths-only)"
+    assert_contains "$out" "universal/tz-flake.md" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    rm -rf "$tmp"; unset BRAIN_HOME
+}
+
+# 13. helpers work when invoked through a symlink (the `~/.hivesmith/bin/` install path)
+test_symlink_invocation() {
+    local tmp; tmp="$(mktemp -d)"
+    export BRAIN_HOME="$tmp/brain"
+    setup_fakeproj "$tmp/A" "https://github.com/x/A.git"
+    (cd "$tmp/A" && echo "x" | HIVESMITH_SKILL=t "$BRAIN_DIR/append.sh" --slug sym-x --scope universal >/dev/null)
+    local linkdir="$tmp/bin"
+    mkdir -p "$linkdir"
+    ln -s "$BRAIN_DIR/list.sh" "$linkdir/brain-list"
+    ln -s "$BRAIN_DIR/search.sh" "$linkdir/brain-search"
+    ln -s "$BRAIN_DIR/read.sh" "$linkdir/brain-read"
+    out="$("$linkdir/brain-list")"
+    assert_contains "$out" "sym-x" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    out="$("$linkdir/brain-search" sym-x)"
+    assert_contains "$out" "sym-x" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    out="$(cd "$tmp/A" && "$linkdir/brain-read")"
+    assert_contains "$out" "project-memory" || { rm -rf "$tmp"; unset BRAIN_HOME; return 1; }
+    rm -rf "$tmp"; unset BRAIN_HOME
+}
+
 # ---------------------------------------------------------------------------
 
 run_test "repo_hash canonicalization"           test_repo_hash
@@ -278,6 +338,9 @@ run_test "promote moves entry + updates scope"  test_promote
 run_test "lazy-init creates layout"             test_lazy_init
 run_test "garden flags stale graph_nodes"       test_garden_stale_graph_nodes
 run_test "read budget cap"                      test_read_budget
+run_test "list filters by scope and tag"        test_list_filters
+run_test "search AND-matches and ranks"         test_search_and_rank
+run_test "helpers work via symlink invocation"  test_symlink_invocation
 
 printf '\n%d passed, %d failed.\n' "$PASS" "$FAIL"
 if (( FAIL > 0 )); then

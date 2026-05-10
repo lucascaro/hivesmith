@@ -44,8 +44,9 @@ Invokable as `/feature-*`, `/ralph-loop`, etc.:
 | `/ralph-loop [#]` | Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit |
 | `/doc-garden` | Recurring sweep over `docs/` — detect stale docs, broken cross-links, drifted generated content; open one scoped fix-up PR per doc |
 | `/gc-sweep` | Read `golden-principles.md`, scan the codebase for deviations, open small targeted refactor PRs (one principle per PR) |
+| `/brain-ask <question>` | Search the brain and answer with citations |
 | `/brain-garden` | Tend `~/.hivesmith/brain/`: regenerate the index, archive expired entries, surface promotion + dedupe candidates |
-| `/brain-promote <slug>` | Broaden a brain entry's scope (project → user / ecosystem / universal). The only path that broadens scope. |
+| `/brain-promote [<slug>]` | Broaden a brain entry's scope (project → user / ecosystem / universal). The only path that broadens scope. With no slug, presents a picker. |
 
 **Review and release**
 

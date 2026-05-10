@@ -21,7 +21,14 @@
 # On schema failure: exits 64.
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_src="${BASH_SOURCE[0]}"
+while [ -L "$_src" ]; do
+    _d="$(cd -P "$(dirname "$_src")" && pwd)"
+    _src="$(readlink "$_src")"
+    [[ "$_src" != /* ]] && _src="$_d/$_src"
+done
+DIR="$(cd -P "$(dirname "$_src")" && pwd)"
+unset _src _d
 # shellcheck source=lib.sh disable=SC1091
 . "$DIR/lib.sh"
 
