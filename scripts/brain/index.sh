@@ -68,16 +68,18 @@ format_line() {
 }
 
 # Sort for the HOT tier: confidence desc, then created desc.
+# LC_ALL=C: keep numeric sort independent of the user's locale (commas vs dots,
+# etc.) so INDEX.md is byte-stable across environments.
 hot_entries=""
 if [ -s "$tmp" ]; then
     # shellcheck disable=SC2046
-    hot_entries=$(sort -t'|' -k5,5gr -k4,4r "$tmp" | head -n "$HOT_LINES")
+    hot_entries=$(LC_ALL=C sort -t'|' -k5,5gr -k4,4r "$tmp" | head -n "$HOT_LINES")
 fi
 
 # Sort for the ALL tier: scope asc, ecosystem asc, repo asc, created desc.
 all_entries=""
 if [ -s "$tmp" ]; then
-    all_entries=$(sort -t'|' -k1,1 -k2,2 -k3,3 -k4,4r "$tmp" | head -n "$ALL_LINES")
+    all_entries=$(LC_ALL=C sort -t'|' -k1,1 -k2,2 -k3,3 -k4,4r "$tmp" | head -n "$ALL_LINES")
 fi
 
 emit() {

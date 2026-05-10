@@ -94,9 +94,11 @@ emit_slice() {
         (( include == 0 )) && continue
 
         # applies_to filtering when present.
+        # The ` · ` field separator is a multibyte char (U+00B7); regex char-classes
+        # over it misbehave on byte-oriented tools. Use awk's literal-string FS instead.
         if [[ "$line" == *applies_to=* ]]; then
             local globs
-            globs="$(printf '%s' "$line" | sed -n 's/.*applies_to=\([^·]*\).*/\1/p' | sed 's/[[:space:]]*$//')"
+            globs="$(printf '%s' "$line" | awk -F'applies_to=' 'NF>1{print $2}' | awk -F' · ' '{print $1}' | sed 's/[[:space:]]*$//')"
             if ! applies_match "$globs" "$FILES_LIST"; then
                 continue
             fi

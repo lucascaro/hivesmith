@@ -51,7 +51,9 @@ while [[ $# -gt 0 ]]; do
         --uninstall) MODE="uninstall"; shift ;;
         --auto-upgrade) AUTO_UPGRADE_CLI=1; shift ;;
         --no-auto-upgrade) AUTO_UPGRADE_CLI=0; shift ;;
-        --no-auto-update) AUTO_UPGRADE_CLI=0; shift ;;  # deprecated alias
+        --no-auto-update)
+            printf 'install: --no-auto-update is deprecated; use --no-auto-upgrade. Persisting auto_upgrade=false.\n' >&2
+            AUTO_UPGRADE_CLI=0; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         --prefix) PREFIX_CLI="${2-}"; PREFIX_CLI_SET=1; shift 2 ;;
         --prefix=*) PREFIX_CLI="${1#--prefix=}"; PREFIX_CLI_SET=1; shift ;;

@@ -61,7 +61,10 @@ patterns = [
     (re.compile(r"gho_[A-Za-z0-9]{36,}"), "[redacted-gh-oauth]"),
     (re.compile(r"github_pat_[A-Za-z0-9_]{60,}"), "[redacted-gh-fine-grained-pat]"),
     (re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----.*?-----END (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----", re.DOTALL), "[redacted-private-key]"),
-    (re.compile(r"\b[A-Fa-f0-9]{40,}\b"), "[redacted-hex-blob]"),
+    # Threshold 64+ hex chars: avoids masking legitimate SHA-1 commit references
+    # (40 hex). Real secrets accidentally pasted (API keys, GPG keys, etc.) are
+    # typically longer; gitleaks (when present) handles the precise patterns.
+    (re.compile(r"\b[A-Fa-f0-9]{64,}\b"), "[redacted-hex-blob]"),
     (re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"), "[redacted-slack-token]"),
 ]
 for pat, rep in patterns:

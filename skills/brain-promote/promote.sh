@@ -76,7 +76,13 @@ if [ -e "$dst" ]; then
 fi
 
 mkdir -p "$dst_dir"
-git -C "$BRAIN_HOME" mv "${src#"$BRAIN_HOME"/}" "${dst#"$BRAIN_HOME"/}" 2>/dev/null || mv "$src" "$dst"
+# brain_lazy_init guarantees $BRAIN_HOME is a git repo, so git mv must succeed.
+# A failure here means the working tree is in an unexpected state — abort
+# rather than fall back to plain `mv`, which would leave the index inconsistent.
+if ! git -C "$BRAIN_HOME" mv "${src#"$BRAIN_HOME"/}" "${dst#"$BRAIN_HOME"/}"; then
+    printf 'promote: git mv failed — aborting (resolve the brain repo state by hand)\n' >&2
+    exit 68
+fi
 
 # Edit front-matter: scope, optionally remove repo, set/remove ecosystem.
 python3 - "$dst" "$TARGET_SCOPE" "$TARGET_ECOSYSTEM" <<'PY'

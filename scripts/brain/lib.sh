@@ -2,7 +2,8 @@
 # Shared helpers for the hivesmith brain.
 #
 # This file is sourced (not executed). All functions are namespaced `brain_*`.
-# It assumes bash 4+ and the tools listed in scripts/brain/README expectations.
+# It assumes bash 3.2+ (matches the rest of the hivesmith repo) and the tools
+# listed in scripts/brain/README expectations.
 
 set -u
 
