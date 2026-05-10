@@ -6,7 +6,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
-| P1 | #11 | Add hive brain — a second brain for hivesmith | REVIEW | [011-add-hive-brain-second-brain-for-hivesmith](011-add-hive-brain-second-brain-for-hivesmith.md) |
+| P1 | #11 | Add hive brain — a second brain for hivesmith | QA | [011-add-hive-brain-second-brain-for-hivesmith](011-add-hive-brain-second-brain-for-hivesmith.md) |
 
 ## Completed
 

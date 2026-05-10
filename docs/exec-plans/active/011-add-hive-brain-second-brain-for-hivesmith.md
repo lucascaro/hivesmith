@@ -2,8 +2,10 @@
 
 - **Spec:** [docs/product-specs/011-add-hive-brain-second-brain-for-hivesmith.md](../../product-specs/011-add-hive-brain-second-brain-for-hivesmith.md)
 - **Issue:** #11
-- **Stage:** PLAN
+- **Stage:** QA
 - **Status:** active
+- **PR:** [#12](https://github.com/lucascaro/hivesmith/pull/12)
+- **Branch:** feature/11-add-hive-brain (merged + deleted)
 
 ## Summary
 
