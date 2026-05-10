@@ -17,7 +17,7 @@ The skill is named `hs-review-loop` everywhere — directory name, SKILL.md fron
 ## Success criteria
 
 - `skills/ralph-loop/` no longer exists; `skills/review-loop/` exists with identical content modulo name fields.
-- `grep -rn "ralph-loop\|ralph_loop\|hs-ralph"` across the repo returns no hits (except possibly historical CHANGELOG entries describing the rename itself).
+- `grep -rn "ralph-loop\|ralph_loop\|hs-ralph"` across the repo returns no hits outside the rename's own paper trail: this spec, its exec plan, the `[Unreleased]` CHANGELOG entry, the product-specs index row that references this spec by title, and any historical exec-plan/log citations preserved intentionally.
 - Sibling skills (`feature-implement`, `feature-qa`, `feature-loop`, `feature-next`, `feature-plan`, `feature-triage`, `autofix`, `feedback-loop`) reference `/hs-review-loop` instead of `/hs-ralph-loop`.
 - `templates/AGENTS.hivesmith.md`, `templates/AGENTS.md`, AGENTS.md, README.md, and `docs/product-specs/index.md` all use the new name.
 - CHANGELOG.md has an `[Unreleased]` entry documenting the rename.
