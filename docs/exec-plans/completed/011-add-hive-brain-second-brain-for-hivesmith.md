@@ -464,6 +464,12 @@ See "Open questions for PLAN" in the Research section above.
     - non-goals — PASS — no embedding/vector/Mem0/Letta/Zep/daemon code; AGENTS.md/CLAUDE.md untouched; brain wrapped as `<project-memory untrusted="true">`
     - regression — PASS — install.sh `--no-auto-update` alias preserved; hivesmith-init steps additively inserted; 6 skill SKILL.md edits well-formed and renumbered; golden-principles.md #7 added cleanly. Note: 884c10f is a follow-up regression fix triggered by #11 (hardcoded skill list drift) — replaced with runtime enumeration.
     - doc accuracy — PASS — CHANGELOG, README, AGENTS.md HIVESMITH block, templates/AGENTS.hivesmith.md, golden-principles.md #7, templates/brain/{SCHEMA,README}.md, skills/brain-{promote,garden}/SKILL.md all present and substantive
+- **2026-05-10** — verdict: PASS (re-run); checks: 4 dimensions / 0 failed / 0 followups; followups: none; one-line: re-validated post-merge — all success criteria observable, all AGENTS.md gates green, non-goals respected, docs accurate.
+  - 2026-05-10 dimensions (re-run):
+    - build/lint/test — PASS — shellcheck (17 files) ok; scripts/brain/test/run-all.sh 13/13; install smoke both prefixes ok; render correctness ok; changelog gate ok; review-pr regression skipped (only SKILL.md prompt edited in PR #12)
+    - acceptance — PASS — schema templates/brain/SCHEMA.md:7-49; read scripts/brain/read.sh:44-46,94-101; write+redact scripts/brain/append.sh:82 + redact.sh:14,36-39,42-50,54-72; promote-only via skills/brain-promote/promote.sh; reads in feature-research/feature-plan/review-pr; writes in feature-implement/ralph-loop/review-pr; cross-repo isolation via test_append_isolation + test_read_filter
+    - non-goals+regression — PASS — no vector/embedding/mem0/letta/zep code (only spec mentions, all explicit non-goals); CLAUDE.md/AGENTS.md auto-memory untouched; file+git only, no real-time sync; skill diffs additive with silent-skip fallback
+    - doc accuracy — PASS — CHANGELOG [Unreleased]:8-9; README:17,47-49; AGENTS.md HIVESMITH block "Hive brain" subsection; templates/AGENTS.hivesmith.md mirrors; golden-principles.md #7; templates/brain/{SCHEMA,README}.md present
 
 ## Progress (post-merge)
 
