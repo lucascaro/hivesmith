@@ -2,10 +2,10 @@
 
 - **Spec:** [docs/product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md](../../product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md)
 - **Issue:** #20
-- **Stage:** IMPLEMENT
+- **Stage:** REVIEW
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #21
+- **Branch:** feature/20-add-full-auto-flag-to-hs-feature-loop-skill
 
 ## Summary
 
@@ -58,7 +58,7 @@ Modify `skills/feature-loop/SKILL.md` in-place to add `--full-auto` semantics. T
 |------|--------------------|-----------|------------------------|
 | 1 (issue create) | Pick policy-recommended option | No | None |
 | 2 (triage) | Reviewer subagent validates type/complexity/priority; auto-accept if confidence ≥ 8/10 | Yes | Confidence < 8 |
-| 3 (research sufficiency) | Reviewer subagent checks coverage of relevant code + constraints + risks | Yes | Confidence < 8 |
+| 3 (research sufficiency) | Reviewer subagent checks coverage of relevant code + constraints + risks; on `verdict: revise` run one more research pass and re-invoke once | Yes | Confidence < 8 after one revise pass, or `verdict: block` |
 | 4 (plan approval) | Reviewer subagent validates Approach + Files-to-change + Tests cover all success criteria | Yes | Confidence < 8, or any "must-fix" finding survives one revise pass |
 | 5 (push/PR + convergence) | Auto-pick option 1 when AGENTS.md checks all pass | No | Any check failed |
 | 6 (merge) | Auto-pick "yes" only when latest ledger entry is `verdict: APPROVE; action: stop` | No | Anything else |
