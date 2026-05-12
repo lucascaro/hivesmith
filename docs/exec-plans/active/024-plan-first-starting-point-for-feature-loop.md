@@ -103,4 +103,6 @@ No new automated test harness — consistent with how `feature-loop`, `feature-p
 
 ## PR convergence ledger
 
+- **2026-05-12 iter 1** — verdict: APPROVE; findings_hash: empty; threads_open: 0; action: stop; head_sha: ec78441.
+
 ## QA verdict
