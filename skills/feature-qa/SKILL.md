@@ -1,7 +1,6 @@
 ---
 name: feature-qa
 description: Validate a merged feature against its spec — runs build/test/lint and checks acceptance criteria, writes verdict to plan
-disable-model-invocation: true
 argument-hint: "[issue-number]"
 allowed-tools: Read Glob Grep Edit Write Bash Agent AskUserQuestion
 ---
