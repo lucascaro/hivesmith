@@ -7,7 +7,6 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
-| P2 | #24 | Add plan-first starting point to hs-feature-loop | QA | [024-plan-first-starting-point-for-feature-loop](024-plan-first-starting-point-for-feature-loop.md) |
 | P3 | #20 | Add --full-auto flag to hs-feature-loop skill | IMPLEMENT | [020-add-full-auto-flag-to-hs-feature-loop-skill](020-add-full-auto-flag-to-hs-feature-loop-skill.md) |
 
 ## Completed
@@ -15,6 +14,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
 | #11 | Add hive brain — a second brain for hivesmith | #12 | 2026-05-10 | [011-add-hive-brain-second-brain-for-hivesmith](011-add-hive-brain-second-brain-for-hivesmith.md) |
+| #24 | Add plan-first starting point to hs-feature-loop | #25 | 2026-05-12 | [024-plan-first-starting-point-for-feature-loop](024-plan-first-starting-point-for-feature-loop.md) |
 
 ## Rejected
 
