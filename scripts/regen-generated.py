@@ -187,9 +187,12 @@ def promote_unreleased_to_version(changelog_text: str, version: str, date: str) 
     unreleased_body = m.group(2).strip("\n")
     if not unreleased_body:
         raise RegenError(f"refusing to release {version}: [Unreleased] body is empty")
-    new_section = f"\n\n## [{version}] — {date}\n\n{unreleased_body}\n"
-    # Empty [Unreleased] + new stamped section directly below
-    return changelog_text[: m.start(2)] + "\n" + new_section + changelog_text[m.end(2) :]
+    # Aim for exactly one blank line between sections. Group 1 ends with
+    # `## [Unreleased]\n`; group 3 begins with `\n## [previous]`. The new
+    # body inserted between them needs to be `\n## [VERSION] — DATE\n\n<body>\n`
+    # so the final layout is `## [Unreleased]\n\n## [VERSION] — DATE\n\n<body>\n\n## [previous]`.
+    new_body = f"\n## [{version}] — {date}\n\n{unreleased_body}\n"
+    return changelog_text[: m.start(2)] + new_body + changelog_text[m.end(2) :]
 
 
 def regen_changelog(release_version: str | None = None) -> bool:

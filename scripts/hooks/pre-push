@@ -16,7 +16,7 @@ if [ -z "$BASE" ]; then
 fi
 
 # Has the branch added any .changesets/*.md (excluding README / .gitkeep)?
-if git diff --name-only "$BASE"...HEAD -- '.changesets/*.md' \
+if git diff --name-only "$BASE"...HEAD -- ':(glob).changesets/*.md' \
     | grep -v -E '^\.changesets/(README\.md|\.gitkeep)$' \
     | grep -q .; then
   exit 0

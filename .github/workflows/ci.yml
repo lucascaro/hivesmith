@@ -136,7 +136,7 @@ jobs:
             echo "OK: no-changeset label present — skipping requirement."
             exit 0
           fi
-          if git diff --name-only "$BASE"..."$HEAD" -- '.changesets/*.md' | grep -v '^.changesets/README.md$' | grep -q .; then
+          if git diff --name-only "$BASE"..."$HEAD" -- ':(glob).changesets/*.md' | grep -v '^.changesets/README.md$' | grep -q .; then
             echo "OK: PR adds at least one changeset."
             exit 0
           fi
