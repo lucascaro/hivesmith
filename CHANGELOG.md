@@ -44,6 +44,9 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
 
   For contributors with in-flight branches: rebase onto `main` after this lands, drop any conflicts in `CHANGELOG.md` / `docs/product-specs/index.md` (those edits are now obsolete), and add a `.changesets/*.md` describing your change. Use the `no-changeset` PR label if the change is docs- or CI-only.
 
+### Fixed
+- **`autofix` now resolves merge conflicts when a PR is marked `CONFLICTING` by GitHub.** Previously Source (c) only fired when `git status` already reported unmerged paths, so on a freshly checked-out PR branch autofix saw a clean tree and silently exited — even when GitHub had flagged the PR as unmergeable. New Phase 1 **step 2.5** (pre-flight merge initiator) queries `gh pr view --json mergeable,baseRefName` when a PR is in scope; on `CONFLICTING`, runs `git fetch origin "$BASE"` then `git merge --no-commit --no-ff "origin/$BASE"` to surface conflicts locally, after which the existing Source (c) flow takes over unchanged. Clean-merge case (branch behind base, no overlapping edits) commits with `merge: bring branch up to date with $BASE` and reports an INFO finding. Pre-flight is gated on a clean working tree, no existing `MERGE_HEAD`, and no in-progress rebase — if any precondition fails, pre-flight is skipped and the reason logged for Phase 5. `mergeable: UNKNOWN` retries once after 2s, then degrades gracefully. Companion change in `review-loop`: the previously-fetched-but-unused `mergeable` flag now routes any verdict to autofix when `CONFLICTING`, the worker envelope grows a `mergeable` field, and the per-iteration ledger entry records `mergeable:` and a new `autofix+push (conflict)` action. Plan template's `## PR convergence ledger` row format extended to match.
+
 ## [0.3.0] — 2026-04-21
 
 ### Changed
