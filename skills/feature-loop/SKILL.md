@@ -134,14 +134,18 @@ This phase replaces Phases 2–4 when the user invoked the loop with `plan <desc
 
 P1. **Resolve the description.** If `$ARGUMENTS` after stripping the `plan` keyword is non-empty, use it as the description. Otherwise, use AskUserQuestion with a single free-form prompt: "What's the feature?" — capture the response as the description.
 
-P2. **Enter plan mode.** Call `EnterPlanMode`. **No file writes, no `gh` mutations, no branch creation may occur until ExitPlanMode is approved.** Draft an implementation plan covering the same shape `/feature-plan` produces:
+P2. **Draft the plan for review.** **No file writes, no `gh` mutations, no branch creation may occur until the user approves.** Draft an implementation plan covering the same shape `/feature-plan` produces:
    - **Approach** — chosen design and why over the obvious alternative.
    - **Files to change** — numbered list with paths.
    - **New files** — paths and purpose.
    - **Tests** — concrete named test functions per `AGENTS.md` conventions.
    - **Open questions / risks** — edge cases, alternatives ruled out.
 
-   Iterate with the user. When the plan is solid, call `ExitPlanMode` for approval. If `EnterPlanMode` / `ExitPlanMode` are unavailable in the current environment, fall back to drafting the plan inline and using AskUserQuestion as the approval gate — but still respect the no-writes-before-approval rule.
+   Draft + approval branches:
+   - *If your runtime has a native plan mode* (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`): enter it now, iterate with the user inside it, and call the runtime's exit/approval action when the plan is solid.
+   - *Otherwise* (e.g. Codex CLI): draft the plan inline in the chat under a clear `### Draft plan for review` heading, iterate with the user, then ask a single yes/no/revise approval question (use AskUserQuestion if available; plain prose otherwise).
+
+   The no-writes-before-approval rule applies to both branches.
 
 P3. **On approval, derive the issue title.** Generate a concise imperative title (≤ 70 chars) from the approved plan. Use AskUserQuestion to confirm or edit it before any file/issue creation. This is the only post-approval gate.
 
@@ -221,22 +225,28 @@ P12. Continue to Phase 5 (Implement).
 28. Read `AGENTS.md` — especially the Testing and Documentation Maintenance sections. The plan must conform to the test strategy documented there.
 29. Open the relevant code files identified during research.
 30. For M/L complexity features, use Plan agent(s) to design the approach and consider trade-offs.
-31. Write the Approach section in the exec plan (legacy: in the feature file's Plan section):
+31. **Draft the plan for review.** Produce the shape below. **No writes to the exec plan, no `gh` mutations, no Stage changes during drafting.**
+    - *If your runtime has a native plan mode* (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`): enter it now and draft inside it. Iterate with the user.
+    - *Otherwise* (e.g. Codex CLI): draft the plan inline in the chat under a clear `### Draft plan for review` heading. Iterate with the user.
+
+    Plan shape (both branches):
     - **Approach:** chosen design and why it beats the obvious alternative.
     - **Files to change:** numbered list with file paths and what to change in each.
     - **New files:** path and purpose for any new file.
     - **Tests:** concrete, named test functions for every behavioral change — unit and integration tests per `AGENTS.md` conventions. List each with file path, function name, and what it verifies.
     - **Open questions / risks:** what could go wrong, edge cases, alternatives ruled out.
-32. **[Gate 4 — confirm plan]** Walk the user through the key decisions. Use AskUserQuestion to ask:
-    > "Approve this implementation plan?"
-    > 1. Yes — advance to IMPLEMENT
-    > 2. Revise the plan
-    > 3. Stop here (leave at PLAN stage)
+32. **[Gate 4 — confirm plan]** Approval branches:
+    - *Native plan mode*: call the runtime's exit-plan-mode / approval action.
+    - *Otherwise*: use AskUserQuestion (or plain prose if unavailable):
+      > "Approve this implementation plan?"
+      > 1. Yes — advance to IMPLEMENT
+      > 2. Revise the plan
+      > 3. Stop here (leave at PLAN stage)
 
-    For option 2, prompt for what to change, update the plan, and re-present before asking again. For option 3, stop.
+      For option 2, prompt for what to change, update the draft, and re-present before asking again. For option 3, stop.
 
-    **Full-auto:** if `FULL_AUTO=true`, invoke the reviewer subagent per **Full-auto mode** with the gate-4 prompt template. On `verdict: approve` ∧ `confidence` ≥ 8, treat it as option 1 and proceed. On `verdict: revise`, apply the must-fix items to the plan once, then re-invoke the reviewer once; if still not approved at confidence ≥ 8, fall back to AskUserQuestion. On `verdict: block` or malformed output, fall back to AskUserQuestion immediately. Full-auto must not silently bypass a reviewer that wants changes — a single revise pass is the maximum, then the user decides.
-33. Update Stage → IMPLEMENT in the plan/feature file and the index.
+    **Full-auto:** if `FULL_AUTO=true`, skip both branches above and invoke the reviewer subagent per **Full-auto mode** with the gate-4 prompt template against the drafted plan. On `verdict: approve` ∧ `confidence` ≥ 8, treat it as option 1 and proceed. On `verdict: revise`, apply the must-fix items to the draft once, then re-invoke the reviewer once; if still not approved at confidence ≥ 8, fall back to AskUserQuestion. On `verdict: block` or malformed output, fall back to AskUserQuestion immediately. Full-auto must not silently bypass a reviewer that wants changes — a single revise pass is the maximum, then the user decides.
+33. **On approval**, write the Approach section into the exec plan (legacy: into the feature file's Plan section), then update Stage → IMPLEMENT in the plan/feature file and the index.
 34. Apply GitHub label (only when a GitHub issue exists — see the gating rule near the top of this file): `gh issue edit <number> --remove-label researching --add-label planned`.
 35. Continue to Phase 5 (Implement).
 
