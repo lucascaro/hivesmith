@@ -27,7 +27,7 @@ When `--full-auto` is present in `$ARGUMENTS` (see Phase 0 step 1a for parsing),
 
 **Auto-decision rules per gate.**
 
-- **Gate 1 (issue creation):** auto-pick the policy-recommended option (per the `[github] create_issues` policy in step 3a). Skip AskUserQuestion. Never auto-select "Edit the title or body" or "Cancel".
+- **Gate 1 (issue creation):** auto-pick the policy-recommended option (per the `[github] create_issues` policy in step 3a). Skip AskUserQuestion. Never auto-select "Edit the title or body" or "Cancel". Note: when the policy is `always`, Gate 1 is already skipped unconditionally by Phase 1 (regardless of `--full-auto`).
 - **Gate 2 (triage), Gate 3 (research sufficiency), Gate 4 (plan approval):** spawn the **reviewer subagent** described below with the gate-specific prompt. If the subagent returns `verdict: approve` AND `confidence` ≥ 8, proceed. Otherwise fall back to the normal AskUserQuestion prompt and let the user decide. For Gate 3 and Gate 4 only, if the subagent returns `verdict: revise` with concrete must-fix items, address those once (Gate 3 = run one more research pass; Gate 4 = apply the revisions to the plan) and re-run the reviewer; if the second pass still isn't `approve` ∧ confidence ≥ 8, fall back to AskUserQuestion. Gate 2 has no revise-retry: any non-approve outcome falls back to AskUserQuestion immediately. `verdict: block` at any of these gates falls back to AskUserQuestion immediately, regardless of confidence.
 - **Gate 5 (push/PR + convergence path):** auto-pick option 1 ("push, create PR, advance to REVIEW") only when all AGENTS.md build/lint/test commands from step 40 passed. If any check failed, the existing stop-on-failure rule (see Rules and Phase 5 step 40) has already halted the run — there is nothing to auto-pick. Full-auto never bypasses a failed check.
 - **Gate 6 (merge):** auto-pick "Yes" **only** when the latest entry in the plan's `## PR convergence ledger` is `verdict: APPROVE` AND `action: stop`. Anything else (escalation, missing ledger, last verdict `COMMENT` or `REQUEST_CHANGES`) falls back to AskUserQuestion. Full-auto must never run `gh pr merge` on weak signal.
@@ -97,12 +97,12 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
 ## Phase 1: New Issue (description input only)
 
-3a. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
+3a. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `always`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
 
 4. Draft a GitHub issue from the description:
    - **Title:** concise, imperative (e.g. "Add dark mode toggle")
    - **Body:** a `## Description` section explaining the problem and desired behavior (2-4 sentences)
-5. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask "Create this GitHub issue?" with these options, where the *recommended* option depends on the policy from step 3a:
+5. **[Gate 1 — confirm before creating issue]** When the policy from step 3a is `always`, skip the AskUserQuestion call entirely: proceed straight to step 6 and create the GitHub issue. The operator can still cancel before Gate 2. Otherwise, present the draft title and body and use AskUserQuestion to ask "Create this GitHub issue?", where the *recommended* option depends on the policy:
    - `opt-out` → Recommended: "Create the issue as shown"
    - `opt-in` → Recommended: "Skip GitHub, write spec locally only"
    - `ask` → no recommendation
@@ -115,7 +115,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
    For option 3, prompt for the new value and loop back to show the updated draft. For option 4, stop.
 
-   **Full-auto:** if `FULL_AUTO=true`, skip the AskUserQuestion call and select the policy-recommended option silently (per the rule in **Full-auto mode**). Never auto-select "Edit" or "Cancel".
+   **Full-auto:** if `FULL_AUTO=true`, skip the AskUserQuestion call and select the policy-recommended option silently (per the rule in **Full-auto mode**). Never auto-select "Edit" or "Cancel". (The `always` policy already skips Gate 1 regardless of `FULL_AUTO`.)
 6. **If the user chose "Create the issue":** run `gh issue create --title "..." --body "..."` and capture the new issue number. **If the user chose "Skip GitHub":** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Note in your local state whether a GitHub issue was created.
 7. Check for duplicates by zero-padded prefix: any `<NNN>-*.md` in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (current) or `features/{active,completed}/` (legacy). If found, warn and stop.
 8. Generate filename: zero-pad number to 3 digits, slugify title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`.
@@ -146,9 +146,9 @@ P2. **Draft the plan for review.** **No file writes, no `gh` mutations, no branc
 
 P3. **On approval, derive the issue title.** Generate a concise imperative title (≤ 70 chars) from the approved plan. Use AskUserQuestion to confirm or edit it before any file/issue creation. This is the only post-approval gate.
 
-P4. **Read GitHub policy** (same as Phase 1 step 3a): `.hivesmith/config.toml [github] create_issues` → `opt-out` (default) / `opt-in` / `ask`.
+P4. **Read GitHub policy** (same as Phase 1 step 3a): `.hivesmith/config.toml [github] create_issues` → `opt-out` (default) / `always` / `opt-in` / `ask`.
 
-P5. **Gate 1P — create issue?** Same four options as Gate 1 (Create the issue / Skip GitHub / Edit title or body / Cancel), with the recommendation determined by policy. The "body" for the GitHub issue is a short `## Description` paragraph synthesizing what the feature does (2–4 sentences derived from the approved plan; do **not** paste the entire approved plan into the issue body — that belongs in the exec plan).
+P5. **Gate 1P — create issue?** When the policy is `always`, skip the prompt and proceed to P6 to create the issue. Otherwise, same four options as Gate 1 (Create the issue / Skip GitHub / Edit title or body / Cancel), with the recommendation determined by policy. The "body" for the GitHub issue is a short `## Description` paragraph synthesizing what the feature does (2–4 sentences derived from the approved plan; do **not** paste the entire approved plan into the issue body — that belongs in the exec plan).
 
 P6. **Create or skip the issue.** Same as Phase 1 step 6.
 

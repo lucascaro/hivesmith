@@ -16,13 +16,13 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 
 ### Phase 1: Draft the issue
 
-1. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out` (current behavior).
+1. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `always`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out` (current behavior).
 
 2. Based on the description in `$ARGUMENTS`, draft a GitHub issue:
    - **Title:** concise, imperative (e.g. "Add dark mode toggle")
    - **Body:** a `## Description` section explaining the problem and desired behavior (2-4 sentences)
 
-3. **[Gate 1 — confirm before creating issue]** Present the draft title and body. Use AskUserQuestion to ask "Create this GitHub issue?" with these options, where the *recommended* option depends on the policy from step 1:
+3. **[Gate 1 — confirm before creating issue]** When the policy is `always`, skip the prompt entirely: proceed straight to step 4 and create the GitHub issue. The operator can still cancel before Gate 2 (triage). Otherwise, present the draft title and body and use AskUserQuestion to ask "Create this GitHub issue?", where the *recommended* option depends on the policy:
    - `opt-out` → Recommended: "Create the issue as shown"
    - `opt-in` → Recommended: "Skip GitHub, write spec locally only"
    - `ask` → no recommendation
@@ -96,7 +96,7 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 18. Remind user to run `/feature-research <number>` next.
 
 ## Rules
-- Always show the proposed issue contents at Gate 1; whether GitHub creation is the recommended default is governed by `.hivesmith/config.toml`'s `[github] create_issues` value (`opt-out` / `opt-in` / `ask`; default `opt-out` when missing).
+- Always show the proposed issue contents at Gate 1; whether GitHub creation is the recommended default is governed by `.hivesmith/config.toml`'s `[github] create_issues` value (`opt-out` / `always` / `opt-in` / `ask`; default `opt-out` when missing). When the value is `always`, Gate 1 is skipped entirely and the issue is auto-created.
 - Always show triage classification and get user confirmation before writing changes.
 - Single feature at a time.
 - Follow existing filename conventions (3-digit zero-pad, slugified title, max 50 chars).

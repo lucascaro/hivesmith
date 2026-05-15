@@ -4,6 +4,7 @@
 .claude/
 .rendered/
 .gstack/
+.plans/
 
 # hive worktrees
 .worktrees
