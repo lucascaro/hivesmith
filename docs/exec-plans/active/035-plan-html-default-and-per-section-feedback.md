@@ -93,7 +93,7 @@ Rejected alternative: require callers to always set `feedback` and hard-fail whe
 
 ## PR convergence ledger
 
-<!-- filled by /review-loop -->
+- **2026-05-15 iter 1** — verdict: APPROVE; findings_hash: empty; threads_open: 0; action: stop; head_sha: c366e1c.
 
 ## QA verdict
 
