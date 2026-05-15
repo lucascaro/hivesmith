@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/033-hs-autofix-does-not-resolve-merge-conflicts.md](../../product-specs/033-hs-autofix-does-not-resolve-merge-conflicts.md)
 - **Issue:** —
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #36
+- **Branch:** feature/033-hs-autofix-merge-conflicts
 
 ## Summary
 
@@ -102,7 +102,9 @@ The autofix/review-loop skills are markdown specifications consumed by an LLM; t
 
 - **2026-05-15** — Spec triaged (bug / M / P2); exec plan created at RESEARCH.
 - **2026-05-15** — Plan approved via `/hs-plan-html` (no edits); advanced to IMPLEMENT.
-- **2026-05-15** — Implemented in `skills/autofix/SKILL.md` (Phase 1 step 2.5 + Source-list extension), `skills/review-loop/SKILL.md` (worker prompt step 1 + step 5 routing + envelope + ledger format), three plan/feature templates synced for ledger row format, CHANGELOG `[Unreleased]` entry under `### Fixed`, `.gitignore` excludes `.plans/`.
+- **2026-05-15** — Implemented in `skills/autofix/SKILL.md` (Phase 1 step 2.5 + Source-list extension), `skills/review-loop/SKILL.md` (worker prompt step 1 + step 5 routing + envelope + ledger format), three plan/feature templates synced for ledger row format, changeset `.changesets/033-autofix-resolves-merge-conflicts.md` (CHANGELOG regenerated), `.gitignore` excludes `.plans/`.
+- **2026-05-15** — All AGENTS.md checks green (shellcheck clean; brain tests 13/13; changelog gate ok; install dry-run + full install ok; render correctness ok; new content confirmed in `.rendered/hs-/skills/hs-{autofix,review-loop}/SKILL.md`).
+- **2026-05-15** — Pushed branch `feature/033-hs-autofix-merge-conflicts`, opened PR #36, stage → REVIEW.
 
 ## Open questions
 

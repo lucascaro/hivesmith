@@ -4,7 +4,8 @@ title: hs-autofix does not resolve merge conflicts
 type: bug
 complexity: M
 priority: P2
-stage: IMPLEMENT
+stage: REVIEW
+pr: 36
 ---
 
 # hs-autofix does not resolve merge conflicts
