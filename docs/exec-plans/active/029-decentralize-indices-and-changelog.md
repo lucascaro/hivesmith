@@ -82,7 +82,7 @@ This repo uses shell-script smokes, not unit tests. Equivalent verifications:
 
 ## PR convergence ledger
 
-<empty until /review-loop runs>
+- **2026-05-15 iter 1** — verdict: APPROVE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 0aaad6e.
 
 ## QA verdict
 
