@@ -82,10 +82,10 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 1a. **Parse `--full-auto`.** If the token `--full-auto` appears anywhere in `$ARGUMENTS`, remove it from the argument list and set a sticky boolean `FULL_AUTO=true` for the rest of this run. The remaining `$ARGUMENTS` (after stripping the flag) is what step 2 below classifies as number / text / empty. If `FULL_AUTO` is false, behavior at every gate is unchanged.
 
 2. Determine the feature to work on:
-   - **`$ARGUMENTS` is a number:** Find the plan whose name starts with the zero-padded number (current: `docs/exec-plans/active/<NNN>-*.md`; legacy: `features/active/<NNN>-*.md`). If only the spec exists (current layout, plan not yet created), the stage is TRIAGE. Read the file to get the current Stage. Jump to the phase for that stage.
+   - **`$ARGUMENTS` is a number:** Find the spec whose filename starts with the zero-padded number (`docs/product-specs/<NNN>-*.md`). Read its YAML frontmatter `stage:` — that's the canonical stage. Jump to the phase for that stage. Legacy fallback: read `features/active/<NNN>-*.md`'s `Stage:` line.
    - **`$ARGUMENTS` starts with `plan`** (case-insensitive, followed by whitespace or end-of-string): Strip the `plan` keyword. The remainder (if any) is the feature description. Jump to Phase 1P (plan-first). Check this branch *before* the generic text branch.
    - **`$ARGUMENTS` is text:** Treat it as a feature description. Go to Phase 1 (new issue).
-   - **No argument:** Read the index. Pick the first row in the Active table (highest priority). Find its plan/feature file, read the Stage, and jump to the phase for that stage.
+   - **No argument:** Scan `docs/product-specs/*.md` for active specs (frontmatter `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, QA}). Pick the highest-priority one (P1 first; ties broken by issue number). Jump to the phase for its `stage`. Do **not** read the generated `index.md` — it's a derived view. Legacy fallback: read `features/BACKLOG.md`'s Active table.
 3. Stage → phase mapping (skip earlier phases when resuming):
    - `TRIAGE` → Phase 2
    - `RESEARCH` → Phase 3
@@ -174,7 +174,7 @@ P12. Continue to Phase 5 (Implement).
 13. Classify:
     - **Type:** `bug` or `enhancement`
     - **Complexity:** `S` (< 1 day, few files), `M` (1-3 days, moderate scope), `L` (3+ days, significant changes)
-    - **Priority:** recommend where this sits in the backlog (P1 = top) relative to existing items in `docs/product-specs/index.md` (current) or `features/BACKLOG.md` (legacy fallback)
+    - **Priority:** recommend where this sits in the backlog (P1 = top) relative to existing specs' frontmatter `priority:` in `docs/product-specs/*.md` (current) or `features/BACKLOG.md` (legacy fallback). Read frontmatter directly — the generated `index.md` is just a derived view.
 14. **[Gate 2 — confirm triage]** Present type, complexity, and priority recommendation. Use AskUserQuestion to ask:
     > "Approve this triage classification?"
     > 1. Yes — save and advance to RESEARCH
