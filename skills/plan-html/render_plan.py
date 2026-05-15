@@ -21,16 +21,16 @@ Manifest schema (JSON):
       "heading": "Context",                    # H2 heading text
       "html": "<p>...body html...</p>",       # body content
       "changed": false,                        # optional; wraps body in <div class="changed">
-      "feedback": {                            # optional; appends <aside class="feedback">
-        "slug": "context",                     # data-section value
-        "label": "feedback - context",
+      "feedback": {                            # default-on; pass `false` to suppress
+        "slug": "context",                     # data-section value (defaults to section id)
+        "label": "feedback - context",         # defaults to "feedback — <heading>"
         "placeholder": "..."                   # optional textarea placeholder
       }
     },
     ...
   ],
-  "global_feedback": {                         # optional; appends a final bottom feedback slot
-    "slug": "global",
+  "global_feedback": {                         # default-on; pass `false` to suppress
+    "slug": "global",                          # defaults to "global"
     "label": "feedback - global / open questions",
     "placeholder": "..."
   }
@@ -171,9 +171,20 @@ def _render_feedback(fb: dict | None) -> str:
     )
 
 
+def _resolve_feedback(raw, default_slug: str, default_label: str) -> dict | None:
+    if raw is False:
+        return None
+    if raw is None:
+        return {"slug": default_slug, "label": default_label}
+    if isinstance(raw, dict):
+        return raw
+    return {"slug": default_slug, "label": default_label}
+
+
 def _render_section(section: dict) -> str:
     sid = html.escape(section["id"])
-    heading = html.escape(section["heading"])
+    heading_text = section["heading"]
+    heading = html.escape(heading_text)
     body = section.get("html", "")
     validate_section_html(section["id"], body)
     if section.get("changed"):
@@ -181,7 +192,12 @@ def _render_section(section: dict) -> str:
     else:
         body_block = body
     parts = [f'<h2 id="{sid}">{heading}</h2>', body_block]
-    fb = _render_feedback(section.get("feedback"))
+    fb_spec = _resolve_feedback(
+        section.get("feedback", None),
+        default_slug=section["id"],
+        default_label=f"feedback — {heading_text}",
+    )
+    fb = _render_feedback(fb_spec)
     if fb:
         parts.append(fb)
     return "\n".join(parts)
@@ -210,7 +226,12 @@ def render(manifest: dict, template: str) -> str:
     toc_html = _render_toc(manifest.get("toc") or [])
 
     body_blocks = [_render_section(s) for s in sections]
-    global_fb = _render_feedback(manifest.get("global_feedback"))
+    global_fb_spec = _resolve_feedback(
+        manifest.get("global_feedback", None),
+        default_slug="global",
+        default_label="feedback — global / open questions",
+    )
+    global_fb = _render_feedback(global_fb_spec)
     if global_fb:
         body_blocks.append("<hr>")
         body_blocks.append(global_fb)
@@ -274,6 +295,30 @@ def _self_test() -> int:
     tmp = Path(tempfile.gettempdir()) / "hs-plan-html-selftest.html"
     tmp.write_text(out, encoding="utf-8")
     sys.stderr.write(f"self-test OK -> {tmp}\n")
+
+    # Default-on feedback: when a section omits `feedback`, the renderer
+    # synthesizes one; when `feedback: false`, it suppresses; missing
+    # `global_feedback` defaults to the global aside being present.
+    default_fb_manifest = {
+        "title": "Feedback default test",
+        "sections": [
+            {"id": "alpha", "heading": "Alpha", "html": "<p>no feedback key</p>"},
+            {"id": "beta", "heading": "Beta", "html": "<p>opted out</p>", "feedback": False},
+        ],
+    }
+    out2 = render(default_fb_manifest, template)
+    fb_failures = []
+    if 'data-section="alpha"' not in out2:
+        fb_failures.append("default per-section feedback missing for 'alpha'")
+    if 'data-section="beta"' in out2:
+        fb_failures.append("section 'beta' with feedback=false still rendered an aside")
+    if 'data-section="global"' not in out2:
+        fb_failures.append("default global feedback aside missing")
+    if fb_failures:
+        for f in fb_failures:
+            sys.stderr.write(f"self-test FAIL: {f}\n")
+        return 1
+    sys.stderr.write("self-test OK (feedback defaults)\n")
 
     # Negative tests: disallowed tags must reject in every raw-HTML input
     # (section bodies, title_html, and lede all share the allowlist).

@@ -49,18 +49,50 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    test -d .git/rebase-merge -o -d .git/rebase-apply && echo "rebase in progress"
    test -f .git/MERGE_HEAD && echo "merge in progress"
    ```
-   Each conflict hunk is one finding: file path, line range of the `<<<<<<< / ======= / >>>>>>>` block, and the two sides' content.
+   Each conflict hunk is one finding: file path, line range of the `<<<<<<< / ======= / >>>>>>>` block, and the two sides' content. Source (c) is reachable two ways: from a naturally pre-existing conflict state (the user or a prior tool started the merge/rebase), or from the **pre-flight merge initiator** in step 2.5 below.
+
+   **2.5. Pre-flight merge initiator (when a PR is in scope).** Source (c) only fires when conflicts already exist locally. On a freshly checked-out PR branch that GitHub has marked unmergeable, `git status` is clean and Source (c) would silently miss the conflict. This step closes that gap.
+
+   Run **only when a PR number is in scope** (from `$ARGUMENTS` or the branch's PR). Pre-flight refuses to start if any of the following holds:
+   - Working tree is dirty: `git diff-index --quiet HEAD` exits non-zero
+   - A merge is already in progress: `test -f .git/MERGE_HEAD`
+   - A rebase is already in progress: `test -d .git/rebase-merge -o -d .git/rebase-apply`
+
+   If any refusal condition holds, skip pre-flight and log a one-line reason for Phase 5 reporting. Then continue to Source (c) — a pre-existing in-progress merge/rebase is exactly what Source (c) handles natively.
+
+   Otherwise, query GitHub:
+   ```bash
+   gh pr view "$PR" --json mergeable,baseRefName,headRefName
+   ```
+   Interpret `mergeable`:
+   - `MERGEABLE` (or any value indicating no conflict) → skip pre-flight silently and continue to Source (c).
+   - `UNKNOWN` → GitHub has not yet computed mergeability. Sleep 2s and re-query once. If still `UNKNOWN`, skip pre-flight (degraded mode — the next review-loop iteration will retry). Continue to Source (c).
+   - `CONFLICTING` → initiate the merge:
+     ```bash
+     git fetch origin "$BASE"
+     git merge --no-commit --no-ff "origin/$BASE"
+     ```
+     Two outcomes:
+     - **Conflicts surface locally** (the merge exits non-zero with `MERGE_HEAD` written). Fall through to Source (c) with no behavioral change — the existing flow now sees the same unmerged-paths state it would see if the user had started the merge by hand. The verification, SAFE/RISKY classification, in-place marker editing, and commit-granularity rules below all apply unchanged.
+     - **Clean merge** (no overlapping edits — branch was just behind base). The merge succeeds with no conflict markers; `git status` shows staged but uncommitted merge content. Commit immediately:
+       ```bash
+       git commit -m "merge: bring branch up to date with $BASE"
+       ```
+       Queue a synthetic finding `{source: preflight-merge, severity: INFO, description: "Branch was behind base; merged cleanly"}` so Phase 5 reports the action. Do not run Source (c) detection for this case — there are no unmerged paths.
+
+   **Why merge, not rebase.** Merge produces a single `MERGE_HEAD` state, easy to reason about and easy to abort with `git merge --abort` (subject to the rule in *Merge-conflict rules* below). Rebase replays N commits with N intermediate conflict states; verification cost compounds. This project squash-merges at land time, so the extra merge commit on the feature branch is absorbed into the squash and never reaches the base history. If a project lands PRs without squash, the `merge:` commit-subject prefix used above makes the resulting commit filterable in `git log`.
 
    **d. None of the above:** Stop and tell the user:
    > No review findings, PR, or unresolved conflicts found. Run `/review-pr <number>` first, or pass a PR number: `/autofix <number>`.
 
 3. **Normalize findings** into a working list. Each item has:
-   - **Source:** review / check / thread / ci
+   - **Source:** review / check / thread / ci / preflight-merge
    - **File path** and **line number** (if available)
    - **Description** of the problem
    - **Suggested fix** (if available)
-   - **Severity:** BLOCKING / IMPORTANT / MINOR (from review) or ERROR (from CI) or unrated (from threads)
+   - **Severity:** BLOCKING / IMPORTANT / MINOR (from review) or ERROR (from CI) or unrated (from threads) or INFO (from preflight-merge)
    - For `Source: thread`: also `thread_id`, `is_copilot`, thread URL — these are required to reply to and resolve the thread later.
+   - For `Source: preflight-merge`: file/line are empty; this is an action record, not a problem to fix. Phase 2 classification is skipped (the merge commit has already been made by step 2.5). Phase 5 reports it alongside any other actions taken.
 
 ## Phase 2 — Classify by Fix Confidence
 

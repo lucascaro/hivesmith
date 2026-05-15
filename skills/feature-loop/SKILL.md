@@ -222,19 +222,23 @@ P12. Continue to Phase 5 (Implement).
 28. Read `AGENTS.md` — especially the Testing and Documentation Maintenance sections. The plan must conform to the test strategy documented there.
 29. Open the relevant code files identified during research.
 30. For M/L complexity features, use Plan agent(s) to design the approach and consider trade-offs.
-31. **Draft the plan for review.** Produce the shape below. **No writes to the exec plan, no `gh` mutations, no Stage changes during drafting.**
-    - *If your runtime has a native plan mode* (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`): enter it now and draft inside it. Iterate with the user.
-    - *Otherwise* (e.g. Codex CLI): draft the plan inline in the chat under a clear `### Draft plan for review` heading. Iterate with the user.
+31. **Draft the plan for review.** Produce the shape below. **No writes to the exec plan, no `gh` mutations, no Stage changes during drafting** — with one exception: when the `hs-plan-html` path is selected (see below), the renderer writes `<plan>.html` + a feedback-server PID sidecar under `<workdir>/.plans/`. Those files are review-loop scratch (gitignored / in `.plans/`), not project artifacts.
 
-    Plan shape (both branches):
+    Plan shape:
     - **Approach:** chosen design and why it beats the obvious alternative.
     - **Files to change:** numbered list with file paths and what to change in each.
     - **New files:** path and purpose for any new file.
     - **Tests:** concrete, named test functions for every behavioral change — unit and integration tests per `AGENTS.md` conventions. List each with file path, function name, and what it verifies.
     - **Open questions / risks:** what could go wrong, edge cases, alternatives ruled out.
-32. **[Gate 4 — confirm plan]** Approval branches:
+
+    Pick a draft + approval branch (same precedence as Phase 1P):
+    - **Default — HTML plan via `hs-plan-html`.** When `skills/plan-html/template.html` exists and `HIVESMITH_PLAN_HTML` is unset or non-`0` and the user did not pass `--no-html`: build a manifest JSON (schema in `skills/plan-html/render_plan.py`'s module docstring), call `python3 skills/plan-html/render_plan.py --manifest ... --template skills/plan-html/template.html --out <workdir>/.plans/<slug>.html`, then `skills/plan-html/start.sh <plan>.html`. Tell the user the URL. Poll `<plan>.approved.json` to detect approval. When the user posts feedback, read `<plan>.feedback.json`, revise the manifest (set `changed: true` on affected sections), re-render to the same path. On approval, run `skills/plan-html/stop.sh <plan>.html` before continuing. Per-section feedback boxes are default-on in the renderer — every section gets one without callers having to set `feedback` in the manifest.
+    - **Fallback — native plan mode** (when the runtime has one, e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`): enter it now and draft inside it. Iterate with the user.
+    - **Last resort — inline chat draft** (e.g. Codex CLI with no plan mode and no HTML assets): draft the plan inline under a clear `### Draft plan for review` heading. Iterate with the user.
+32. **[Gate 4 — confirm plan]** Approval branches mirror step 31's three paths:
+    - *HTML plan path*: approval arrives via `<plan>.approved.json` (see step 31). Revisions arrive via `<plan>.feedback.json`. Loop until approved or the user cancels in chat.
     - *Native plan mode*: call the runtime's exit-plan-mode / approval action.
-    - *Otherwise*: use AskUserQuestion (or plain prose if unavailable):
+    - *Inline chat*: use AskUserQuestion (or plain prose if unavailable):
       > "Approve this implementation plan?"
       > 1. Yes — advance to IMPLEMENT
       > 2. Revise the plan
