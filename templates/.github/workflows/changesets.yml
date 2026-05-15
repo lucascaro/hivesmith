@@ -68,7 +68,9 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.merge_commit_sha || github.event.pull_request.head.sha }}
       - name: Regenerate against the merge ref
-        run: scripts/regen-generated.sh --check
+        # NOT `--check` — that would fail any PR that adds a source file
+        # because the committed generated copies legitimately lag.
+        run: scripts/regen-generated.sh
       - name: Require a changeset unless labelled no-changeset
         env:
           PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}

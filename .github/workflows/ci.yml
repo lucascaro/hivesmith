@@ -132,7 +132,12 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.merge_commit_sha || github.event.pull_request.head.sha }}
       - name: Regenerate against the merge ref (catches interaction bugs)
-        run: scripts/regen-generated.sh --check
+        # NOT `--check` — that would fail any PR that adds a source file
+        # because the committed generated copies legitimately lag (they are
+        # rewritten by `regenerate-generated` on push to main). The bare run
+        # exits non-zero only when the source frontmatter is invalid, which
+        # is exactly what we want this job to catch.
+        run: scripts/regen-generated.sh
       - name: Require a changeset unless labelled no-changeset
         env:
           PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
