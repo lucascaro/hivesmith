@@ -134,18 +134,19 @@ This phase replaces Phases 2–4 when the user invoked the loop with `plan <desc
 
 P1. **Resolve the description.** If `$ARGUMENTS` after stripping the `plan` keyword is non-empty, use it as the description. Otherwise, use AskUserQuestion with a single free-form prompt: "What's the feature?" — capture the response as the description.
 
-P2. **Draft the plan for review.** **No file writes, no `gh` mutations, no branch creation may occur until the user approves.** Draft an implementation plan covering the same shape `/feature-plan` produces:
+P2. **Draft the plan for review.** **No file writes, no `gh` mutations, no branch creation may occur until the user approves** — with one exception: when the `hs-plan-html` path is selected (see below), the renderer writes `<plan>.html` + a feedback-server PID sidecar under `<workdir>/.plans/`. Those files are review-loop scratch (gitignored / in `.plans/`), not project artifacts. Draft an implementation plan covering the same shape `/feature-plan` produces:
    - **Approach** — chosen design and why over the obvious alternative.
    - **Files to change** — numbered list with paths.
    - **New files** — paths and purpose.
    - **Tests** — concrete named test functions per `AGENTS.md` conventions.
    - **Open questions / risks** — edge cases, alternatives ruled out.
 
-   Draft + approval branches:
-   - *If your runtime has a native plan mode* (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`): enter it now, iterate with the user inside it, and call the runtime's exit/approval action when the plan is solid.
-   - *Otherwise* (e.g. Codex CLI): draft the plan inline in the chat under a clear `### Draft plan for review` heading, iterate with the user, then ask a single yes/no/revise approval question (use AskUserQuestion if available; plain prose otherwise).
+   Pick a draft + approval branch:
+   - **Default — HTML plan via `hs-plan-html`.** When `skills/plan-html/template.html` exists and `HIVESMITH_PLAN_HTML` is unset or non-`0` and the user did not pass `--no-html`: build a manifest JSON (schema in `skills/plan-html/render_plan.py`'s module docstring), call `python3 skills/plan-html/render_plan.py --manifest ... --template skills/plan-html/template.html --out <workdir>/.plans/<slug>.html`, then `skills/plan-html/start.sh <plan>.html`. Tell the user the URL. Poll `<plan>.approved.json` to detect approval. When the user posts feedback, read `<plan>.feedback.json`, revise the manifest (set `changed: true` on affected sections), re-render to the same path. On approval, run `skills/plan-html/stop.sh <plan>.html` before continuing.
+   - **Fallback — native plan mode** (when the runtime has one, e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`): enter it now, iterate with the user inside it, and call the runtime's exit/approval action when the plan is solid.
+   - **Last resort — inline chat draft** (e.g. Codex CLI with no plan mode and no HTML assets): draft the plan inline under a clear `### Draft plan for review` heading, iterate, then ask a single yes/no/revise approval question.
 
-   The no-writes-before-approval rule applies to both branches.
+   The no-writes-before-approval rule applies to all three branches (except `.plans/` scratch as noted).
 
 P3. **On approval, derive the issue title.** Generate a concise imperative title (≤ 70 chars) from the approved plan. Use AskUserQuestion to confirm or edit it before any file/issue creation. This is the only post-approval gate.
 
