@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/029-add-opt-in-html-plan-review-skill.md](../../product-specs/029-add-opt-in-html-plan-review-skill.md)
 - **Issue:** #29
-- **Stage:** REVIEW
+- **Stage:** QA
 - **Status:** active
 - **PR:** [#30](https://github.com/lucascaro/hivesmith/pull/30)
 - **Branch:** feature/29-add-opt-in-html-plan-review-skill

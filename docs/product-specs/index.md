@@ -7,7 +7,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
-| P2 | #29 | Add opt-in HTML plan review skill (hs-plan-html) | REVIEW | [029-add-opt-in-html-plan-review-skill](029-add-opt-in-html-plan-review-skill.md) |
+| P2 | #29 | Add opt-in HTML plan review skill (hs-plan-html) | QA | [029-add-opt-in-html-plan-review-skill](029-add-opt-in-html-plan-review-skill.md) |
 | P3 | #20 | Add --full-auto flag to hs-feature-loop skill | IMPLEMENT | [020-add-full-auto-flag-to-hs-feature-loop-skill](020-add-full-auto-flag-to-hs-feature-loop-skill.md) |
 
 ## Completed
