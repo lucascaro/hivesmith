@@ -54,10 +54,21 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
    If found, warn and stop.
 7. Generate filename: zero-pad the number to 3 digits, slugify the title (lowercase, hyphens, max 50 chars). Example: `069-add-dark-mode-toggle.md`.
 8. Read the spec template (current: `docs/product-specs/_template.md`; legacy: `features/templates/FEATURE.md`).
-9. **Current layout:** Create the spec at `docs/product-specs/<filename>` filling in title, issue number, Problem section from the issue body (or drafted body if no GitHub issue). Type/Complexity/Priority left blank for triage. The spec uses a bullet line (not front matter) for the issue field: `- **Issue:** #<number>` when a GitHub issue exists. When no GitHub issue exists, write `- **Issue:** —` (no leading `#` — avoid `#—`). The legacy template's `- **GitHub Issue:** ...` field follows the same rule. Append a row to the Active table in `docs/product-specs/index.md`:
-   - With GitHub issue: `| — | #<number> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
-   - Without GitHub issue: `| — | — | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |` (bare em-dash, no leading `#`)
-   **Legacy layout:** Create the feature file at `features/active/<filename>` and append to `features/BACKLOG.md` Active table (same `—` substitution when no GitHub issue exists).
+9. **Current layout:** Create the spec at `docs/product-specs/<filename>` with YAML frontmatter at the top:
+
+   ```yaml
+   ---
+   issue: <number>           # omit when no GitHub issue exists
+   title: <title>
+   stage: TRIAGE
+   ---
+   ```
+
+   `type`, `complexity`, and `priority` are left out of the frontmatter at this stage — they're filled by Phase 4 (Triage). Body: title H1, then the Problem section from the issue body (or drafted body if no GitHub issue), then the rest of the spec template.
+
+   **Do not edit `docs/product-specs/index.md`.** The index is generated from spec frontmatter by `scripts/regen-generated.sh` on every push to `main`. Editing it directly will fail the `block-generated-edits` CI check.
+
+   **Legacy layout (only when `docs/product-specs/` does not exist):** Create the feature file at `features/active/<filename>` using the bullet-line format (no frontmatter) and append to `features/BACKLOG.md` Active table.
 
 ### Phase 4: Triage
 
@@ -67,13 +78,13 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 11. **Quick codebase scan:** Do a brief Glob/Grep search related to the feature to inform the complexity estimate. Don't do deep research — that's the RESEARCH stage.
 12. **Recommend priority:** Based on impact and complexity, suggest where this should sit in the backlog (P1 = top, higher number = lower priority). Consider existing items in the index when choosing.
 13. **Present findings to user:** Show type, complexity, and priority recommendation. Wait for confirmation or adjustment.
-14. **Update the spec file** (current) or feature file (legacy):
-    - Set Type, Complexity, Priority fields.
-15. **Update the index** (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`):
-    - Set the priority number and complexity in the Active table row.
-    - Reorder rows by priority (P1 at top).
-    - Update Stage to RESEARCH.
-16. **Update GitHub label:** if a GitHub issue was created in step 4, run `gh issue edit <number> --add-label triaged`. Skip this step entirely when the user chose "Skip GitHub".
+14. **Update the spec file's frontmatter** (current layout):
+    - Add `type:`, `complexity:`, `priority:` fields.
+    - Write the `stage:` change **last** — `stage: RESEARCH`. Cold-start guards in subsequent skills key off this field; writing it last means a mid-sequence crash leaves the spec resumable. If a partial-state crash already happened, this skill is idempotent: re-running it detects the partial state, completes the missing frontmatter writes, and proceeds.
+    - Do not edit `docs/product-specs/index.md` — it's generated.
+
+    **Legacy layout fallback:** update the feature file in place and append/edit the BACKLOG row as before.
+15. **Update GitHub label:** if a GitHub issue was created in step 4, run `gh issue edit <number> --add-label triaged`. Skip this step entirely when the user chose "Skip GitHub".
 
 ### Phase 5: Report
 

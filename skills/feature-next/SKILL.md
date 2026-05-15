@@ -12,13 +12,11 @@ Show the current state of the feature pipeline and recommend the next action.
 ## Steps
 
 1. **Locate the source of truth**, in this order:
-   - `docs/product-specs/index.md` (current layout)
+   - `docs/product-specs/<NNN>-*.md` files with YAML frontmatter (current layout). The frontmatter `stage:` field is canonical; **do not** read from the generated `docs/product-specs/index.md` (it's a regenerated view, not a source).
    - `features/BACKLOG.md` (legacy fallback — one release only)
    If neither exists, suggest the user run `/hivesmith-init` first.
-2. Read the index/backlog to get all active items.
-3. For each active item, read its exec plan to get the current stage:
-   - Current layout: `docs/exec-plans/active/<NNN>-<slug>.md`
-   - Legacy fallback: `features/active/<NNN>-<slug>.md`
+2. **Current layout:** scan each `docs/product-specs/<NNN>-*.md`, parse YAML frontmatter, collect `issue`, `title`, `stage`, `complexity`, `priority`, `pr`, `shipped`. Active items are those with `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, QA}. **Legacy layout:** read the BACKLOG row for each active feature, then read its exec plan for the current stage.
+3. For each active item, optionally read its exec plan (`docs/exec-plans/active/<NNN>-<slug>.md`) to surface the PR field for REVIEW-stage items.
 4. Display a summary table:
 
 ```

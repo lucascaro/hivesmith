@@ -2,7 +2,6 @@
 
 - **Spec:** [docs/product-specs/016-rename-hs-ralph-loop-skill-to-hs-review-loop.md](../../product-specs/016-rename-hs-ralph-loop-skill-to-hs-review-loop.md)
 - **Issue:** #16
-- **Stage:** REVIEW
 - **Status:** active
 - **PR:** [#18](https://github.com/lucascaro/hivesmith/pull/18)
 - **Branch:** feature/16-rename-ralph-loop-to-review-loop

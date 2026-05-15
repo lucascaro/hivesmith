@@ -1,9 +1,14 @@
+---
+issue: 20
+title: Add --full-auto flag to hs-feature-loop skill
+type: enhancement
+complexity: M
+priority: P3
+stage: IMPLEMENT
+---
+
 # Add `--full-auto` flag to hs-feature-loop skill
 
-- **Issue:** #20
-- **Type:** enhancement
-- **Complexity:** M
-- **Priority:** P3
 - **Exec plan:** [docs/exec-plans/active/020-add-full-auto-flag-to-hs-feature-loop-skill.md](../exec-plans/active/020-add-full-auto-flag-to-hs-feature-loop-skill.md)
 
 ## Problem

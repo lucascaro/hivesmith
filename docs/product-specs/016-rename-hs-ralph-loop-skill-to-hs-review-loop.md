@@ -1,9 +1,14 @@
+---
+issue: 16
+title: Rename hs-ralph-loop skill to hs-review-loop
+type: enhancement
+complexity: S
+priority: P2
+stage: REVIEW
+---
+
 # Rename hs-ralph-loop skill to hs-review-loop
 
-- **Issue:** #16
-- **Type:** enhancement
-- **Complexity:** S
-- **Priority:** P2
 - **Exec plan:** [docs/exec-plans/active/016-rename-hs-ralph-loop-skill-to-hs-review-loop.md](../exec-plans/active/016-rename-hs-ralph-loop-skill-to-hs-review-loop.md)
 
 ## Problem

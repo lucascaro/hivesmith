@@ -15,8 +15,8 @@ This skill owns Stage = `IMPLEMENT`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = IMPLEMENT.
-3. **Already-merged short-circuit (runs first, regardless of Stage).** If the plan has a `PR:` link in its header, run `gh pr view <pr-number> --json state -q .state`. If the result is `MERGED`: advance Stage → `QA` in plan + index (if not already there), tell the user to run `/feature-qa <issue-number>`, and exit. Do not run any code mutations from this skill on an already-merged feature. This handles partial prior runs where the PR got opened and merged but Stage wasn't advanced.
-4. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by IMPLEMENT stage). The plan is authoritative; the index is a secondary view. If plan Stage is not `IMPLEMENT`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage — the file is the source of truth, not the caller.
+3. **Already-merged short-circuit (runs first, regardless of stage).** If the plan has a `PR:` link in its header, run `gh pr view <pr-number> --json state -q .state`. If the result is `MERGED`: advance the spec's frontmatter `stage:` to `QA` (if not already there), tell the user to run `/feature-qa <issue-number>`, and exit. Do not run any code mutations from this skill on an already-merged feature. This handles partial prior runs where the PR got opened and merged but stage wasn't advanced.
+4. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: IMPLEMENT`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 
 ## Philosophy: boil the lake
 
@@ -36,7 +36,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 5. **Implement the plan:**
    - Follow the Approach and Files-to-change sections.
    - Follow all conventions in `AGENTS.md`.
-   - If the change is user-visible, run `/changelog-update` to add an `[Unreleased]` entry in `CHANGELOG.md`.
+   - If the change is user-visible, run `/changelog-update` to add a per-PR `.changesets/<NNN>-<slug>.md` file. `CHANGELOG.md` itself is generated — never edit it directly; CI rejects PRs that do.
    - Update any relevant docs (README, docs/, etc.) if the feature adds user-visible behavior.
    - Append entries to the plan's **Decision log** for any non-trivial decision made during coding. Append entries to **Progress** at meaningful state changes. Both sections are append-only.
 6. **Run checks** as defined in `AGENTS.md` (typically build + lint + test). All must pass before committing.
@@ -51,12 +51,13 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
    ```
    Default scope is `project`. Do not promote to broader scope here — that requires `/hs-brain-promote`. Skip if no durable lesson was surfaced; do not write filler.
 8. **Commit** the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
-9. **Offer to open a PR.** Ask the user if they want to push and create a PR. If yes:
+9. **Offer to open a PR.** Ask the user if they want to push and create a PR. If yes — write order matters: do all non-stage writes first, then the stage transition as the **last** write so a mid-sequence crash leaves the spec resumable:
     - `git push -u origin <branch>`.
     - Create PR with `gh pr create` referencing the issue — capture the PR number from the output.
     - Update GitHub labels: `gh issue edit <number> --remove-label planned --add-label implementing`.
     - Record the PR + branch in the plan header (`PR:` and `Branch:` fields).
-    - **Advance Stage → REVIEW** in the plan and the index. This skill does not own DONE — that is owned by `/feature-qa` after QA PASS.
+    - Backfill the open PR number into the spec's frontmatter (`pr: <n>`) and into any `.changesets/*.md` files created during this implementation that don't yet carry a `pr:` field.
+    - Last write — set the spec's frontmatter `stage:` to `REVIEW`. **Do not edit `docs/product-specs/index.md`.** It's generated; the `block-generated-edits` CI job rejects PRs that touch it directly. This skill does not own DONE — that is owned by `/feature-qa` after QA PASS.
 10. **Drive PR convergence with `/review-loop`** (only if a PR was opened). Invoke `/review-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. `/review-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
 11. **On review-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop` Phase 6 (Gate 6) or by hand. Stage stays at REVIEW until merge; on merge, `/review-loop` (or `/feature-loop`) advances Stage → QA, and `/feature-qa` is responsible for the final move to DONE and the plan-file relocation.
 

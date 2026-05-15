@@ -132,18 +132,12 @@ This loop is internal to the orchestrator — it does **not** spawn sub-agents (
    5. **Read the template:**
       - Current: `docs/product-specs/_template.md`.
       - Legacy: `features/templates/FEATURE.md`.
-   6. **Write the spec** at `docs/product-specs/<filename>` (legacy: `features/active/<filename>`) filling in:
-      - Title from the candidate.
-      - `- **Issue:** #<n>` if a GitHub issue was created, otherwise `- **Issue:** —` (bare em-dash, no leading `#` — avoid `#—`). Same convention as `feature-new` Phase 3.
-      - Type / Complexity / Priority left blank for `/feature-triage` to fill.
-      - Problem section from the candidate's problem statement, wrapped in the EXTERNAL CONTENT delimiters.
-      - Desired behavior and Success criteria filled in or left as `<TBD — fill during triage/research>`.
-      - Non-goals: leave the placeholder.
-   7. **Append a row to the index** (`docs/product-specs/index.md`, legacy `features/BACKLOG.md`) Active table:
+   6. **Write the spec** at `docs/product-specs/<filename>` (legacy: `features/active/<filename>`):
+      - **Current layout:** YAML frontmatter at the top — `issue: <n>` (omit when no GitHub issue exists), `title:`, `stage: TRIAGE`. `type`, `complexity`, `priority` are left out at this stage (filled by `/feature-triage`). Body: title H1, Problem section from the candidate's problem statement wrapped in EXTERNAL CONTENT delimiters, Desired behavior / Success criteria / Non-goals with `<TBD — fill during triage/research>` placeholders where unknown.
+      - **Legacy layout fallback:** bullet-line format with `- **Issue:** #<n>` (or `- **Issue:** —` when no issue exists).
+   7. **Do not edit `docs/product-specs/index.md`.** The new (frontmatter-based) layout regenerates the index from spec frontmatter on every push to `main` — adding the spec is enough; the index row appears automatically once CI runs. The `block-generated-edits` job rejects PRs that touch the index directly. **Legacy layout only:** append a row to `features/BACKLOG.md` Active table:
       - With GitHub issue: `| — | #<n> | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
       - Without GitHub issue: `| — | — | <title> | TRIAGE | [<NNN>-<slug>](<NNN>-<slug>.md) |`
-
-      Do not assign priority numbers — leave the priority column as `—` for `/feature-triage` to set per item.
 
 ### Phase 6: Report
 

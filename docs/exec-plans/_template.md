@@ -2,10 +2,16 @@
 
 - **Spec:** [docs/product-specs/<slug>.md](../../product-specs/<slug>.md)
 - **Issue:** #<number>
-- **Stage:** TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | QA | DONE
 - **Status:** active | completed
 - **PR:** —
 - **Branch:** —
+
+<!--
+Stage is **not** carried here. The spec's YAML frontmatter `stage:` is the
+sole source of truth. Skills read and write stage from the spec — never from
+this file or from the generated `docs/product-specs/index.md`.
+-->
+
 
 ## Summary
 

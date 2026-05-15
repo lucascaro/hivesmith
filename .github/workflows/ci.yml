@@ -29,6 +29,8 @@ jobs:
             scripts/brain/list.sh
             scripts/brain/search.sh
             scripts/brain/test/run-all.sh
+            scripts/regen-generated.sh
+            scripts/migrate-to-changesets.sh
             skills/brain-promote/promote.sh
             skills/brain-garden/garden.sh
 
@@ -71,22 +73,104 @@ jobs:
           git config --global user.name "ci"
           bash scripts/brain/test/run-all.sh
 
-  changelog:
+  block-generated-edits:
+    # Hard-fail any PR that touches a generated aggregate file directly.
+    # Bypass: apply the `regen-override` label (e.g. migration PRs,
+    # regenerator-bug fixes, history imports).
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Check [Unreleased] section is non-empty
+        with:
+          fetch-depth: 0
+      - name: Fail if PR edits generated files
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
         run: |
-          # Extract content between ## [Unreleased] and the next ## [
-          content=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md)
-          # Strip blank lines
-          non_blank=$(echo "$content" | grep -v '^[[:space:]]*$' || true)
-          if [ -z "$non_blank" ]; then
-            echo "ERROR: CHANGELOG.md [Unreleased] section is empty."
-            echo "Run /changelog-update to document your changes before pushing."
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          GENERATED=(
+            CHANGELOG.md
+            docs/product-specs/index.md
+            docs/exec-plans/tech-debt-tracker.md
+          )
+          touched=$(git diff --name-only "$BASE"..."$HEAD" -- "${GENERATED[@]}")
+          if [ -n "$touched" ]; then
+            if printf '%s' "$PR_LABELS" | grep -q '"name":"regen-override"'; then
+              echo "OK: regen-override label present — bypassing check."
+              echo "Touched:"
+              echo "$touched"
+              exit 0
+            fi
+            echo "::error::PR edits generated files directly:"
+            echo "$touched"
+            echo "These files are regenerated on main from .changesets/, spec frontmatter, and .tech-debt/."
+            echo "Edit the source files instead, or apply the 'regen-override' label if this is intentional."
             exit 1
           fi
-          echo "OK: [Unreleased] has content."
+          echo "OK: no generated files were touched."
+
+  verify-generated:
+    # Drift + interaction-bug detection. Runs the regenerator and fails if any
+    # source frontmatter is invalid. Also checks that the PR (or the merged
+    # state, via the GitHub-computed merge ref) carries at least one changeset
+    # unless labelled `no-changeset`.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Need access to both the PR branch and the merge ref for the
+          # interaction-bug pre-check.
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.event.pull_request.head.sha }}
+      - name: Regenerate against the merge ref (catches interaction bugs)
+        run: scripts/regen-generated.sh --check
+      - name: Require a changeset unless labelled no-changeset
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels) }}
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          if printf '%s' "$PR_LABELS" | grep -q '"name":"no-changeset"'; then
+            echo "OK: no-changeset label present — skipping requirement."
+            exit 0
+          fi
+          if git diff --name-only "$BASE"..."$HEAD" -- '.changesets/*.md' | grep -v '^.changesets/README.md$' | grep -q .; then
+            echo "OK: PR adds at least one changeset."
+            exit 0
+          fi
+          echo "::error::PR has no .changesets/*.md entry."
+          echo "Add a per-PR changeset with 'See .changesets/README.md' for the schema,"
+          echo "or apply the 'no-changeset' label if this is a docs/CI-only change."
+          exit 1
+
+  regenerate-generated:
+    # Post-merge: regenerate aggregates on main and direct-push the result.
+    # Uses [skip ci] to avoid runaway re-trigger; the next legitimate merge
+    # will rerun this job naturally.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Regenerate aggregates
+        run: scripts/regen-generated.sh
+      - name: Commit + push if changed
+        run: |
+          if [ -z "$(git status --porcelain CHANGELOG.md docs/product-specs/index.md docs/exec-plans/tech-debt-tracker.md)" ]; then
+            echo "no changes to commit"
+            exit 0
+          fi
+          git config user.name  "hivesmith-bot"
+          git config user.email "hivesmith-bot@users.noreply.github.com"
+          git add CHANGELOG.md docs/product-specs/index.md docs/exec-plans/tech-debt-tracker.md
+          git commit -m "chore: regenerate aggregates [skip ci]"
+          git push
 
   # Informational — macOS smoke. Not used as a branch-protection context.
   install-smoke-macos:

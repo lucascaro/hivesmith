@@ -2,7 +2,6 @@
 
 - **Spec:** [docs/product-specs/024-plan-first-starting-point-for-feature-loop.md](../../product-specs/024-plan-first-starting-point-for-feature-loop.md)
 - **Issue:** #24
-- **Stage:** DONE
 - **Status:** completed
 - **PR:** #25
 - **Branch:** feature/24-plan-first-feature-loop

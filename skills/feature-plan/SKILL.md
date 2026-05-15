@@ -16,7 +16,7 @@ This skill owns Stage = `PLAN`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = PLAN.
-3. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by PLAN stage — `/feature-research` creates it). The plan is authoritative; the index is a secondary view. If plan Stage is not `PLAN`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill (`/feature-triage` for TRIAGE, `/feature-research` for RESEARCH, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). If the plan is missing entirely, tell the user to run `/feature-research <N>` first. Never silently process the wrong stage.
+3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (the exec plan no longer carries one). Refuse unless `stage: PLAN`. If the exec plan is missing entirely, tell the user to run `/feature-research <N>` first. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 
 ## Philosophy: boil the lake
 
@@ -47,10 +47,10 @@ Completeness is cheap when AI does the work. When the complete design is a **lak
 7. **Gate — explicit user approval.**
    - *Native plan mode*: call the runtime's exit-plan-mode / approval action.
    - *Otherwise*: present the draft and ask a single yes/no/revise question (use a structured question primitive if available, e.g. `AskUserQuestion`; plain prose otherwise). Iterate on `revise` until the user approves.
-8. **On approval**, write the Approach section into the exec plan (legacy: into the feature file's Plan section), then:
-   - Update the plan's Stage to IMPLEMENT.
-   - Update the index's Stage to IMPLEMENT (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`).
+8. **On approval**, write the Approach section into the exec plan (legacy: into the feature file's Plan section). Write order matters — do all non-stage writes first, then the stage transition as the **last** write so a mid-sequence crash leaves the spec resumable. If a prior crash already advanced some writes, this step is idempotent: detect the partial state, finish the remaining writes, and proceed.
    - Update GitHub labels: `gh issue edit <number> --remove-label researching --add-label planned`.
+   - Last write — set the spec's frontmatter `stage:` to `IMPLEMENT`.
+   - **Do not edit `docs/product-specs/index.md`.** It's generated. The `block-generated-edits` CI job rejects PRs that touch it directly.
 9. **Report:** Confirm plan is locked in, remind user to run `/feature-implement <number>` next.
 
 ## Rules

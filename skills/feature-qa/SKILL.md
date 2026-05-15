@@ -21,7 +21,7 @@ This skill owns Stage = `QA`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = QA.
-3. **Plan-over-index precedence.** Read `Stage:` from the plan file (the plan must exist by QA stage). The plan is authoritative; the index is a secondary view. If plan Stage is not `QA`, refuse and point the user at `/feature-loop <N>` or the correct sub-skill. Never silently process the wrong stage.
+3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: QA`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 4. Verify the PR (from the plan's `PR:` header field) is merged: `gh pr view <pr-number> --json state -q .state` should be `MERGED`. If it is `OPEN`, tell the user to drive convergence and merge first via `/review-loop` and `/feature-loop`. If it is `CLOSED` and not merged, refuse — the feature was abandoned.
 
 ## Layout resolution
@@ -75,11 +75,12 @@ This skill owns Stage = `QA`. Before doing any work:
 
 6. **Branch on verdict:**
 
-   **On PASS:**
-   - Set `Stage:` to `DONE` and `Status:` to `completed` in the plan header.
+   **On PASS** — write order matters: do all non-stage writes first, then the spec frontmatter `stage:` transition as the **last** write (idempotent on re-run after partial-state crash):
+   - Set `Status:` to `completed` in the plan header. Do **not** write a `Stage:` line back into the plan — the plan no longer carries one; the spec's frontmatter `stage:` is the sole SoR.
    - Move the plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/` (legacy: `features/active/` → `features/completed/`).
-   - Update the spec's `Exec plan:` link to point at the `completed/` path (current layout only).
-   - Update the index: remove the row from the Active table, add a row to the Completed table (columns: Issue, Title, PR, Shipped, Spec) with the merged date from `gh pr view <pr-number> --json mergedAt -q .mergedAt` and the PR number.
+   - Update the spec's `Exec plan:` link to point at the `completed/` path.
+   - Set the spec's frontmatter `pr: <pr-number>` and `shipped: <merged-date>` (from `gh pr view <pr-number> --json mergedAt -q .mergedAt`, ISO date).
+   - Last write — set the spec's frontmatter `stage:` to `DONE`. **Do not edit `docs/product-specs/index.md`** — it's generated; the `block-generated-edits` CI job rejects PRs that touch it directly.
    - Commit: `git commit -m "chore: mark #<issue-number> done after QA pass"`. Do not push from this skill — let the user push or batch with other changes.
 
    **On FAIL:**
@@ -101,7 +102,7 @@ This skill owns Stage = `QA`. Before doing any work:
 
 ## Rules
 
-- QA is read-mostly: it runs commands, reads files, and writes only to the plan's `## QA verdict` section, the index, and (on PASS) moves the plan file.
+- QA is read-mostly: it runs commands, reads files, and writes only to the plan's `## QA verdict` section, the spec's frontmatter (on PASS), and (on PASS) moves the plan file. It never edits `docs/product-specs/index.md`.
 - Never modify production code from this skill. If QA reveals a bug, file a follow-up issue — do not patch it inline.
 - Each dimension worker must run in a fresh sub-agent so the orchestrator's context stays bounded regardless of how much output the checks produce.
 - The `## QA verdict` section is append-only. Re-running `/feature-qa` adds a new entry; it never overwrites an old one. The latest entry is authoritative for Stage advancement.
