@@ -4,7 +4,8 @@ title: Make plan-html the default in feature-loop and add per-section feedback b
 type: bug
 complexity: S
 priority: P2
-stage: IMPLEMENT
+stage: REVIEW
+pr: 37
 ---
 
 # Make plan-html the default in feature-loop and add per-section feedback boxes

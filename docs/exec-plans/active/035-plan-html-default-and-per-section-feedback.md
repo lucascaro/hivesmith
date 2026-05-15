@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/035-plan-html-default-and-per-section-feedback.md](../../product-specs/035-plan-html-default-and-per-section-feedback.md)
 - **Issue:** #35
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #37
+- **Branch:** feature/35-plan-html-default-and-per-section-feedback
 
 ## Summary
 
