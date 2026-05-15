@@ -82,7 +82,9 @@ Hivesmith skills don't ship a Python test suite (per AGENTS.md conventions — s
 
 ## PR convergence ledger
 
-- **2026-05-15 iter 1** — verdict: REQUEST_CHANGES; findings_hash: 8f9d54786b034890c28328e661022083b53226029f9b03387a5eb0d7a630bad4; threads_open: 0; action: autofix+push; head_sha: b4ae8212. Autofix applied 4 safe fixes (title shadow, validator bypass, log-token scrub, constant-time token compare) and resolved 1 Copilot thread. CI passed. Risky finding surfaced: start.sh:40 TOCTOU port-pick race — needs port-discovery protocol redesign between start.sh and server.py; escalated for human decision.
+- **2026-05-15 iter 1** — verdict: REQUEST_CHANGES; findings_hash: 8f9d54786b034890c28328e661022083b53226029f9b03387a5eb0d7a630bad4; threads_open: 0; action: autofix+push; head_sha: b4ae8212. Autofix applied 4 safe fixes (title shadow, validator bypass, log-token scrub, constant-time token compare) and resolved 1 Copilot thread. CI passed. Risky finding surfaced: start.sh:40 TOCTOU port-pick race — escalated for human decision.
+- **2026-05-15 iter 1.5** — out-of-loop human fix for the TOCTOU: bind moved into `server.py`, `PLAN_FEEDBACK_PORT=0` now default, port written atomically to `PLAN_PORT_FILE` before `serve_forever()`, explicit-port collisions auto-fall-back. Smoke-verified two concurrent sessions on the same preferred port get distinct ports. head_sha: 94edf98b.
+- **2026-05-15 iter 2** — verdict: APPROVE; findings_hash: ae2f343b15c9d6a5e3bfae3a7517a4624f29def519632ad5e52695a2d93fd351; threads_open: 0; action: stop; head_sha: 94edf98b. One minor doc-drift item surfaced (SKILL.md still mentioned the legacy "scan from 8765" behavior) — fixed inline.
 
 ## QA verdict
 

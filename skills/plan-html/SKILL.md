@@ -32,7 +32,7 @@ Rich HTML review UX for plan-producing skills. The skill takes structured plan c
    - Comparison: plain HTML table.
    - Linear single-file change: no diagram.
 5. **Render.** `python3 skills/plan-html/render_plan.py --manifest <path>.json --template skills/plan-html/template.html --out <plan>.html`. The script is stdlib-only.
-6. **Start the server (background).** `skills/plan-html/start.sh <plan>.html`. It picks a free port from 8765, generates a URL token, writes `<plan>.server.{pid,port,token,log}` sidecars, and (unless `PLAN_HTML_AUTO_OPEN=false`) opens the URL in the user's browser. The script returns immediately; the server keeps running in the background.
+6. **Start the server (background).** `skills/plan-html/start.sh <plan>.html`. The server itself binds on `127.0.0.1` (OS-picked free port by default — set `PLAN_FEEDBACK_PORT` to request a specific one; explicit-port collisions auto-fall-back to OS-picked). A URL token is generated; sidecars `<plan>.server.{pid,port,token,log}` are written; unless `PLAN_HTML_AUTO_OPEN=false`, the URL is opened in the user's browser. `start.sh` returns once the server has bound and written `<plan>.server.port`; the server keeps running in the background.
 7. **Tell the user** what the URL is (it includes `?t=<token>` — the server rejects requests without it).
 8. **Watch for approval.** Poll `<plan>.approved.json` (existence == approval). When the user says "done", "review the feedback", or "read my notes", read `<plan>.feedback.json` — keys are section IDs, values are the user's notes. If the user revises the plan, rebuild the manifest with `changed: true` on the affected sections and re-render to the same path (the running server serves the new file on next GET).
 9. **Approve path.** When `<plan>.approved.json` exists, the calling skill is unblocked. If you're invoked from `feature-loop`, this satisfies the plan-mode gate and you advance to scaffolding artifacts.
@@ -40,7 +40,7 @@ Rich HTML review UX for plan-producing skills. The skill takes structured plan c
 
 ## Configuration knobs (env vars read by start.sh)
 
-- `PLAN_FEEDBACK_PORT` — starting port for `start.sh`'s free-port scan. Default `8765`. Auto-bumps on collision.
+- `PLAN_FEEDBACK_PORT` — preferred port. Default `0` (OS picks any free port — no TOCTOU window). Set to a specific port to request it; if that port is taken, `server.py` falls back to `0` automatically and writes the actual bound port to `<plan>.server.port`.
 - `PLAN_HTML_AUTO_OPEN` — set to `false` to skip the `open`/`xdg-open` call (headless / SSH sessions).
 - `HIVESMITH_PLAN_HTML` — read by *callers* (e.g. `feature-loop`) to enable/disable the HTML path. `0` disables; anything else (or unset) enables.
 
