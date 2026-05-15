@@ -43,6 +43,11 @@ All notable changes to hivesmith are documented here. Format based on [Keep a Ch
   > Run `scripts/migrate-to-changesets.sh` at the repo root (it splits the current `CHANGELOG.md` `[Unreleased]` body into `.changesets/<NNN>-<slug>.md` files). Add YAML frontmatter to every file under `docs/product-specs/` (the existing index table is the data source: `issue`, `title`, `type`, `complexity`, `priority`, `stage`, plus `pr` + `shipped` for completed items). Verify `scripts/regen-generated.sh --check` exits 0. Open a PR titled "chore: migrate to decentralized indices" with the `regen-override` label so the new `block-generated-edits` job lets the regenerated `CHANGELOG.md` / `docs/product-specs/index.md` / `docs/exec-plans/tech-debt-tracker.md` land. Then delete any hand-written entries in those generated files — they will be rebuilt on the next push to `main`.
 
   For contributors with in-flight branches: rebase onto `main` after this lands, drop any conflicts in `CHANGELOG.md` / `docs/product-specs/index.md` (those edits are now obsolete), and add a `.changesets/*.md` describing your change. Use the `no-changeset` PR label if the change is docs- or CI-only.
+- **Clearer GitHub issue policy wording in `/hivesmith-init`, plus a new `always` value.** The three opt-in/opt-out labels users picked from during init were routinely misread (opt-out reading as "don't use GitHub"). The prompt now describes each choice by behavior — *Create issues on GitHub by default* / *Always create, never ask* / *Keep specs local by default* / *Ask every time* — and each option spells out what the user gets (issue number, lifecycle labels, PR link vs local-only spec). The `.hivesmith/config.toml` comment and the post-init tip were rewritten to match.
+
+  The new **`always`** policy value skips Gate 1 in `/feature-new` and `/feature-loop` entirely: when set, the issue is opened as soon as a feature is described, without the confirmation prompt. Other gates (triage, plan approval, push, merge) are untouched. `always` is independent of `--full-auto` — both can be combined.
+
+  Existing config values (`opt-out`, `opt-in`, `ask`) are unchanged, so previously-initialized projects keep working without migration. Default policy remains `opt-out`.
 
 ## [0.3.0] — 2026-04-21
 

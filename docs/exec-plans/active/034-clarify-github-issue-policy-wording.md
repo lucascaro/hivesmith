@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/034-clarify-github-issue-policy-wording.md](../../product-specs/034-clarify-github-issue-policy-wording.md)
 - **Issue:** #34
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #38
+- **Branch:** feature/34-clarify-github-issue-policy-wording
 
 ## Summary
 

@@ -11,7 +11,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
 | P2 | #32 | Decentralize indices and changelog to eliminate merge conflicts | IMPLEMENT | [032-decentralize-indices-and-changelog](032-decentralize-indices-and-changelog.md) |
 | P3 | #20 | Add --full-auto flag to hs-feature-loop skill | IMPLEMENT | [020-add-full-auto-flag-to-hs-feature-loop-skill](020-add-full-auto-flag-to-hs-feature-loop-skill.md) |
-| P3 | #34 | Clarify GitHub issue policy wording in hivesmith init | PLAN | [034-clarify-github-issue-policy-wording](034-clarify-github-issue-policy-wording.md) |
+| P3 | #34 | Clarify GitHub issue policy wording in hivesmith init | REVIEW | [034-clarify-github-issue-policy-wording](034-clarify-github-issue-policy-wording.md) |
 
 ## Completed
 
