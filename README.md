@@ -36,6 +36,7 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 | `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/review-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
 | `/feature-loop [# \| description]` | Drive one feature through TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE with confirmation gates |
+| `/plan-html <task>` | Render a plan as self-contained HTML with per-section feedback textareas + ✓ Approve button, backed by a localhost feedback server. Used by `feature-loop plan ...` by default; set `HIVESMITH_PLAN_HTML=0` to opt out. |
 
 **Loop primitives**
 

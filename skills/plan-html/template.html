@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title><!-- PLAN_TITLE --></title>
+<title>Plan — Decentralize index files to eliminate merge conflicts</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" media="(prefers-color-scheme: dark), (prefers-color-scheme: no-preference)">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" media="(prefers-color-scheme: light)">
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    hljs.highlightAll();
+    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    mermaid.initialize({ startOnLoad: true, theme: prefersLight ? 'neutral' : 'dark', securityLevel: 'loose' });
+  });
+</script>
+<style>
+  :root {
+    color-scheme: dark light;
+    /* Dark theme — default */
+    --fg: #e6e8eb;
+    --muted: #9aa4b0;
+    --bg: #0f1115;
+    --card: #161922;
+    --border: #2a2f3a;
+    --accent: #4ea3ff;
+    --warn: #fbbf24;
+    --good: #4ade80;
+    --bad: #f87171;
+    --feedback-bg: #2a2410;
+    --feedback-border: #b88a1a;
+    --code-bg: #1a1f2b;
+    --code-inline-bg: #232836;
+    --th-bg: #1d212c;
+    --changed-bg: #112033;
+    --changed-border: #4ea3ff;
+    --feedback-fg: #f1e6c5;
+    --slot-bg: #1a1f2b;
+    --slot-border: #b88a1a;
+    --savebar-bg: rgba(15, 17, 21, 0.94);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --fg: #1a1a1a;
+      --muted: #5a6470;
+      --bg: #fafafa;
+      --card: #ffffff;
+      --border: #e1e4e8;
+      --accent: #0366d6;
+      --warn: #d97706;
+      --good: #16a34a;
+      --bad: #dc2626;
+      --feedback-bg: #fff7d6;
+      --feedback-border: #f0c419;
+      --code-bg: #f6f8fa;
+      --code-inline-bg: #eef1f4;
+      --th-bg: #f1f3f5;
+      --changed-bg: #eef6ff;
+      --changed-border: #1d4ed8;
+      --feedback-fg: #4b3a00;
+      --slot-bg: #ffffff;
+      --slot-border: #d4b94a;
+      --savebar-bg: rgba(255, 255, 255, 0.96);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    padding: 0;
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 24px 96px; }
+  h1 { font-size: 28px; margin: 0 0 8px; }
+  h2 { font-size: 22px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 17px; margin: 24px 0 8px; }
+  h4 { font-size: 15px; margin: 16px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  p, li { color: var(--fg); }
+  code { font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--code-inline-bg); padding: 1px 5px; border-radius: 3px; color: var(--fg); }
+  pre { margin: 12px 0; }
+  pre code { display: block; padding: 14px 16px; border-radius: 6px; background: var(--code-bg); border: 1px solid var(--border); overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; background: var(--card); font-size: 14px; }
+  th, td { padding: 8px 10px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+  th { background: var(--th-bg); font-weight: 600; }
+  .lede { color: var(--muted); font-size: 15px; margin: 4px 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin: 14px 0; }
+  .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--code-inline-bg); color: var(--muted); margin-right: 6px; }
+  .pill.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .pill.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .pill.bad  { background: color-mix(in srgb, var(--bad)  18%, transparent); color: var(--bad);  }
+  aside.feedback {
+    display: block;
+    background: var(--feedback-bg);
+    border-left: 4px solid var(--feedback-border);
+    padding: 10px 14px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+    color: var(--feedback-fg);
+  }
+  aside.feedback label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--warn);
+    margin-bottom: 6px;
+  }
+  aside.feedback textarea {
+    display: block;
+    width: 100%;
+    min-height: 60px;
+    background: var(--slot-bg);
+    border: 1px solid var(--slot-border);
+    padding: 8px 10px;
+    border-radius: 4px;
+    font: 13px/1.45 "SF Mono", Menlo, Consolas, monospace;
+    color: var(--fg);
+    resize: vertical;
+  }
+  aside.feedback textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  aside.feedback .row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .savebar {
+    position: sticky; bottom: 0; left: 0; right: 0; z-index: 50;
+    background: var(--savebar-bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; gap: 12px; align-items: center; justify-content: flex-end;
+    backdrop-filter: blur(6px);
+  }
+  .savebar button {
+    font: 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--accent); color: #fff; border: 0;
+    padding: 9px 16px; border-radius: 6px; cursor: pointer;
+  }
+  .savebar button:hover { filter: brightness(1.05); }
+  .savebar button.secondary { background: #6b7280; }
+  .savebar button.approve { background: var(--good); color: #06210f; font-weight: 600; }
+  .savebar button.approve.approved { background: var(--good); filter: brightness(0.85); cursor: default; }
+  .savebar .status { color: var(--muted); font-size: 13px; }
+  .savebar .status.ok { color: var(--good); }
+  .savebar .status.err { color: var(--bad); }
+  @media (prefers-color-scheme: dark) {
+    .savebar button.approve { color: #06210f; }
+  }
+  .mermaid { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 14px 0; }
+  .toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 22px; }
+  .toc ol { margin: 6px 0 0 18px; padding: 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .meta { color: var(--muted); font-size: 13px; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+  .filepath { color: var(--accent); font-family: "SF Mono", Menlo, Consolas, monospace; }
+  .changed {
+    background: var(--changed-bg);
+    border-left: 4px solid var(--changed-border);
+    padding: 10px 14px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+    position: relative;
+  }
+  .changed::before {
+    content: "↻ updated since your last review";
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--changed-border);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .changed > *:last-child { margin-bottom: 0; }
+  .changed-inline {
+    background: var(--changed-bg);
+    border-bottom: 2px solid var(--changed-border);
+    padding: 0 3px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1><!-- PLAN_TITLE_HTML --></h1>
+<p class="lede"><!-- PLAN_LEDE --></p>
+<p class="meta">Plan file · review by adding text inside the <span class="pill warn">✎ feedback</span> slots · I will read your annotations back before finalizing.</p>
+
+<!-- PLAN_TOC -->
+
+<!-- PLAN_BODY -->
+
+</div>
+
+<div class="savebar">
+  <span class="status" id="saveStatus">unsaved</span>
+  <button type="button" class="secondary" id="reloadBtn" title="reload previously saved feedback from the server">reload</button>
+  <button type="button" id="saveBtn">save feedback</button>
+  <button type="button" class="approve" id="approveBtn" title="approve the plan and unblock implementation">✓ Approve plan</button>
+</div>
+
+<script>
+  (function () {
+    const status = document.getElementById('saveStatus');
+    const saveBtn = document.getElementById('saveBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const textareas = Array.from(document.querySelectorAll('aside.feedback textarea[data-section]'));
+
+    // URL token: server requires ?t=<token> on every request to prevent
+    // same-machine drive-by access from other browser tabs.
+    const TOKEN = new URLSearchParams(window.location.search).get('t') || '';
+    const u = (p) => p + (p.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(TOKEN);
+
+    function collect() {
+      const out = {};
+      for (const t of textareas) {
+        const v = t.value.trim();
+        if (v) out[t.dataset.section] = v;
+      }
+      return out;
+    }
+
+    function setStatus(text, cls) {
+      status.textContent = text;
+      status.className = 'status' + (cls ? ' ' + cls : '');
+    }
+
+    async function save() {
+      setStatus('saving…');
+      try {
+        const res = await fetch(u('/save'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collect()),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const n = (data.saved_sections || []).length;
+        setStatus('saved ' + n + ' section' + (n === 1 ? '' : 's') + ' · ' + new Date().toLocaleTimeString(), 'ok');
+      } catch (e) {
+        setStatus('save failed: ' + e.message, 'err');
+      }
+    }
+
+    async function reload() {
+      setStatus('loading…');
+      try {
+        const res = await fetch(u('/feedback'));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        for (const t of textareas) {
+          if (data[t.dataset.section]) t.value = data[t.dataset.section];
+        }
+        setStatus('loaded', 'ok');
+      } catch (e) {
+        setStatus('load failed: ' + e.message, 'err');
+      }
+    }
+
+    // autosave 1.2s after the user stops typing
+    let timer = null;
+    for (const t of textareas) {
+      t.addEventListener('input', () => {
+        setStatus('editing…');
+        clearTimeout(timer);
+        timer = setTimeout(save, 1200);
+      });
+    }
+
+    saveBtn.addEventListener('click', save);
+    reloadBtn.addEventListener('click', reload);
+
+    const approveBtn = document.getElementById('approveBtn');
+    async function approve() {
+      if (!confirm('Approve this plan? This signals the agent to proceed with implementation.')) return;
+      setStatus('approving…');
+      try {
+        // save current feedback first so it lands in the same window
+        await save();
+        const res = await fetch(u('/approve'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ feedback: collect() }),
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        approveBtn.classList.add('approved');
+        approveBtn.textContent = '✓ Approved';
+        approveBtn.disabled = true;
+        setStatus('plan approved at ' + data.approved_at, 'ok');
+      } catch (e) {
+        setStatus('approve failed: ' + e.message, 'err');
+      }
+    }
+    approveBtn.addEventListener('click', approve);
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); save(); }
+    });
+
+    reload();
+  })();
+</script>
+
+</body>
+</html>
