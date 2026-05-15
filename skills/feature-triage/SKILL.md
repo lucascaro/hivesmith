@@ -17,8 +17,8 @@ Triage edits the **product spec**, never the exec plan. The spec records the *wh
 This skill owns Stage = `TRIAGE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
-2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = TRIAGE.
-3. **Index-only at TRIAGE.** No exec plan exists yet at TRIAGE (`/feature-research` creates the first plan). The index row is the source of truth. If a plan unexpectedly exists already (someone jumped ahead) and its Stage is past TRIAGE, refuse — the workflow is out of order. Otherwise read the index row's `Stage:`; if it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage.
+2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: TRIAGE` (sorted by `priority` then issue number).
+3. **Frontmatter is the source of truth.** In the current layout the spec's YAML frontmatter `stage:` field is canonical — read it from `docs/product-specs/<NNN>-*.md` directly, never from the generated `index.md`. If it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage. **Legacy fallback:** if no frontmatter exists, fall back to the legacy `features/BACKLOG.md` row's `Stage:` column.
 
 ## Layout resolution
 
@@ -27,7 +27,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 
 ## Steps
 
-1. **Find the spec:** If `$ARGUMENTS` is provided, find the matching `<NNN>-*.md` file in the current layout's `docs/product-specs/` (or legacy `features/active/`). If no argument, read the index and pick the first item with Stage = TRIAGE.
+1. **Find the spec:** If `$ARGUMENTS` is provided, find the matching `<NNN>-*.md` file in the current layout's `docs/product-specs/` (or legacy `features/active/`). If no argument, scan `docs/product-specs/*.md` and pick the first spec whose frontmatter `stage:` is `TRIAGE` (do **not** scan the generated `index.md` — it's a derived view). Legacy fallback: read `features/BACKLOG.md`'s Active table.
 2. **Read the spec** to understand the request.
 3. **Classify:**
    - Type: `bug` or `enhancement`
@@ -35,14 +35,12 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 4. **Quick codebase scan:** Do a brief search (Glob/Grep) related to the feature to inform the complexity estimate. Don't do deep research — that's the next stage.
 5. **Recommend priority:** Based on impact and complexity, suggest where this should sit in the backlog (P1 = top, higher number = lower priority).
 6. **Present findings to user:** Show type, complexity, priority recommendation. Ask user to confirm or adjust.
-7. **Update the spec file:**
-   - Set Type, Complexity, Priority fields.
-   - The spec stays at TRIAGE conceptually until the exec plan is created in RESEARCH; the index tracks the visible stage.
-8. **Update the index** (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`):
-   - Set the priority number and complexity in the Active table.
-   - Reorder rows by priority (P1 at top).
-   - Update Stage to RESEARCH.
-9. **Update GitHub label:** `gh issue edit <number> --add-label triaged`.
+7. **Update the spec's YAML frontmatter:**
+   - Set `type:`, `complexity:`, `priority:`.
+   - Write the `stage:` change **last** — `stage: RESEARCH`. This ordering means a mid-sequence crash leaves the spec resumable: next-skill cold-start guards still see `TRIAGE` and call us back; re-running detects the partial state and finishes the remaining writes idempotently.
+   - **Do not edit `docs/product-specs/index.md`.** It's generated from frontmatter by `scripts/regen-generated.sh` on push to `main`. The `block-generated-edits` CI job will fail any PR that touches it directly.
+   - **Legacy layout:** when no frontmatter exists, fall back to writing the spec fields + `features/BACKLOG.md` row as before.
+8. **Update GitHub label:** `gh issue edit <number> --add-label triaged`.
 10. **Report:** Confirm triage is complete, remind user to run `/feature-research <number>` next.
 
 ## Rules

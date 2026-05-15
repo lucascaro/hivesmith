@@ -1,10 +1,17 @@
+---
+issue: 24
+title: Plan-first starting point for hs-feature-loop
+type: enhancement
+complexity: S
+priority: P2
+stage: DONE
+pr: 25
+shipped: 2026-05-12
+---
+
 # Plan-first starting point for hs-feature-loop
 
-- **Issue:** #24
-- **Type:** enhancement
-- **Complexity:** S
-- **Priority:** P2
-- **Exec plan:** [docs/exec-plans/active/024-plan-first-starting-point-for-feature-loop.md](../exec-plans/active/024-plan-first-starting-point-for-feature-loop.md)
+- **Exec plan:** [docs/exec-plans/completed/024-plan-first-starting-point-for-feature-loop.md](../exec-plans/completed/024-plan-first-starting-point-for-feature-loop.md)
 
 ## Problem
 

@@ -72,6 +72,21 @@ command -v gh >/dev/null || { echo "Error: gh (GitHub CLI) required"; exit 1; }
 ! git rev-parse "$TAG" &>/dev/null || { echo "Error: tag $TAG already exists"; exit 1; }
 grep -q '## \[Unreleased\]' CHANGELOG.md || { echo "Error: CHANGELOG.md has no [Unreleased] section"; exit 1; }
 
+# Pin to the start-of-release SHA. Every step below operates against this
+# revision; if main advances mid-release (e.g. the regenerator bot lands a
+# commit), we detect the drift before pushing and refuse to clobber it.
+RELEASE_SHA="$(git rev-parse HEAD)"
+echo "Pinned release base: ${RELEASE_SHA}"
+
+# Detect the changeset-driven layout. New layout: CHANGELOG.md [Unreleased] body
+# is regenerated from .changesets/*.md by scripts/regen-generated.sh. Old layout:
+# CHANGELOG.md is hand-edited.
+USE_CHANGESETS=0
+if [[ -d .changesets ]] && [[ -x scripts/regen-generated.sh ]]; then
+    USE_CHANGESETS=1
+    echo "Detected .changesets/ layout — release will roll changesets into the version section."
+fi
+
 # ---- VERSION BUMP --------------------------------------------------------
 
 if [[ -n "$VERSION_FILE" ]]; then
@@ -92,18 +107,27 @@ echo "Stamping changelog..."
 PREV_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
 [[ -n "$PREV_TAG" ]] || PREV_TAG="v0.0.0"
 
-sed -i.bak "s/^## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] — ${TODAY}/" CHANGELOG.md
+if [[ "$USE_CHANGESETS" == "1" ]]; then
+    scripts/regen-generated.sh --release "$VERSION"
+    find .changesets -name '*.md' ! -name 'README.md' -delete
+else
+    sed -i.bak "s/^## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] — ${TODAY}/" CHANGELOG.md
+    rm -f CHANGELOG.md.bak
+fi
 
-# Update or append compare links at bottom
+# Update or append compare links at bottom (layout-independent).
 if grep -q "^\[Unreleased\]: " CHANGELOG.md; then
     sed -i.bak "s|\[Unreleased\]: https://github.com/${REPO}/compare/.*\.\.\.HEAD|[Unreleased]: https://github.com/${REPO}/compare/${TAG}...HEAD\n[${VERSION}]: https://github.com/${REPO}/compare/${PREV_TAG}...${TAG}|" CHANGELOG.md
+    rm -f CHANGELOG.md.bak
 fi
-rm -f CHANGELOG.md.bak
 
 # ---- COMMIT + TAG --------------------------------------------------------
 
 echo "Committing and tagging ${TAG}..."
 git add CHANGELOG.md ${VERSION_FILE:+"$VERSION_FILE"}
+if [[ "$USE_CHANGESETS" == "1" ]]; then
+    git add -A .changesets/
+fi
 git commit -m "release: ${TAG}"
 git tag "$TAG"
 
@@ -130,6 +154,18 @@ if [[ -n "$BUILD_CMD" ]]; then
 fi
 
 # ---- PUSH ----------------------------------------------------------------
+
+# Pin check: refuse to push if main advanced after we started.
+echo "Verifying release base is still tip of main..."
+git fetch origin main --quiet
+CURRENT_REMOTE_SHA="$(git rev-parse origin/main)"
+if [[ "$CURRENT_REMOTE_SHA" != "$RELEASE_SHA" ]]; then
+    echo "Error: origin/main has advanced since release started." >&2
+    echo "  release base : ${RELEASE_SHA}" >&2
+    echo "  current main : ${CURRENT_REMOTE_SHA}" >&2
+    echo "Rebase and retry: git reset --hard ${TAG}^ && git tag -d ${TAG} && git pull --ff-only && $0 ${VERSION}" >&2
+    exit 1
+fi
 
 echo "Pushing to origin..."
 git push origin HEAD "$TAG"

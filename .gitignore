@@ -10,3 +10,7 @@
 
 # graphify build artifacts
 graphify-out/
+
+# Python bytecode (scripts/regen-generated.py, scripts/migrate-to-changesets.py)
+__pycache__/
+*.pyc

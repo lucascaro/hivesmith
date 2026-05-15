@@ -40,6 +40,25 @@ command -v gh >/dev/null || { echo "Error: gh (GitHub CLI) required"; exit 1; }
 ! git rev-parse "$TAG" &>/dev/null || { echo "Error: tag $TAG already exists"; exit 1; }
 grep -q '## \[Unreleased\]' CHANGELOG.md || { echo "Error: CHANGELOG.md has no [Unreleased] section"; exit 1; }
 
+# Pin to the start-of-release SHA. Every step below operates against this
+# revision; if main advances mid-release (e.g. the regenerator bot lands a
+# commit), we detect the drift before pushing and refuse to clobber it.
+RELEASE_SHA="$(git rev-parse HEAD)"
+echo "Pinned release base: ${RELEASE_SHA}"
+
+# Detect the changeset-driven layout. New layout: CHANGELOG.md [Unreleased] body
+# is regenerated from .changesets/*.md by scripts/regen-generated.sh. Old layout:
+# CHANGELOG.md is hand-edited. We support both for one release.
+USE_CHANGESETS=0
+if [[ -d .changesets ]] && [[ -x scripts/regen-generated.sh ]]; then
+    USE_CHANGESETS=1
+    echo "Detected .changesets/ layout — release will roll changesets into the version section."
+    # In the new layout, an empty .changesets/ is itself an error — release.sh
+    # must refuse rather than silently falling back to the legacy stamp path
+    # (which would produce an empty [VERSION] section). The regenerator's
+    # --release mode enforces this by failing on empty [Unreleased] body.
+fi
+
 # ---- VERSION BUMP --------------------------------------------------------
 
 if [[ -n "$VERSION_FILE" ]]; then
@@ -60,18 +79,34 @@ echo "Stamping changelog..."
 PREV_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
 [[ -n "$PREV_TAG" ]] || PREV_TAG="v0.0.0"
 
-sed -i.bak "s/^## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] — ${TODAY}/" CHANGELOG.md
+if [[ "$USE_CHANGESETS" == "1" ]]; then
+    # New layout: regenerator promotes the generated [Unreleased] body into a
+    # stamped ## [VERSION] — DATE section. We then delete the per-PR changeset
+    # files; the next regen produces an empty [Unreleased] until the first
+    # post-release changeset lands.
+    scripts/regen-generated.sh --release "$VERSION"
+    find .changesets -name '*.md' ! -name 'README.md' -delete
+else
+    # Legacy layout — preserved for one release while downstream projects migrate.
+    sed -i.bak "s/^## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] — ${TODAY}/" CHANGELOG.md
+    rm -f CHANGELOG.md.bak
+fi
 
-# Update or append compare links at bottom
+# Update or append compare links at bottom (layout-independent).
 if grep -q "^\[Unreleased\]: " CHANGELOG.md; then
     sed -i.bak "s|\[Unreleased\]: https://github.com/${REPO}/compare/.*\.\.\.HEAD|[Unreleased]: https://github.com/${REPO}/compare/${TAG}...HEAD\n[${VERSION}]: https://github.com/${REPO}/compare/${PREV_TAG}...${TAG}|" CHANGELOG.md
+    rm -f CHANGELOG.md.bak
 fi
-rm -f CHANGELOG.md.bak
 
 # ---- COMMIT + TAG --------------------------------------------------------
 
 echo "Committing and tagging ${TAG}..."
 git add CHANGELOG.md ${VERSION_FILE:+"$VERSION_FILE"}
+if [[ "$USE_CHANGESETS" == "1" ]]; then
+    # Stage the deleted changesets too. `git add -A .changesets/` picks up
+    # deletions; the README/.gitkeep are unchanged so they stay.
+    git add -A .changesets/
+fi
 git commit -m "release: ${TAG}"
 git tag "$TAG"
 
@@ -98,6 +133,27 @@ if [[ -n "$BUILD_CMD" ]]; then
 fi
 
 # ---- PUSH ----------------------------------------------------------------
+
+# Pin check: refuse to push if main advanced after we started (e.g., the
+# regenerator bot landed a commit between RELEASE_SHA and now). The release
+# must always be cut from the SHA we validated against.
+echo "Verifying release base is still tip of main..."
+git fetch origin main --quiet
+CURRENT_REMOTE_SHA="$(git rev-parse origin/main)"
+if [[ "$CURRENT_REMOTE_SHA" != "$RELEASE_SHA" ]]; then
+    cat >&2 <<EOF
+Error: origin/main has advanced since release started.
+  release base SHA : ${RELEASE_SHA}
+  current main SHA : ${CURRENT_REMOTE_SHA}
+
+Rebase or rerun the release on the new tip:
+  git reset --hard ${TAG}^      # undo the release commit
+  git tag -d ${TAG}             # undo the tag
+  git pull --ff-only            # advance to new main
+  scripts/release.sh ${VERSION} # try again
+EOF
+    exit 1
+fi
 
 echo "Pushing to origin..."
 git push origin HEAD "$TAG"

@@ -1,25 +1,40 @@
 #!/usr/bin/env bash
-# pre-push hook: warn if CHANGELOG.md [Unreleased] section is empty.
+# pre-push hook: warn if no .changesets/*.md was added on this branch.
 # Install: cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+#
+# This mirrors the `verify-generated` CI job's changeset-presence check.
+# Use the `no-changeset` PR label for docs- or CI-only changes that don't
+# need a CHANGELOG entry.
 
 set -euo pipefail
 
-content=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md 2>/dev/null || true)
-non_blank=$(echo "$content" | grep -v '^[[:space:]]*$' || true)
-
-if [ -z "$non_blank" ]; then
-  # Non-interactive (e.g. called from release.sh): warn but allow.
-  if ! [ -t 1 ] || ! [ -e /dev/tty ]; then
-    echo "⚠  CHANGELOG.md [Unreleased] is empty (non-interactive push, skipping prompt)."
-    exit 0
-  fi
-  echo ""
-  echo "⚠  CHANGELOG.md [Unreleased] is empty."
-  echo "   Run /changelog-update to document your changes."
-  printf "   Push anyway? [y/N] "
-  read -r answer </dev/tty
-  case "$answer" in
-    [yY]*) exit 0 ;;
-    *) echo "Push aborted."; exit 1 ;;
-  esac
+# Find the merge base with main (or origin/main if no local main).
+BASE="$(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main 2>/dev/null || true)"
+if [ -z "$BASE" ]; then
+  # First push or detached state — nothing to compare against; allow.
+  exit 0
 fi
+
+# Has the branch added any .changesets/*.md (excluding README / .gitkeep)?
+if git diff --name-only "$BASE"...HEAD -- ':(glob).changesets/*.md' \
+    | grep -v -E '^\.changesets/(README\.md|\.gitkeep)$' \
+    | grep -q .; then
+  exit 0
+fi
+
+# Non-interactive (e.g. called from release.sh or CI): warn but allow.
+if ! [ -t 1 ] || ! [ -e /dev/tty ]; then
+  echo "⚠  No .changesets/*.md added on this branch (non-interactive push, skipping prompt)."
+  exit 0
+fi
+
+echo ""
+echo "⚠  This branch has no .changesets/*.md entry."
+echo "   Run /changelog-update to scaffold one, or apply the 'no-changeset' PR label"
+echo "   if this is a docs- or CI-only change."
+printf "   Push anyway? [y/N] "
+read -r answer </dev/tty
+case "$answer" in
+  [yY]*) exit 0 ;;
+  *) echo "Push aborted."; exit 1 ;;
+esac

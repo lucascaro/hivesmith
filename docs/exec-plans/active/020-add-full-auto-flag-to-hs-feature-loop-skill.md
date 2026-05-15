@@ -2,7 +2,6 @@
 
 - **Spec:** [docs/product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md](../../product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md)
 - **Issue:** #20
-- **Stage:** REVIEW
 - **Status:** active
 - **PR:** #21
 - **Branch:** feature/20-add-full-auto-flag-to-hs-feature-loop-skill

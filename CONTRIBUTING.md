@@ -63,13 +63,13 @@ This matters because the installer's `--prefix` mode rewrites `/skill-name` refe
 
 ### Git hooks
 
-A pre-push hook warns you if `CHANGELOG.md`'s `[Unreleased]` section is empty before you push. Install it once:
+A pre-push hook warns you if your PR has no `.changesets/*.md` entry before you push. Install it once:
 
 ```bash
 cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 ```
 
-CI enforces the same check — the `changelog` job fails if `[Unreleased]` has no content. Catch it locally to avoid a round-trip.
+CI enforces the same check — the `verify-generated` job fails if a PR has no changeset (unless labelled `no-changeset` for docs/CI-only changes). Catch it locally to avoid a round-trip.
 
 ### Scripts
 
@@ -78,7 +78,7 @@ Shell scripts (installer, `ingest.sh`, scaffolded `release.sh`) must pass `shell
 ## Pull requests
 
 1. Fork, branch from `main`.
-2. Make the change. Add a `[Unreleased]` entry to `CHANGELOG.md` (the `/changelog-update` skill does this for you).
+2. Make the change. Add a `.changesets/<NNN>-<slug>.md` entry — the `/changelog-update` skill scaffolds it for you. `CHANGELOG.md` itself is **generated** on push to `main`; never edit it directly (CI will reject the PR). See `.changesets/README.md` for the schema. Use the `no-changeset` PR label for docs- or CI-only changes that don't need a changelog entry, and `regen-override` only when intentionally rewriting a generated file (migration / regenerator-bug fix).
 3. Verify:
    - `shellcheck install.sh` is clean.
    - `install.sh` works with and without `--prefix`, `--update`, `--uninstall` (use the isolated-`HOME` pattern above).

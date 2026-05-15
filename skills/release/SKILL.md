@@ -19,26 +19,27 @@ Walk through the release process end to end. The heavy lifting (version bump, CH
    - Current branch is `main` (or the project's release branch — check `AGENTS.md` if unsure).
    - Working tree is clean (`git status --porcelain` empty).
    - Local `main` is in sync with `origin/main`.
-   - `CHANGELOG.md` has a `## [Unreleased]` section with at least one bullet under it.
+   - `CHANGELOG.md` has a `## [Unreleased]` section. In the new (changeset-based) layout this body is generated — check instead for at least one `.changesets/*.md` file (excluding `README.md` / `.gitkeep`). In the legacy layout, check the `[Unreleased]` body has at least one bullet.
    - Latest CI on `origin/main` is green (`gh run list --branch main --limit 1`).
 
    If any check fails, report which and stop.
 
 3. **Determine the version.**
    - If `$ARGUMENTS` supplies a version (e.g. `0.3.1`), use it.
-   - Otherwise read `[Unreleased]` contents and suggest a bump based on the latest tag (`git tag -l 'v*' --sort=-v:refname | head -1`):
-     - Any `### Removed` or breaking `### Changed` entries → **major** bump.
-     - Any `### Added` entries → **minor** bump.
-     - Only `### Fixed` / `### Security` → **patch** bump.
+   - Otherwise suggest a bump based on the latest tag (`git tag -l 'v*' --sort=-v:refname | head -1`):
+     - **Changeset-based layout (current):** read every `.changesets/*.md` and take the largest `bump:` value (`major` > `minor` > `patch` > `none`). If any changeset has `type: removed` or a breaking change, treat as `major`.
+     - **Legacy layout:** read `[Unreleased]` contents — `### Removed` or breaking `### Changed` → major; `### Added` → minor; `### Fixed`/`### Security` only → patch.
    - Show the suggestion with the rationale and confirm with the user before proceeding.
 
 4. **Show the release notes preview.** Print the `[Unreleased]` body verbatim — this is what the GitHub release will display.
 
 5. **Run `scripts/release.sh <version>`.** It will:
-   - Bump the version in the configured `VERSION_FILE`
-   - Stamp `[Unreleased]` with the date
-   - Rewrite compare links
-   - Commit, tag, (optionally cross-compile), push, and create a GitHub release
+   - Pin to the start-of-release SHA — any push that lands after this point must be rebased before release can complete.
+   - Bump the version in the configured `VERSION_FILE`.
+   - **Changeset-based layout:** invoke `scripts/regen-generated.sh --release <version>` to promote the generated `[Unreleased]` body into a stamped `## [<version>] — <date>` section, then delete all `.changesets/*.md` files.
+   - **Legacy layout:** stamp `[Unreleased]` with the date via `sed`.
+   - Rewrite compare links.
+   - Commit, tag, (optionally cross-compile), verify the release base SHA hasn't drifted on `origin/main`, push, and create a GitHub release.
 
 6. **Post-release verification.**
    - `gh release view v<version>` shows the expected notes and artifacts.

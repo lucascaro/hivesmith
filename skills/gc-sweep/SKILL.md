@@ -78,7 +78,7 @@ For each cluster:
 After the sweep completes, update `QUALITY_SCORE.md`:
 
 - For each domain/layer touched, increment toward A if the sweep cleared all known deviations there.
-- If a deviation could not be fixed (escalated to tech-debt), append a row to `docs/exec-plans/tech-debt-tracker.md` with severity and link to the principle.
+- If a deviation could not be fixed (escalated to tech-debt), create a new file at `.tech-debt/<slug>.md` with YAML frontmatter (`item`, `severity: low|med|high`, `surfaced_in`, `owner`, `notes`). The `docs/exec-plans/tech-debt-tracker.md` aggregate is regenerated from these files automatically — **never edit it directly** (the `block-generated-edits` CI job rejects PRs that do).
 
 ## 7. Output
 

@@ -1,9 +1,17 @@
+---
+issue: <number>
+title: <Title>
+type: bug | enhancement
+complexity: S | M | L
+priority: P1 | P2 | P3
+stage: TRIAGE          # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | QA | DONE | REJECTED
+# pr: <number>         # uncomment when PR opens
+# shipped: 2026-MM-DD  # uncomment on DONE
+# rejection_reason:    # required when stage=REJECTED
+---
+
 # <Title>
 
-- **Issue:** #<number>
-- **Type:** bug | enhancement
-- **Complexity:** S | M | L
-- **Priority:** P1 | P2 | P3
 - **Exec plan:** [docs/exec-plans/active/<slug>.md](../exec-plans/active/<slug>.md) (or completed/)
 
 ## Problem

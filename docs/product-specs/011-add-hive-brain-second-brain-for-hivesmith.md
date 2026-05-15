@@ -1,9 +1,16 @@
+---
+issue: 11
+title: Add hive brain — a second brain for hivesmith
+type: enhancement
+complexity: M
+priority: P1
+stage: DONE
+pr: 12
+shipped: 2026-05-10
+---
+
 # Add hive brain — a second brain for hivesmith
 
-- **Issue:** #11
-- **Type:** enhancement
-- **Complexity:** M
-- **Priority:** P1
 - **Exec plan:** [docs/exec-plans/completed/011-add-hive-brain-second-brain-for-hivesmith.md](../exec-plans/completed/011-add-hive-brain-second-brain-for-hivesmith.md)
 
 ## Problem

@@ -25,7 +25,7 @@ Completeness is cheap when AI does the work. Keep iterating until findings actua
 Before iterating, locate the matching exec plan (current: `docs/exec-plans/active/<NNN>-*.md` where `<NNN>` is derived from `gh pr view <PR> --json body,title` — look for `Fixes #<n>` / `Closes #<n>` in the PR body, or match the branch name `feature/<n>-*`). If a plan is found:
 
 1. Read its `## PR convergence ledger` section. The last line gives `prev_findings_hash` (the hex value) — seed the loop-detection guard with it instead of starting empty.
-2. Read its `Stage:` field. If Stage is not `REVIEW`, set it to `REVIEW` (this is a no-op if already correct).
+2. Read `stage:` from the matching spec's YAML frontmatter (`docs/product-specs/<NNN>-*.md`) — the exec plan no longer carries a `Stage:` line, and the generated `index.md` is a derived view. If `stage` is not `REVIEW`, set it to `REVIEW` in the spec's frontmatter (no-op if already correct). **Legacy fallback:** when no spec frontmatter exists, read `Stage:` from the exec plan if present.
 3. Throughout iteration, **append** one line per iteration to the ledger. Never rewrite or delete prior entries.
 
 If no matching plan is found (PR was hand-authored, not from the feature pipeline), skip the ledger entirely and run the loop with an empty `prev_findings_hash`. This is fine — the ledger is an optimization, not a requirement.
@@ -170,7 +170,7 @@ Final verdict: APPROVE | ESCALATED
 
 ## 4a. On merge (best-effort post-loop hook)
 
-If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into review-loop after merging): if a matching plan was found in the cold-start step and its Stage is `REVIEW`, advance Stage → `QA` in both the plan header and the index (`docs/product-specs/index.md` or legacy `features/BACKLOG.md`). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
+If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into review-loop after merging): if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `QA` in the spec's frontmatter — that's the sole stage write. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
 
 ## 5. Rules
 

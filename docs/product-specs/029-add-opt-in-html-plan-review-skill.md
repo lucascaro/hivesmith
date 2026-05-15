@@ -1,9 +1,16 @@
+---
+issue: 29
+title: Add opt-in HTML plan review skill (hs-plan-html)
+type: enhancement
+complexity: M
+priority: P2
+stage: DONE
+pr: 30
+shipped: 2026-05-15
+---
+
 # Add opt-in HTML plan review skill (hs-plan-html)
 
-- **Issue:** #29
-- **Type:** enhancement
-- **Complexity:** M
-- **Priority:** P2
 - **Exec plan:** [docs/exec-plans/completed/029-add-opt-in-html-plan-review-skill.md](../exec-plans/completed/029-add-opt-in-html-plan-review-skill.md)
 
 ## Problem
