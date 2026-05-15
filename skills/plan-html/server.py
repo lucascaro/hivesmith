@@ -19,6 +19,7 @@ same-machine drive-by access from other browser tabs.
 from __future__ import annotations
 
 import datetime
+import hmac
 import json
 import os
 import sys
@@ -54,7 +55,8 @@ class Handler(BaseHTTPRequestHandler):
     def _check_token(self) -> bool:
         qs = parse_qs(urlparse(self.path).query)
         tok = (qs.get("t") or [""])[0]
-        if tok != TOKEN:
+        # Constant-time compare to deny local timing-side-channel recovery.
+        if not hmac.compare_digest(tok, TOKEN):
             self._send_json(403, {"error": "missing or invalid token"})
             return False
         return True
@@ -114,7 +116,13 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json(200, {"ok": True, "saved_sections": list(payload.keys())})
 
     def log_message(self, format: str, *args) -> None:  # quiet default access log
-        sys.stderr.write("[%s] %s\n" % (self.log_date_time_string(), format % args))
+        # Scrub the URL token before it lands in <plan>.server.log — the log
+        # file lives next to the plan and tends to get tailed, copied, and
+        # pasted into bug reports.
+        msg = format % args
+        if TOKEN:
+            msg = msg.replace(TOKEN, "<token>")
+        sys.stderr.write("[%s] %s\n" % (self.log_date_time_string(), msg))
 
 
 def main() -> int:

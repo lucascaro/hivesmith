@@ -200,6 +200,13 @@ def render(manifest: dict, template: str) -> str:
     title_text = html.escape(title)
     title_html = manifest.get("title_html") or title_text
     lede = manifest.get("lede", "")
+    # title_html and lede are injected as raw HTML into the template, so they
+    # must clear the same allowlist applied to section bodies. Empty strings
+    # are no-ops; title_text is HTML-escaped and safe by construction.
+    if manifest.get("title_html"):
+        validate_section_html("title_html", title_html)
+    if lede:
+        validate_section_html("lede", lede)
     toc_html = _render_toc(manifest.get("toc") or [])
 
     body_blocks = [_render_section(s) for s in sections]
@@ -268,21 +275,44 @@ def _self_test() -> int:
     tmp.write_text(out, encoding="utf-8")
     sys.stderr.write(f"self-test OK -> {tmp}\n")
 
-    # Negative test: disallowed tag must reject
-    bad = {
-        "title": "bad",
-        "sections": [{"id": "x", "heading": "X", "html": "<script>alert(1)</script>"}],
-    }
-    try:
-        render(bad, template)
-    except SystemExit as exc:
-        if exc.code == 3:
-            sys.stderr.write("self-test OK (allowlist rejected <script>)\n")
-            return 0
-        sys.stderr.write(f"self-test FAIL: allowlist exited {exc.code}, expected 3\n")
+    # Negative tests: disallowed tags must reject in every raw-HTML input
+    # (section bodies, title_html, and lede all share the allowlist).
+    bad_inputs = [
+        ("section body", {
+            "title": "bad",
+            "sections": [{"id": "x", "heading": "X", "html": "<script>alert(1)</script>"}],
+        }),
+        ("title_html", {
+            "title": "bad",
+            "title_html": "<script>alert(1)</script>",
+            "sections": [{"id": "x", "heading": "X", "html": "<p>ok</p>"}],
+        }),
+        ("lede", {
+            "title": "bad",
+            "lede": "<script>alert(1)</script>",
+            "sections": [{"id": "x", "heading": "X", "html": "<p>ok</p>"}],
+        }),
+    ]
+    for label, bad in bad_inputs:
+        try:
+            render(bad, template)
+        except SystemExit as exc:
+            if exc.code == 3:
+                sys.stderr.write(f"self-test OK (allowlist rejected <script> in {label})\n")
+                continue
+            sys.stderr.write(f"self-test FAIL: {label} allowlist exited {exc.code}, expected 3\n")
+            return 1
+        else:
+            sys.stderr.write(f"self-test FAIL: allowlist did not reject <script> in {label}\n")
+            return 1
+    # Sanity check: only one <title> element survives substitution
+    if out.count("<title>") != 1:
+        sys.stderr.write(
+            f"self-test FAIL: expected exactly one <title>, got {out.count('<title>')}\n"
+        )
         return 1
-    sys.stderr.write("self-test FAIL: allowlist did not reject <script>\n")
-    return 1
+    sys.stderr.write("self-test OK (single <title> after render)\n")
+    return 0
 
 
 def main(argv: list[str]) -> int:
