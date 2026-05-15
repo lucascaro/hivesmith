@@ -70,4 +70,6 @@ None.
 
 ## PR convergence ledger
 
+- **2026-05-15 iter 1** — verdict: APPROVE; findings_hash: empty; threads_open: 0; action: stop; head_sha: ac0d2ea.
+
 ## QA verdict
