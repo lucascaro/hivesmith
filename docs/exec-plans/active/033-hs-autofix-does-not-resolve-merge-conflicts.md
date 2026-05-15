@@ -106,4 +106,7 @@ The autofix/review-loop skills are markdown specifications consumed by an LLM; t
 
 ## PR convergence ledger
 
+- **2026-05-15 iter 1** — verdict: REQUEST_CHANGES (Copilot thread on duplicate `## Open questions` heading); mergeable: MERGEABLE; findings_hash: <unrecorded — worker returned summary without envelope>; threads_open: 0; action: autofix+push; head_sha: 287257e.
+- **2026-05-15 iter 2** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 287257e.
+
 ## QA verdict
