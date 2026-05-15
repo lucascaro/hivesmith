@@ -4,7 +4,7 @@
 - **Type:** enhancement
 - **Complexity:** M
 - **Priority:** P2
-- **Exec plan:** [docs/exec-plans/active/029-add-opt-in-html-plan-review-skill.md](../exec-plans/active/029-add-opt-in-html-plan-review-skill.md)
+- **Exec plan:** [docs/exec-plans/completed/029-add-opt-in-html-plan-review-skill.md](../exec-plans/completed/029-add-opt-in-html-plan-review-skill.md)
 
 ## Problem
 
