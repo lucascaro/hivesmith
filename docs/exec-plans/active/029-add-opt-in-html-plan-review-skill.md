@@ -82,7 +82,7 @@ Hivesmith skills don't ship a Python test suite (per AGENTS.md conventions — s
 
 ## PR convergence ledger
 
-<!-- populated by /review-loop -->
+- **2026-05-15 iter 1** — verdict: REQUEST_CHANGES; findings_hash: 8f9d54786b034890c28328e661022083b53226029f9b03387a5eb0d7a630bad4; threads_open: 0; action: autofix+push; head_sha: b4ae8212. Autofix applied 4 safe fixes (title shadow, validator bypass, log-token scrub, constant-time token compare) and resolved 1 Copilot thread. CI passed. Risky finding surfaced: start.sh:40 TOCTOU port-pick race — needs port-discovery protocol redesign between start.sh and server.py; escalated for human decision.
 
 ## QA verdict
 
