@@ -17,7 +17,7 @@ Research is the first stage that touches the **exec plan**. This skill creates `
 This skill owns Stage = `RESEARCH`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
-2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = RESEARCH.
+2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: RESEARCH`.
 3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (the exec plan no longer carries one). Refuse unless `stage: RESEARCH`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 
 ## Layout resolution
@@ -27,7 +27,7 @@ This skill owns Stage = `RESEARCH`. Before doing any work:
 
 ## Steps
 
-1. **Find the spec / feature file.** If `$ARGUMENTS` is provided, match the zero-padded prefix. Otherwise, read the index and pick the first item with Stage = RESEARCH.
+1. **Find the spec / feature file.** If `$ARGUMENTS` is provided, match the zero-padded prefix. Otherwise, scan `docs/product-specs/*.md` (current layout) and pick the first spec with frontmatter `stage: RESEARCH` — do not scan the generated `index.md`. Legacy fallback: read `features/BACKLOG.md`'s Active table.
 2. **Read the spec** (current layout) or feature file (legacy) to understand the request and triage outcome.
 3. **Create the exec plan** (current layout only). Read `docs/exec-plans/_template.md`. Write to `docs/exec-plans/active/<NNN>-<slug>.md` filled in:
    - Title, Spec link, Issue number from the spec.

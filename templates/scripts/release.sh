@@ -82,7 +82,7 @@ echo "Pinned release base: ${RELEASE_SHA}"
 # is regenerated from .changesets/*.md by scripts/regen-generated.sh. Old layout:
 # CHANGELOG.md is hand-edited.
 USE_CHANGESETS=0
-if [[ -d .changesets ]] && [[ -x scripts/regen-generated.sh ]] && [[ -n "$(find .changesets -name '*.md' ! -name 'README.md' -print -quit 2>/dev/null)" ]]; then
+if [[ -d .changesets ]] && [[ -x scripts/regen-generated.sh ]]; then
     USE_CHANGESETS=1
     echo "Detected .changesets/ layout — release will roll changesets into the version section."
 fi

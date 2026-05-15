@@ -17,7 +17,7 @@ Triage edits the **product spec**, never the exec plan. The spec records the *wh
 This skill owns Stage = `TRIAGE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
-2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = TRIAGE.
+2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: TRIAGE` (sorted by `priority` then issue number).
 3. **Frontmatter is the source of truth.** In the current layout the spec's YAML frontmatter `stage:` field is canonical — read it from `docs/product-specs/<NNN>-*.md` directly, never from the generated `index.md`. If it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage. **Legacy fallback:** if no frontmatter exists, fall back to the legacy `features/BACKLOG.md` row's `Stage:` column.
 
 ## Layout resolution
@@ -27,7 +27,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 
 ## Steps
 
-1. **Find the spec:** If `$ARGUMENTS` is provided, find the matching `<NNN>-*.md` file in the current layout's `docs/product-specs/` (or legacy `features/active/`). If no argument, read the index and pick the first item with Stage = TRIAGE.
+1. **Find the spec:** If `$ARGUMENTS` is provided, find the matching `<NNN>-*.md` file in the current layout's `docs/product-specs/` (or legacy `features/active/`). If no argument, scan `docs/product-specs/*.md` and pick the first spec whose frontmatter `stage:` is `TRIAGE` (do **not** scan the generated `index.md` — it's a derived view). Legacy fallback: read `features/BACKLOG.md`'s Active table.
 2. **Read the spec** to understand the request.
 3. **Classify:**
    - Type: `bug` or `enhancement`

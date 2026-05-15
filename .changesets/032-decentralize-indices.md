@@ -1,5 +1,5 @@
 ---
-issue: 29
+issue: 32
 type: changed
 bump: minor
 ---

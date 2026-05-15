@@ -1,5 +1,5 @@
 ---
-issue: 29
+issue: 32
 title: Decentralize indices and changelog to eliminate merge conflicts
 type: enhancement
 complexity: L
@@ -9,7 +9,7 @@ stage: IMPLEMENT
 
 # Decentralize indices and changelog to eliminate merge conflicts
 
-- **Exec plan:** [docs/exec-plans/active/029-decentralize-indices-and-changelog.md](../exec-plans/active/029-decentralize-indices-and-changelog.md)
+- **Exec plan:** [docs/exec-plans/active/032-decentralize-indices-and-changelog.md](../exec-plans/active/032-decentralize-indices-and-changelog.md)
 
 ## Problem
 
@@ -44,4 +44,4 @@ Each PR writes only per-PR contribution files (`.changesets/<NNN>-<slug>.md`, sp
 
 ## Notes
 
-Full design plan with adversarial review and decision ledger lives at `/Users/lucascaro/.claude/plans/working-on-multiple-features-optimized-russell.html` (local working file). The decision-making artifacts are reproduced in the exec plan's Decision log on landing.
+The full design plan went through plan-mode iteration and adversarial review before implementation. The decision ledger (12 findings triaged, 8 accepted, 4 rejected with reasons) is reproduced verbatim in the exec plan's Decision log.

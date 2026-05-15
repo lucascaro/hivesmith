@@ -50,9 +50,13 @@ echo "Pinned release base: ${RELEASE_SHA}"
 # is regenerated from .changesets/*.md by scripts/regen-generated.sh. Old layout:
 # CHANGELOG.md is hand-edited. We support both for one release.
 USE_CHANGESETS=0
-if [[ -d .changesets ]] && [[ -x scripts/regen-generated.sh ]] && [[ -n "$(find .changesets -name '*.md' ! -name 'README.md' -print -quit)" ]]; then
+if [[ -d .changesets ]] && [[ -x scripts/regen-generated.sh ]]; then
     USE_CHANGESETS=1
     echo "Detected .changesets/ layout — release will roll changesets into the version section."
+    # In the new layout, an empty .changesets/ is itself an error — release.sh
+    # must refuse rather than silently falling back to the legacy stamp path
+    # (which would produce an empty [VERSION] section). The regenerator's
+    # --release mode enforces this by failing on empty [Unreleased] body.
 fi
 
 # ---- VERSION BUMP --------------------------------------------------------

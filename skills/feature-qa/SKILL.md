@@ -20,7 +20,7 @@ QA is the last chance to catch a partial implementation that slipped past `/revi
 This skill owns Stage = `QA`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
-2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = QA.
+2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: QA` and locate its exec plan. Do not scan the generated `index.md`.
 3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: QA`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 4. Verify the PR (from the plan's `PR:` header field) is merged: `gh pr view <pr-number> --json state -q .state` should be `MERGED`. If it is `OPEN`, tell the user to drive convergence and merge first via `/review-loop` and `/feature-loop`. If it is `CLOSED` and not merged, refuse — the feature was abandoned.
 

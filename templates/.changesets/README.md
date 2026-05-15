@@ -10,7 +10,7 @@ This directory exists so multiple parallel PRs do not conflict on `CHANGELOG.md`
 .changesets/<NNN>-<slug>.md
 ```
 
-- `NNN` — zero-padded sequential id. Use the GitHub issue number when one exists; otherwise the smallest unused number.
+- `NNN` — zero-padded sequential id. Always allocate `max(existing IDs) + 1` — never reuse an unused slot earlier in the sequence. Monotonic allocation keeps changeset rendering strictly append-only; reusing an earlier slot would re-introduce the merge-conflict pattern this directory is designed to eliminate. The GitHub issue number is fine as the id only when it is larger than every existing changeset id.
 - `<slug>` — kebab-case summary, ~3–6 words. Matches the spec slug when there is one.
 
 Example: `.changesets/029-decentralize-indices.md`.

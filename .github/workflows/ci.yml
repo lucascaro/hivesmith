@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `labeled` / `unlabeled` are included so adding/removing the
+    # `regen-override` or `no-changeset` bypass labels after a PR opens
+    # re-runs the gate jobs. Without these, the labels would be checked
+    # only against their initial value.
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
 
 jobs:
   shellcheck:
@@ -96,7 +101,9 @@ jobs:
           )
           touched=$(git diff --name-only "$BASE"..."$HEAD" -- "${GENERATED[@]}")
           if [ -n "$touched" ]; then
-            if printf '%s' "$PR_LABELS" | grep -q '"name":"regen-override"'; then
+            # Use jq because the rendered JSON includes whitespace
+            # (`"name": "regen-override"`), which a literal grep would miss.
+            if printf '%s' "$PR_LABELS" | jq -e '.[] | select(.name == "regen-override")' >/dev/null 2>&1; then
               echo "OK: regen-override label present — bypassing check."
               echo "Touched:"
               echo "$touched"
@@ -132,7 +139,9 @@ jobs:
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
-          if printf '%s' "$PR_LABELS" | grep -q '"name":"no-changeset"'; then
+          # jq, not grep — rendered JSON includes whitespace
+          # (`"name": "no-changeset"`) that a literal grep would miss.
+          if printf '%s' "$PR_LABELS" | jq -e '.[] | select(.name == "no-changeset")' >/dev/null 2>&1; then
             echo "OK: no-changeset label present — skipping requirement."
             exit 0
           fi

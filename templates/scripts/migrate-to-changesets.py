@@ -134,10 +134,14 @@ def parse_unreleased_bullets(changelog_text: str) -> list[tuple[str, str]]:
 
 
 def _allocate_id(used: set[int]) -> int:
-    """Return the smallest positive integer not yet in `used`."""
-    n = 1
-    while n in used:
-        n += 1
+    """Return `max(used) + 1`, or 1 if `used` is empty.
+
+    Monotonic allocation: new files always sort after existing ones, so
+    `.changesets/` rendering is strictly append-only. Reusing an unused slot
+    earlier in the sequence would re-introduce the conflict pattern this
+    refactor is trying to eliminate.
+    """
+    n = (max(used) + 1) if used else 1
     used.add(n)
     return n
 
@@ -193,7 +197,11 @@ def plan_writes(bullets: list[tuple[str, str]]) -> list[tuple[Path, str]]:
 
 
 def apply_writes(writes: Iterable[tuple[Path, str]], dry_run: bool) -> int:
-    CHANGESET_DIR.mkdir(exist_ok=True)
+    # In dry-run mode, do NOT create the directory — the contract is "no I/O".
+    # In write mode we create it lazily so a no-op migration (zero bullets)
+    # doesn't leave behind an empty `.changesets/` either.
+    if not dry_run:
+        CHANGESET_DIR.mkdir(exist_ok=True)
     n_created = 0
     for path, content in writes:
         if path.exists():
@@ -207,6 +215,7 @@ def apply_writes(writes: Iterable[tuple[Path, str]], dry_run: bool) -> int:
         if dry_run:
             sys.stderr.write(f"would write: {path}\n")
         else:
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
             sys.stderr.write(f"wrote: {path}\n")
         n_created += 1

@@ -97,6 +97,16 @@ def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
         key = key.strip()
         if not key:
             raise RegenError(f"frontmatter line {line_no}: empty key")
+        # Strip inline `# comment` from values (YAML semantics). A bare `#`
+        # inside a quoted string is not a comment, so only strip when the
+        # value isn't quoted — quoted strings are detected in _coerce_scalar.
+        stripped_value = value.strip()
+        if not (stripped_value.startswith(('"', "'"))):
+            comment_idx = stripped_value.find(" #")
+            if comment_idx == -1 and stripped_value.startswith("#"):
+                comment_idx = 0
+            if comment_idx >= 0:
+                value = stripped_value[:comment_idx]
         data[key] = _coerce_scalar(value)
     return data, m.group(2)
 
@@ -171,11 +181,24 @@ _UNRELEASED_RE = re.compile(
     re.DOTALL,
 )
 
+# Fallback when there's no prior released section (fresh project scaffold).
+# Capture from `## [Unreleased]` to end-of-document, optionally stopping at the
+# Keep-a-Changelog link reference block (lines like `[Unreleased]: …`).
+_UNRELEASED_TAIL_RE = re.compile(
+    r"(## \[Unreleased\][^\n]*\n)(.*?)(\n\[Unreleased\]:|\Z)",
+    re.DOTALL,
+)
+
 
 def rewrite_unreleased_body(changelog_text: str, new_body: str) -> str:
     m = _UNRELEASED_RE.search(changelog_text)
+    if m:
+        return changelog_text[: m.start(2)] + new_body + changelog_text[m.end(2) :]
+    # Fresh project: no prior `## [VERSION]` section yet. Replace from
+    # `## [Unreleased]` up to the link-reference block (or EOF).
+    m = _UNRELEASED_TAIL_RE.search(changelog_text)
     if not m:
-        raise RegenError("CHANGELOG.md has no '## [Unreleased]' section followed by a versioned section")
+        raise RegenError("CHANGELOG.md has no '## [Unreleased]' section")
     return changelog_text[: m.start(2)] + new_body + changelog_text[m.end(2) :]
 
 
@@ -183,7 +206,10 @@ def promote_unreleased_to_version(changelog_text: str, version: str, date: str) 
     """Move current [Unreleased] body into a new ## [version] — date section."""
     m = _UNRELEASED_RE.search(changelog_text)
     if not m:
-        raise RegenError("CHANGELOG.md has no '## [Unreleased]' section followed by a versioned section")
+        # Fresh project case: no prior released section. Use the tail fallback.
+        m = _UNRELEASED_TAIL_RE.search(changelog_text)
+        if not m:
+            raise RegenError("CHANGELOG.md has no '## [Unreleased]' section")
     unreleased_body = m.group(2).strip("\n")
     if not unreleased_body:
         raise RegenError(f"refusing to release {version}: [Unreleased] body is empty")
@@ -213,7 +239,9 @@ def regen_changelog(release_version: str | None = None) -> bool:
 
 
 def validate_spec(path: Path, fm: dict[str, Any]) -> None:
-    missing = [k for k in ("issue", "title", "stage") if k not in fm]
+    # `issue` is optional — specs created locally (without a GitHub issue) carry
+    # no issue number; the index renders `—` for them. Required: title, stage.
+    missing = [k for k in ("title", "stage") if k not in fm]
     if missing:
         raise RegenError(f"{path}: missing required frontmatter keys: {', '.join(missing)}")
     if fm["stage"] not in STAGES:
@@ -243,9 +271,16 @@ def render_index(specs: list[tuple[Path, dict[str, Any], str]]) -> str:
             completed.append(row)
         elif fm["stage"] == "REJECTED":
             rejected.append(row)
-    active.sort(key=lambda r: (PRIORITY_ORDER.get(r.get("priority", "P3"), 9), int(r["issue"])))
+    def _issue_sort_key(r: dict[str, Any]) -> int:
+        v = r.get("issue")
+        try:
+            return int(v) if v is not None else 9_999_999
+        except (TypeError, ValueError):
+            return 9_999_999
+
+    active.sort(key=lambda r: (PRIORITY_ORDER.get(r.get("priority", "P3"), 9), _issue_sort_key(r)))
     completed.sort(key=lambda r: _shipped_key(r), reverse=True)
-    rejected.sort(key=lambda r: int(r["issue"]))
+    rejected.sort(key=_issue_sort_key)
 
     lines: list[str] = [
         GENERATED_HEADER,
@@ -263,7 +298,7 @@ def render_index(specs: list[tuple[Path, dict[str, Any], str]]) -> str:
         lines.append("| — | — | _no active specs_ | — | — |")
     for r in active:
         lines.append(
-            f"| {r.get('priority', '—')} | #{r['issue']} | {r['title']} | {r['stage']} | [{r['slug']}]({r['slug']}.md) |"
+            f"| {r.get('priority', '—')} | {('#' + str(r['issue'])) if r.get('issue') is not None else '—'} | {r['title']} | {r['stage']} | [{r['slug']}]({r['slug']}.md) |"
         )
     lines += [
         "",
@@ -276,8 +311,9 @@ def render_index(specs: list[tuple[Path, dict[str, Any], str]]) -> str:
         lines.append("| — | _no completed specs_ | — | — | — |")
     for r in completed:
         pr = f"#{r['pr']}" if r.get("pr") else "—"
+        issue_cell = f"#{r['issue']}" if r.get("issue") is not None else "—"
         lines.append(
-            f"| #{r['issue']} | {r['title']} | {pr} | {r.get('shipped', '—')} | [{r['slug']}]({r['slug']}.md) |"
+            f"| {issue_cell} | {r['title']} | {pr} | {r.get('shipped', '—')} | [{r['slug']}]({r['slug']}.md) |"
         )
     lines += [
         "",
@@ -289,8 +325,9 @@ def render_index(specs: list[tuple[Path, dict[str, Any], str]]) -> str:
     if not rejected:
         lines.append("| — | _no rejected specs_ | — |")
     for r in rejected:
+        issue_cell = f"#{r['issue']}" if r.get("issue") is not None else "—"
         lines.append(
-            f"| #{r['issue']} | {r['title']} | {r.get('rejection_reason', '—')} |"
+            f"| {issue_cell} | {r['title']} | {r.get('rejection_reason', '—')} |"
         )
     lines += [
         "",

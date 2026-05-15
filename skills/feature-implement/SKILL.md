@@ -14,7 +14,7 @@ Implement feature **#$ARGUMENTS** (or the next feature in IMPLEMENT stage if no 
 This skill owns Stage = `IMPLEMENT`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
-2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan the index for the first row at Stage = IMPLEMENT.
+2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: IMPLEMENT`.
 3. **Already-merged short-circuit (runs first, regardless of stage).** If the plan has a `PR:` link in its header, run `gh pr view <pr-number> --json state -q .state`. If the result is `MERGED`: advance the spec's frontmatter `stage:` to `QA` (if not already there), tell the user to run `/feature-qa <issue-number>`, and exit. Do not run any code mutations from this skill on an already-merged feature. This handles partial prior runs where the PR got opened and merged but stage wasn't advanced.
 4. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: IMPLEMENT`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 
@@ -29,7 +29,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 
 ## Steps
 
-1. **Find the plan:** If `$ARGUMENTS` is provided, match the zero-padded prefix in `docs/exec-plans/active/` (legacy: `features/active/`). Otherwise, read the index and pick the first item with Stage = IMPLEMENT.
+1. **Find the plan:** If `$ARGUMENTS` is provided, match the zero-padded prefix in `docs/exec-plans/active/` (legacy: `features/active/`). Otherwise, scan `docs/product-specs/*.md` and pick the first spec with frontmatter `stage: IMPLEMENT`, then locate its exec plan. Do not scan the generated `index.md`. Legacy fallback: read `features/BACKLOG.md`.
 2. **Read the plan** — verify the Approach + Files + Tests sections are filled and actionable. If not, tell the user to run `/feature-plan` first.
 3. **Read `AGENTS.md`** for project conventions — build commands, test commands, lint commands, documentation rules. All build/test invocations below come from there, not from assumptions.
 4. **Create a feature branch:** `git checkout -b feature/<issue-number>-<slug>`.

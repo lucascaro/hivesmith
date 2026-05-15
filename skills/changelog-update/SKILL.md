@@ -25,7 +25,7 @@ Add a per-PR changeset file under `.changesets/` for the current change. Use thi
 
 3. **Allocate a filename.**
    - Format: `.changesets/<NNN>-<slug>.md`.
-   - `<NNN>` — zero-padded sequential id, smallest unused integer not present in any existing `.changesets/*.md`. Use the GitHub issue number when one exists and is not already used.
+   - `<NNN>` — zero-padded sequential id. Always allocate `max(existing changeset IDs) + 1`. Never reuse an unused slot earlier in the sequence: rendering is filename-sorted and append-only, and reusing a slot would rewrite lines outside your own changeset's section, re-introducing the merge-conflict pattern. The GitHub issue number is acceptable as the id only when it is larger than every existing changeset id.
    - `<slug>` — kebab-case, ~3–6 words, from the description.
 
 4. **Write the file** with this exact frontmatter shape:

@@ -1,7 +1,7 @@
 # Decentralize indices and changelog
 
-- **Spec:** [docs/product-specs/029-decentralize-indices-and-changelog.md](../../product-specs/029-decentralize-indices-and-changelog.md)
-- **Issue:** #29
+- **Spec:** [docs/product-specs/032-decentralize-indices-and-changelog.md](../../product-specs/032-decentralize-indices-and-changelog.md)
+- **Issue:** #32
 - **Status:** active
 - **PR:** —
 - **Branch:** feat/decentralize-indices
@@ -21,7 +21,7 @@ Drive `CHANGELOG.md`, `docs/product-specs/index.md`, and `docs/exec-plans/tech-d
 
 ## Approach
 
-Adopt a single-process Python frontmatter parser (`yaml.safe_load_all` over a concatenated stream — single fork, scales to ~500 specs in <1s). Bash wrapper for CI portability and shellcheck conformance.
+Adopt a single-process Python frontmatter parser. Stdlib-only — the frontmatter we use is flat scalars (`key: value` per line), so a small hand-rolled parser in `scripts/regen-generated.py` is plenty and avoids a PyYAML dependency. One process reads every spec/changeset/tech-debt file in one pass; scales to ~500 specs in <1s. Bash wrapper for CI portability and shellcheck conformance.
 
 ### Files to change
 
@@ -32,7 +32,7 @@ Adopt a single-process Python frontmatter parser (`yaml.safe_load_all` over a co
 - `docs/product-specs/{011,016,020,024}-*.md` — add frontmatter to each.
 - `docs/exec-plans/_template.md` — remove `Stage:` line (frontmatter is sole SoR).
 - `docs/exec-plans/active/{016,020}-*.md` and completed `{011,024}-*.md` — remove `Stage:` line.
-- `scripts/release.sh` — capture `RELEASE_SHA`, operate against it, push via release PR, call regen with `--release <version>`.
+- `scripts/release.sh` — capture `RELEASE_SHA` at start, call regen with `--release <version>` to roll changesets, verify `origin/main` hasn't advanced before pushing, then direct-push (matches existing behavior). The SHA pin is the race protection; the release PR pattern was considered but not adopted because it would require restructuring `gh release create` to attach to a separate PR commit.
 - `skills/*/SKILL.md` — 13 skills per audit table; stage write is the last write in each multi-write sequence; idempotent recovery on partial state; never edit generated files directly.
 - `templates/CHANGELOG.md` — "managed by `.changesets/`" boilerplate.
 - `templates/scripts/release.sh` — invoke new regenerator on release.
@@ -45,7 +45,7 @@ Adopt a single-process Python frontmatter parser (`yaml.safe_load_all` over a co
 - `scripts/migrate-to-changesets.sh` — one-shot migration tool (parses current `[Unreleased]` bullets + current `index.md` rows). Used by this PR and shipped for downstream consumers via `hivesmith-init`.
 - `.changesets/README.md` — schema, naming, sort rule.
 - `.changesets/.gitkeep` — to keep the empty dir tracked between releases.
-- `.changesets/029-decentralize-indices.md` — this PR's own changeset (with the agent-runnable migration instructions).
+- `.changesets/032-decentralize-indices.md` — this PR's own changeset (with the agent-runnable migration instructions).
 - `templates/.changesets/README.md` — downstream-project copy.
 - `templates/.hivesmith/template-version` — stamp file for `hivesmith doctor` to detect stale layouts.
 
@@ -69,7 +69,7 @@ This repo uses shell-script smokes, not unit tests. Equivalent verifications:
 - **2026-05-15** — `block-generated-edits` has a `regen-override` label bypass; `no-changeset` defaults to trust (no path-filter gating). Why: adversarial review #7 (need an escape hatch for the migration PR itself + regen bug fixes) and #12 reject (default trust is fine).
 - **2026-05-15** — Bot direct-pushes to `main` with `[skip ci]`. Why: branch protection allows GitHub Actions to bypass in this repo's config; `[skip ci]` prevents runaway retrigger (adversarial review #1/#2 rejected).
 - **2026-05-15** — `verify-generated` adds a `merge_commit_sha` pre-check to catch interaction bugs. Why: adversarial review #3 — two individually-valid PRs can fail regen jointly; surface the bug pre-merge.
-- **2026-05-15** — `release.sh` pins to start-of-release SHA and lands via release PR. Why: adversarial review #6 — direct push races the regenerator bot.
+- **2026-05-15** — `release.sh` pins to start-of-release SHA and verifies `origin/main` hasn't advanced before pushing. Why: adversarial review #6 — direct push races the regenerator bot. Chose SHA-pin over the release-PR pattern because the existing `gh release create` flow assumes the tag is reachable from the pushed commit; the SHA pin gives equivalent safety without restructuring `release.sh`.
 - **2026-05-15** — Migration in a single PR with `regen-override` label. Why: simplest coherent state — the PR touches all three centralized files at once and downstream projects migrate via `scripts/migrate-to-changesets.sh` documented in the PR's own changeset.
 
 ## Progress
@@ -78,7 +78,7 @@ This repo uses shell-script smokes, not unit tests. Equivalent verifications:
 
 ## Open questions
 
-- Issue number `#29` is a placeholder until the corresponding GitHub issue is filed. Rename spec/plan files + frontmatter `issue:` field when the real number is known. (Question for the user: file the issue now or after the PR opens?)
+- _Closed._ Issue #32 filed mid-PR; spec/plan/changeset renamed from `029` to `032` to match.
 
 ## PR convergence ledger
 
