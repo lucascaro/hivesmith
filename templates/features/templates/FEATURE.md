@@ -43,7 +43,7 @@
 
 <Append-only. One entry per `/review-loop` iteration.>
 
-- **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short-sha>.
+- **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; mergeable: <MERGEABLE|CONFLICTING|UNKNOWN>; findings_hash: <hex|empty>; action: <stop|autofix+push|autofix+push (conflict)|escalated:<reason>>; head_sha: <short-sha>.
 
 ## QA verdict
 

@@ -58,7 +58,7 @@ this file or from the generated `docs/product-specs/index.md`.
 
 <Append-only. One entry per `/review-loop` iteration so a fresh harness run can pick up where the previous one left off without rereading PR comments. Keep entries one line each.>
 
-- **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; findings_hash: <hex|empty>; action: <stop|autofix+push|escalated:<reason>>; head_sha: <short-sha>.
+- **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; mergeable: <MERGEABLE|CONFLICTING|UNKNOWN>; findings_hash: <hex|empty>; action: <stop|autofix+push|autofix+push (conflict)|escalated:<reason>>; head_sha: <short-sha>.
 
 ## QA verdict
 
