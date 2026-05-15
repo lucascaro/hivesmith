@@ -10,6 +10,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 |----------|-------|-------|-------|------|
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
 | P2 | #32 | Decentralize indices and changelog to eliminate merge conflicts | IMPLEMENT | [032-decentralize-indices-and-changelog](032-decentralize-indices-and-changelog.md) |
+| P2 | #— | hs-autofix does not resolve merge conflicts | IMPLEMENT | [033-hs-autofix-does-not-resolve-merge-conflicts](033-hs-autofix-does-not-resolve-merge-conflicts.md) |
 | P3 | #20 | Add --full-auto flag to hs-feature-loop skill | IMPLEMENT | [020-add-full-auto-flag-to-hs-feature-loop-skill](020-add-full-auto-flag-to-hs-feature-loop-skill.md) |
 
 ## Completed
