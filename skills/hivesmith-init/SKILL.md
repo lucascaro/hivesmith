@@ -54,7 +54,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - `templates/scripts/release.sh` → `scripts/release.sh` (chmod +x)
    - `templates/scripts/regen-generated.sh` + `templates/scripts/regen-generated.py` → `scripts/` (chmod +x on the `.sh`).
    - `templates/scripts/migrate-to-changesets.sh` + `templates/scripts/migrate-to-changesets.py` → `scripts/` (chmod +x on the `.sh`).
-   - `templates/.github/workflows/ci.yml` snippet → `.github/workflows/ci.yml` — install the `block-generated-edits`, `verify-generated`, and `regenerate-generated` jobs (skip on existing files unless `--force`).
+   - `templates/.github/workflows/changesets.yml` → `.github/workflows/changesets.yml` — standalone workflow containing the `block-generated-edits`, `verify-generated`, and `regenerate-generated` jobs (skip if the file already exists unless `--force`).
    - **Write `.hivesmith/template-version`** — single line with the current hivesmith template version (e.g. `1`). Bumped when the template layout makes a breaking change. `hivesmith doctor` reads this to decide whether to offer migration.
 
    **AGENTS.md is handled specially** (see step 5a).
