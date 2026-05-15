@@ -2,8 +2,8 @@
 
 - **Spec:** [docs/product-specs/029-add-opt-in-html-plan-review-skill.md](../../product-specs/029-add-opt-in-html-plan-review-skill.md)
 - **Issue:** #29
-- **Stage:** QA
-- **Status:** active
+- **Stage:** DONE
+- **Status:** completed
 - **PR:** [#30](https://github.com/lucascaro/hivesmith/pull/30)
 - **Branch:** feature/29-add-opt-in-html-plan-review-skill
 
@@ -88,4 +88,10 @@ Hivesmith skills don't ship a Python test suite (per AGENTS.md conventions — s
 
 ## QA verdict
 
-<!-- populated by /feature-qa -->
+- **2026-05-15** — verdict: PASS; checks: 13 passed / 0 failed / 0 followups; followups: none; one-line: all AGENTS.md gates green and every spec success criterion exercised against merged code at 31e5bee.
+  - 2026-05-15 dimensions:
+    - build/lint/test — PASS — shellcheck (full AGENTS.md list), brain tests (13/13), install smoke (`--prefix hs-` and `--prefix ""`), render correctness (`/hs-feature-plan` rewrite, no bare `/feature-plan`), `render_plan.py --self-test` (positive + 3 negative-allowlist + single-`<title>` checks).
+    - acceptance — PASS — SC1: `skills/plan-html/` ships 7 files and installs as `hs-plan-html`. SC2: `start.sh` returns once `server.py` binds + writes the port file (verified, pid=83442 port=65189). SC3: `skills/feature-loop/SKILL.md` documents HTML default, `HIVESMITH_PLAN_HTML=0` opt-out, and `--no-html` flag. SC4: chrome lives in `template.html` (300 lines, frozen) and `render_plan.py` uses `out.replace()` + strict `ALLOWED_TAGS`. SC5: `POST /save?t=…` then `GET /feedback?t=…` round-trips `{"context":"hello"}`. SC6: `POST /approve?t=…` writes `<plan>.approved.json` with `approved_at`. SC7: `server.py` imports stdlib-only (`datetime, hmac, json, os, sys, http.server, pathlib, urllib.parse`), binds `127.0.0.1`, `_bind` falls back to OS-picked on EADDRINUSE, `stop.sh` leaves no zombie process and removes the pid sidecar.
+    - non-goals — PASS — no `settings.json` hook, no global plan-mode override, server is Python-stdlib only, all persistence is local JSON sidecars, no remote/cross-machine surface, token query param is the only auth (as scoped).
+    - regression — PASS — diff scoped to `skills/plan-html/` (new), `skills/feature-loop/SKILL.md` (Phase 1P P2 only), `CHANGELOG.md`, `README.md`, `docs/`, `tests/manual/`. No other skills modified; render correctness check confirms cross-skill references still rewrite under the `hs-` prefix.
+    - doc accuracy — PASS — `CHANGELOG.md` `[Unreleased]` has the `hs-plan-html` entry; `README.md` skill catalogue includes `/plan-html`; `skills/plan-html/SKILL.md` reflects the post-TOCTOU-redesign behavior (`PLAN_FEEDBACK_PORT=0` default, OS-picks); `skills/plan-html/README.md` matches; `tests/manual/plan-html-smoke.md` covers the new port-collision semantics.
