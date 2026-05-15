@@ -84,14 +84,6 @@ The autofix/review-loop skills are markdown specifications consumed by an LLM; t
   6. Repeat invoking via `/hs-review-loop <PR#>` with an LGTM review already on the PR — verify autofix still fires due to the conflict.
 - **`shellcheck` + brain tests:** no shell changes, but run the full `AGENTS.md` lint/test set to confirm no regressions.
 
-## Open questions
-
-- **Squash assumption.** If a future contributor uses merge-commit landing, the pre-flight merge commit will persist on main. Mitigation: explicit commit subject prefix `merge:` so it's filterable; document the assumption in `skills/autofix/SKILL.md`.
-- **`UNKNOWN` mergeable state.** GitHub computes `mergeable` lazily. We retry once after 2s; if still unknown, we skip pre-flight rather than block. Acceptable degradation — the next review-loop iteration will retry.
-- **Review threads vs conflicts ordering.** Source (c) currently runs alongside (a)/(b). With the pre-flight, conflicts effectively run first. Confirm this matches the "boil the lake" stance: yes, resolving conflicts before applying review fixes prevents wasted work on a soon-to-be-rewritten file.
-
-
-
 ## Decision log
 
 - **2026-05-15** — Use `git merge`, not `git rebase`, for the pre-flight initiator. Why: flat MERGE_HEAD state is easier to reason about and abort than N replayed commits; project squash-merges absorb the extra merge commit at land time.
@@ -107,6 +99,10 @@ The autofix/review-loop skills are markdown specifications consumed by an LLM; t
 - **2026-05-15** — Pushed branch `feature/033-hs-autofix-merge-conflicts`, opened PR #36, stage → REVIEW.
 
 ## Open questions
+
+- **Squash assumption.** If a future contributor uses merge-commit landing, the pre-flight merge commit will persist on main. Mitigation: explicit commit subject prefix `merge:` so it's filterable; document the assumption in `skills/autofix/SKILL.md`.
+- **`UNKNOWN` mergeable state.** GitHub computes `mergeable` lazily. We retry once after 2s; if still unknown, we skip pre-flight rather than block. Acceptable degradation — the next review-loop iteration will retry.
+- **Review threads vs conflicts ordering.** Source (c) currently runs alongside (a)/(b). With the pre-flight, conflicts effectively run first. Confirm this matches the "boil the lake" stance: yes, resolving conflicts before applying review fixes prevents wasted work on a soon-to-be-rewritten file.
 
 ## PR convergence ledger
 
