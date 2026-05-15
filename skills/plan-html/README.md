@@ -22,7 +22,7 @@ The chrome (CSS, JS, savebar, theme wiring, mermaid + highlight.js setup, server
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `PLAN_FEEDBACK_PORT` | `8765` | Starting port for the free-port scan. Auto-bumps on collision (up to +100). |
+| `PLAN_FEEDBACK_PORT` | `0` | Preferred port. `0` (default) lets the OS pick any free port — no TOCTOU window. Set to a specific port (e.g. `8765`) to request it; the server falls back to OS-picked if it's taken. |
 | `PLAN_HTML_AUTO_OPEN` | `true` | Set to `false` to skip the `open`/`xdg-open` call (useful on SSH / headless). |
 | `HIVESMITH_PLAN_HTML` | `1` | Set to `0` to opt out — `hs-feature-loop plan ...` falls back to the inline text-plan draft. |
 

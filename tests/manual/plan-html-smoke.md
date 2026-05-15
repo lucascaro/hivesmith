@@ -71,19 +71,22 @@ curl -i "http://127.0.0.1:8765/?t=$(cat /tmp/hs-plan-html-selftest.server.token)
 
 ## 3 · Port collision
 
-In two terminals:
+Default behavior: server binds with `port=0`, so the OS picks any free port — collisions are impossible. To exercise the fallback path (explicit port already in use):
 
 ```bash
 # terminal 1
-skills/plan-html/start.sh /tmp/plan-a.html   # (render a fixture first)
+PLAN_FEEDBACK_PORT=8765 skills/plan-html/start.sh /tmp/plan-a.html
 # expect: port=8765
 
 # terminal 2
-skills/plan-html/start.sh /tmp/plan-b.html
-# expect: port=8766 (auto-bump)
+PLAN_FEEDBACK_PORT=8765 skills/plan-html/start.sh /tmp/plan-b.html
+# expect: log line "port 8765 in use; falling back to OS-picked free port"
+# expect: a different port in the URL
 ```
 
-Both URLs open and work independently. `stop.sh` against each cleans them up.
+Both URLs work independently. `stop.sh` against each cleans them up.
+
+Note: there is no TOCTOU window — the bind happens inside `server.py`, and the port is written to `<plan>.server.port` *before* `serve_forever()`. `start.sh` polls for that file (up to 5s) and prints the actual bound port.
 
 ## 4 · Headless mode
 

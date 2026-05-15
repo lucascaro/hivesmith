@@ -5,9 +5,15 @@ Serves the plan HTML and accepts POSTs to /save (feedback) and /approve
 (approval flag). Single-purpose, stdlib only, runs in foreground.
 
 Configuration via env vars (set by start.sh):
-  PLAN_HTML_PATH   absolute path to <plan>.html (required)
-  PLAN_FEEDBACK_PORT  TCP port to bind on 127.0.0.1 (required)
-  PLAN_TOKEN       required ?t=<token> URL query param; rejects others (required)
+  PLAN_HTML_PATH      absolute path to <plan>.html (required)
+  PLAN_FEEDBACK_PORT  TCP port to request on 127.0.0.1 (required). Use 0 to let
+                      the OS pick any free port. If a non-zero port is taken,
+                      the server falls back to 0 (OS-picked) automatically —
+                      this is the bind itself, so there is no TOCTOU window.
+  PLAN_TOKEN          required ?t=<token> URL query param (required)
+  PLAN_PORT_FILE      optional path; if set, the server writes the actual bound
+                      port to this file (atomically, via rename) *before*
+                      serve_forever(). start.sh polls this file to learn the port.
 
 Sidecars (next to PLAN_HTML_PATH):
   <plan>.feedback.json   read by /feedback, written by /save
@@ -125,12 +131,37 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("[%s] %s\n" % (self.log_date_time_string(), msg))
 
 
+def _bind(port: int) -> HTTPServer:
+    """Bind on 127.0.0.1:port; on EADDRINUSE for a non-zero port, fall back to 0."""
+    try:
+        return HTTPServer(("127.0.0.1", port), Handler)
+    except OSError as exc:
+        if port != 0 and getattr(exc, "errno", None) in (48, 98):  # EADDRINUSE (BSD, Linux)
+            sys.stderr.write(
+                f"port {port} in use; falling back to OS-picked free port\n"
+            )
+            return HTTPServer(("127.0.0.1", 0), Handler)
+        raise
+
+
+def _write_port_atomic(path: Path, port: int) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(f"{port}\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def main() -> int:
     if not PLAN_HTML.exists():
         sys.stderr.write(f"plan file not found: {PLAN_HTML}\n")
         return 1
-    server = HTTPServer(("127.0.0.1", PORT), Handler)
-    sys.stderr.write(f"hs-plan-html server listening on http://127.0.0.1:{PORT}/?t={TOKEN}\n")
+    server = _bind(PORT)
+    bound_port = server.server_address[1]
+    # Write the port file *before* serve_forever() so start.sh's poll sees
+    # the canonical port even when PORT=0 picked something else.
+    port_file = os.environ.get("PLAN_PORT_FILE")
+    if port_file:
+        _write_port_atomic(Path(port_file), bound_port)
+    sys.stderr.write(f"hs-plan-html server listening on http://127.0.0.1:{bound_port}/?t=<token>\n")
     sys.stderr.write(f"feedback file: {FEEDBACK_JSON}\n")
     sys.stderr.flush()
     try:

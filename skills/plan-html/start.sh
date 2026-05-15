@@ -4,15 +4,21 @@
 # Usage: start.sh <plan.html>
 #
 # Behavior:
-#   - Finds a free TCP port starting at PLAN_FEEDBACK_PORT (default 8765).
 #   - Generates a random URL token (PLAN_TOKEN) — clients must send ?t=<token>.
-#   - Launches server.py in the background, redirecting output to <plan>.server.log.
-#   - Writes <plan>.server.pid and <plan>.server.port for stop.sh to read.
+#   - Launches server.py in the background. The server itself binds (port=0
+#     by default; the OS picks any free port) and writes the actual port to
+#     <plan>.server.port atomically *before* serve_forever(). start.sh polls
+#     that file (with a timeout) and prints/opens the URL once it appears.
+#     This eliminates the lsof-probe-then-bind TOCTOU race that the previous
+#     implementation had.
+#   - Writes <plan>.server.{pid,token,log}; the port file is written by server.py.
 #   - Opens http://127.0.0.1:<port>/?t=<token> via `open` (macOS) / `xdg-open` (Linux),
 #     unless PLAN_HTML_AUTO_OPEN=false.
 #
 # Env knobs:
-#   PLAN_FEEDBACK_PORT   starting port (default 8765); auto-bumps on collision.
+#   PLAN_FEEDBACK_PORT   preferred port (default 0 = OS picks any free port).
+#                        Set to e.g. 8765 to request a specific port; the server
+#                        falls back to OS-picked if it's taken.
 #   PLAN_HTML_AUTO_OPEN  set to "false" to skip the open call (headless / SSH).
 set -euo pipefail
 
@@ -35,31 +41,50 @@ port_file="${plan_base}.server.port"
 log_file="${plan_base}.server.log"
 token_file="${plan_base}.server.token"
 
-start_port="${PLAN_FEEDBACK_PORT:-8765}"
-port="$start_port"
-while lsof -ti :"$port" >/dev/null 2>&1; do
-    port=$((port + 1))
-    if [[ "$port" -gt $((start_port + 100)) ]]; then
-        echo "could not find a free port within 100 of $start_port" >&2
-        exit 1
-    fi
-done
+# Clean up any stale port file from a previous run — start.sh polls for the
+# server's freshly-written port and must not pick up a corpse.
+rm -f "$port_file"
 
 # Random URL token (32 hex chars).
 token=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Preferred port; server.py treats 0 as "OS picks any free port" and falls
+# back to OS-picked if the requested port is taken. No TOCTOU window.
+preferred_port="${PLAN_FEEDBACK_PORT:-0}"
+
 PLAN_HTML_PATH="$plan_html_abs" \
-PLAN_FEEDBACK_PORT="$port" \
+PLAN_FEEDBACK_PORT="$preferred_port" \
+PLAN_PORT_FILE="$port_file" \
 PLAN_TOKEN="$token" \
     nohup python3 "$script_dir/server.py" >"$log_file" 2>&1 &
 server_pid=$!
 
 echo "$server_pid" >"$pid_file"
-echo "$port" >"$port_file"
 echo "$token" >"$token_file"
 
+# Wait for the server to bind and write the port file (~5s timeout).
+for _ in $(seq 1 50); do
+    if [[ -s "$port_file" ]]; then
+        break
+    fi
+    if ! kill -0 "$server_pid" 2>/dev/null; then
+        echo "server.py exited before binding; see $log_file" >&2
+        rm -f "$pid_file" "$token_file"
+        exit 1
+    fi
+    sleep 0.1
+done
+
+if [[ ! -s "$port_file" ]]; then
+    echo "timed out waiting for server.py to bind; see $log_file" >&2
+    kill "$server_pid" 2>/dev/null || true
+    rm -f "$pid_file" "$token_file"
+    exit 1
+fi
+
+port=$(cat "$port_file")
 url="http://127.0.0.1:$port/?t=$token"
 echo "hs-plan-html: server pid=$server_pid port=$port log=$log_file"
 echo "hs-plan-html: open $url"
