@@ -2,10 +2,10 @@
 
 - **Spec:** [docs/product-specs/029-add-opt-in-html-plan-review-skill.md](../../product-specs/029-add-opt-in-html-plan-review-skill.md)
 - **Issue:** #29
-- **Stage:** IMPLEMENT
+- **Stage:** REVIEW
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** [#30](https://github.com/lucascaro/hivesmith/pull/30)
+- **Branch:** feature/29-add-opt-in-html-plan-review-skill
 
 ## Summary
 
@@ -72,6 +72,7 @@ Hivesmith skills don't ship a Python test suite (per AGENTS.md conventions — s
 ## Progress
 
 - **2026-05-15** — Plan-first scaffold via `/hs-feature-loop plan ...`; Stage = IMPLEMENT. Issue #29 created, spec + exec plan written.
+- **2026-05-15** — Implementation committed on `feature/29-add-opt-in-html-plan-review-skill`. All AGENTS.md checks pass (shellcheck clean, `render_plan.py --self-test` OK, install dry-run + render correctness OK, changelog gate OK). PR #30 opened. Stage = REVIEW.
 
 ## Open questions
 
