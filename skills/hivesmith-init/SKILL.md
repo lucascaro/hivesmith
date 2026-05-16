@@ -80,15 +80,20 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
 6a. **Ensure `.hivesmith/config.toml` exists** — per-project policy file.
    - If `.hivesmith/config.toml` already exists, skip silently (it is user-owned; never overwrite without `--force` + per-file confirmation).
    - Otherwise, use AskUserQuestion to ask:
-     > "How should hivesmith handle GitHub issue creation in this project?"
-     > 1. Opt-out — create by default, ask before skipping (Recommended)
-     > 2. Opt-in — skip by default, ask before creating
-     > 3. Always ask — no default, prompt every time
-   - Map the choice to a value (`opt-out`, `opt-in`, or `ask`) and write `.hivesmith/config.toml`:
+     > "How should this project handle GitHub issues for new features?"
+     > 1. Create issues on GitHub by default — `/feature-new` and `/feature-loop` open a GitHub issue when you start a feature and confirm at Gate 1; you can skip per-feature. You get a real issue number, lifecycle labels (`triaged`/`researching`/`planned`/`implementing`/`qa`), a PR that links `Fixes #N`, and an index row that shows `#N`. (Recommended)
+     > 2. Always create, never ask — same as option 1, but Gate 1 is skipped entirely. The issue is opened as soon as you describe a feature. Use when every feature is going to GitHub and the confirmation is just noise.
+     > 3. Keep specs local by default — features live as files in `docs/product-specs/` only; no GitHub issue is created unless you ask per-feature. You get a locally-allocated number, no labels, and an index row with `—` in the issue column.
+     > 4. Ask every time — no project default; Gate 1 shows no recommendation and you decide per feature.
+   - Map the choice to a value — option 1 → `opt-out`, option 2 → `always`, option 3 → `opt-in`, option 4 → `ask` — and write `.hivesmith/config.toml`:
      ```toml
      [github]
-     # One of: "opt-out" (create by default), "opt-in" (skip by default), "ask" (no default).
-     # The feature pipeline skills honor this when prompting at Gate 1.
+     # Controls whether /feature-new and /feature-loop open a GitHub issue
+     # when starting a feature. Behavior of each value:
+     #   "opt-out" — create by default, confirm at Gate 1 (recommended)
+     #   "always"  — create without asking; Gate 1 is skipped
+     #   "opt-in"  — keep specs local by default; only create when asked
+     #   "ask"     — no default; the operator chooses every time
      create_issues = "<value>"
      ```
    - Create the `.hivesmith/` directory if missing. This file is committed (project-level policy).
@@ -115,7 +120,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - Edit `golden-principles.md` to define the rules `/gc-sweep` will enforce. Keep it short (5–10 principles).
    - Edit `DESIGN.md` to document domains, layers, and cross-cutting concerns.
    - Edit `scripts/release.sh` to set `PROJECT`, `REPO`, and `BUILD_CMD` at the top.
-   - Edit `.hivesmith/config.toml` to change the GitHub issue creation policy later (`opt-out` / `opt-in` / `ask`).
+   - Edit `.hivesmith/config.toml` to change the GitHub issue creation policy later: `"opt-out"` (create by default), `"always"` (create without asking), `"opt-in"` (keep specs local by default), or `"ask"` (prompt every time).
    - The hive brain at `~/.hivesmith/brain/` will accumulate cross-project lessons. Use `/hs-brain-promote` to broaden a project lesson, `/hs-brain-garden` to tidy.
    - Run `/feature-next` to verify the pipeline is wired up.
 

@@ -5,7 +5,7 @@ This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills. Ke
 
 **Feature pipeline:** `/feature-next` → (`/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/review-loop` → `/feature-qa`
 
-**Issue-creation policy:** `.hivesmith/config.toml` sets `[github] create_issues` to `opt-out` (create by default), `opt-in` (skip by default), or `ask` (no default). `/feature-new` and `/feature-loop` honor this at their Gate 1 — the recommended option flips based on the policy, and the user can always override. Default when the file is missing: `opt-out`.
+**Issue-creation policy:** `.hivesmith/config.toml` sets `[github] create_issues` to one of: `opt-out` (create on GitHub by default, confirm at Gate 1 — recommended), `always` (create without asking; Gate 1 is skipped), `opt-in` (keep specs local by default; only create when asked), or `ask` (no default; prompt every time). `/feature-new` and `/feature-loop` honor this at their Gate 1 — the recommended option flips based on the policy, the user can override, and `always` skips the gate entirely. Default when the file is missing: `opt-out`.
 
 Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/review-loop` driving convergence (writes a per-iteration line to the plan's `## PR convergence ledger`). `QA` = PR merged, `/feature-qa` validating against the spec's `## Success criteria` (writes `## QA verdict`). `DONE` = QA PASS; plan moved to `docs/exec-plans/completed/`. Each stage skill reads `Stage:` from the plan/index and refuses if mismatched, so any skill can be run cold from a fresh agent context.
 
