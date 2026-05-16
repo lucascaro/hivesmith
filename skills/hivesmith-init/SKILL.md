@@ -13,11 +13,11 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
 
 ## Steps
 
-1. **Locate the hivesmith clone.** Try in order:
+1. **Locate the hivesmith clone.** Try the candidates below in order; **accept the first one that contains BOTH `templates/` and `skills/` subdirectories**. If a candidate exists but is missing those subdirectories (e.g. an `hs-` bin install at `~/.hivesmith/` with only `bin/` and `brain/`), do NOT error — silently fall through to the next candidate.
    - `$HIVESMITH_DIR` env var
    - `~/.hivesmith`
-   - Resolve this skill's symlink target and walk up to the repo root
-   If not found, tell the user to set `HIVESMITH_DIR` or reinstall.
+   - Resolve this skill's symlink target (`readlink -f` the SKILL.md path) and walk parent directories until you find one containing both `templates/` and `skills/`
+   If no candidate qualifies, tell the user to set `HIVESMITH_DIR` or reinstall, and report which candidates were tried and why each was rejected (e.g. "`~/.hivesmith` exists but lacks `templates/` and `skills/` — likely a bin-only install without the repo content"). This diagnostic matters because the silent-stop-at-first-existing-dir failure mode has confused agents into telling users "your install is incomplete" when the symlink-walk fallback would have succeeded.
 
 2. **Detect what's already present** in the current working directory:
    - `features/BACKLOG.md` (legacy layout)

@@ -1,0 +1,6 @@
+---
+issue: 39
+type: changed
+bump: patch
+---
+- **Hivesmith now eats its own changesets-workflow dogfood.** Installs `.github/workflows/changesets.yml` so every PR against hivesmith is gated by the same `block-generated-edits`, `verify-generated`, and `regenerate-generated` jobs that downstream projects get from `templates/.github/workflows/changesets.yml`. Drift between the two copies (like the `ci.yml`/`changesets.yml` pointer mismatch in `skills/hivesmith-init/SKILL.md` that motivated this PR) will now surface immediately instead of silently lingering. Both workflow copies tighten the changeset-detection regex in `verify-generated` to `grep -vE '^\.changesets/(README\.md|\.gitkeep)$'` so future `.gitkeep` additions can't masquerade as "the PR's changeset." `skills/hivesmith-init/SKILL.md` step 1 now validates each clone-lookup candidate (env var → `~/.hivesmith` → symlink-walk) by requiring `templates/` and `skills/` subdirectories before accepting it; bin-only installs at `~/.hivesmith` (e.g. `bin/` + `brain/` only) silently fall through to the symlink walk instead of dead-ending agents at "your install is incomplete." Pointer in step 5 also corrected from a non-existent `templates/.github/workflows/ci.yml` snippet to the actual standalone `templates/.github/workflows/changesets.yml`.
