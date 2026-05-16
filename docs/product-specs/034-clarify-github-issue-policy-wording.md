@@ -4,8 +4,9 @@ title: Clarify GitHub issue policy wording in hivesmith init
 type: bug
 complexity: S
 priority: P3
-stage: REVIEW
+stage: DONE
 pr: 38
+shipped: 2026-05-16
 ---
 
 # Clarify GitHub issue policy wording in hivesmith init

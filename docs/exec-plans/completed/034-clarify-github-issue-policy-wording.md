@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/034-clarify-github-issue-policy-wording.md](../../product-specs/034-clarify-github-issue-policy-wording.md)
 - **Issue:** #34
-- **Status:** active
+- **Status:** completed
 - **PR:** #38
 - **Branch:** feature/34-clarify-github-issue-policy-wording
 
@@ -73,3 +73,11 @@ None.
 - **2026-05-15 iter 1** — verdict: APPROVE; findings_hash: empty; threads_open: 0; action: stop; head_sha: ac0d2ea.
 
 ## QA verdict
+
+- **2026-05-16** — verdict: PASS; checks: 5 passed / 0 failed / 0 followups; followups: none; one-line: wording rewritten as planned, new `always` value wired through `feature-new` + `feature-loop`, defaults and config keys preserved.
+  - 2026-05-16 dimensions:
+    - build/lint/test — PASS — `shellcheck` clean across all listed scripts; `scripts/brain/test/run-all.sh` 13/13 pass.
+    - acceptance — PASS — prompt no longer leads with bare "opt-out"/"opt-in" labels (each option is a behavior phrase); each option names the resulting outcome (issue number + lifecycle labels vs `—` index row); `.hivesmith/config.toml` comment block describes each of the four values inline.
+    - non-goals — PASS — internal config keys (`opt-out`, `opt-in`, `ask`) unchanged; new `always` added alongside; default-when-missing remains `opt-out` per `feature-new` step 1 and `feature-loop` step 3a.
+    - regression — PASS — diff is markdown-only across `skills/hivesmith-init/SKILL.md`, `skills/feature-new/SKILL.md`, `skills/feature-loop/SKILL.md`, `templates/AGENTS.hivesmith.md`; no code paths touched; `templates/AGENTS.hivesmith.md` description rewritten to match.
+    - doc accuracy — PASS — `.changesets/034-github-issue-policy-wording.md` present (CHANGELOG regen on next push); README does not document the issue-policy surface, so no staleness introduced.
