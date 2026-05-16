@@ -13,7 +13,6 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | P2 | #35 | Make plan-html the default in feature-loop and add per-section feedback boxes | REVIEW | [035-plan-html-default-and-per-section-feedback](035-plan-html-default-and-per-section-feedback.md) |
 | P2 | #— | hs-autofix does not resolve merge conflicts | REVIEW | [033-hs-autofix-does-not-resolve-merge-conflicts](033-hs-autofix-does-not-resolve-merge-conflicts.md) |
 | P3 | #20 | Add --full-auto flag to hs-feature-loop skill | IMPLEMENT | [020-add-full-auto-flag-to-hs-feature-loop-skill](020-add-full-auto-flag-to-hs-feature-loop-skill.md) |
-| P3 | #34 | Clarify GitHub issue policy wording in hivesmith init | REVIEW | [034-clarify-github-issue-policy-wording](034-clarify-github-issue-policy-wording.md) |
 
 ## Completed
 
