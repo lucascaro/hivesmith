@@ -72,9 +72,9 @@ run() {
 # ---- Parse config (very small TOML subset) -------------------------------
 # Supports:
 #   prefix = "hs-"
-#   disable = ["a", "b"]
+#   disable = ["a", "b"]        # skill names and/or subagent names
 #   [agents.<name>]
-#   only = ["x", "y"]
+#   only = ["x", "y"]           # skills only — does not apply to subagents
 #
 # Exposes:
 #   DISABLE_GLOBAL   — space-separated list
@@ -282,11 +282,16 @@ with open(sys.argv[1]) as f:
 
 # Subagent definitions are shipped verbatim (no prefix rendering — the `name:`
 # frontmatter is the dispatch key and filenames are already hs-prefixed).
-SUBAGENTS=()
-for f in "$HIVESMITH_DIR"/agents/*.md; do
-    [[ -f "$f" ]] || continue
-    SUBAGENTS+=("$(basename "$f")")
-done
+# Enumerated via a function so `update` mode can re-run it after `git pull`,
+# the same way SKILLS is re-enumerated.
+enumerate_subagents() {
+    SUBAGENTS=()
+    for f in "$HIVESMITH_DIR"/agents/*.md; do
+        [[ -f "$f" ]] || continue
+        SUBAGENTS+=("$(basename "$f")")
+    done
+}
+enumerate_subagents
 
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
     say "No supported AI agent installations detected."
@@ -305,6 +310,8 @@ if [[ "$MODE" == "update" ]]; then
         [[ -d "$dir" ]] || continue
         SKILLS+=("$(basename "$dir")")
     done
+    # Same for subagents — a pull may have added, renamed, or removed one.
+    enumerate_subagents
 fi
 
 # ---- Mode: uninstall -----------------------------------------------------
@@ -337,12 +344,17 @@ if [[ "$MODE" == "uninstall" ]]; then
     done
     for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
         IFS=$'\t' read -r name agents_dir <<< "$entry"
-        for a in ${SUBAGENTS[@]+"${SUBAGENTS[@]}"}; do
-            link="$agents_dir/$a"
-            if [[ -L "$link" && "$(readlink "$link")" == "$HIVESMITH_DIR/agents/$a" ]]; then
-                run rm "$link"
-                GONE+=("$name"$'\t'"$a"$'\t'"uninstall")
-            fi
+        [[ -d "$agents_dir" ]] || continue
+        # Sweep by target, not by current SUBAGENTS: an agent file renamed or
+        # removed upstream still has a link here, and uninstall must clear it.
+        for existing in "$agents_dir"/*; do
+            [[ -L "$existing" ]] || continue
+            case "$(readlink "$existing")" in
+                "$HIVESMITH_DIR/agents/"*)
+                    run rm "$existing"
+                    GONE+=("$name"$'\t'"$(basename "$existing")"$'\t'"uninstall")
+                    ;;
+            esac
         done
     done
     # Remove rendered tree
@@ -517,14 +529,61 @@ for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
     IFS=$'\t' read -r name agents_dir <<< "$entry"
     [[ ${#SUBAGENTS[@]} -eq 0 ]] && continue
     run mkdir -p "$agents_dir"
+    # Sweep stale hivesmith agent symlinks (renamed or removed upstream).
+    # Mirrors the skills sweep: only links pointing into $HIVESMITH_DIR/agents
+    # are candidates, and only those with no matching current SUBAGENTS entry.
+    if [[ -d "$agents_dir" ]]; then
+        for existing in "$agents_dir"/*; do
+            [[ -L "$existing" ]] || continue
+            case "$(readlink "$existing")" in
+                "$HIVESMITH_DIR/agents/"*) ;;
+                *) continue ;;
+            esac
+            base="$(basename "$existing")"
+            keep=0
+            for a in ${SUBAGENTS[@]+"${SUBAGENTS[@]}"}; do
+                if [[ "$base" == "$a" ]]; then keep=1; break; fi
+            done
+            if [[ "$keep" == "0" ]]; then
+                run rm "$existing"
+                removed=$((removed + 1))
+                GONE+=("$name"$'\t'"$base"$'\t'"stale")
+            fi
+        done
+    fi
+
     for a in "${SUBAGENTS[@]}"; do
         src="$HIVESMITH_DIR/agents/$a"
         link="$agents_dir/$a"
+
+        # Opt-out: `disable = [...]` matches an agent by its bare name
+        # (e.g. "hs-reviewer"). The per-harness `only` list is NOT consulted —
+        # it enumerates skill identities, so a user restricting their skills
+        # would otherwise silently lose their subagents too.
+        # shellcheck disable=SC2086  # intentional word-split of a space-separated list
+        if in_list "${a%.md}" $DISABLE_GLOBAL; then
+            if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$src" ]]; then
+                run rm "$link"
+                removed=$((removed + 1))
+                GONE+=("$name"$'\t'"$a"$'\t'"opt-out")
+            fi
+            continue
+        fi
+
         if [[ -L "$link" ]]; then
-            if [[ "$(readlink "$link")" == "$src" ]]; then
+            cur_target="$(readlink "$link")"
+            if [[ "$cur_target" == "$src" ]]; then
                 skipped=$((skipped + 1)); continue
             fi
-            run rm "$link"
+            # Only reclaim a link we own. Anything else (a user's own symlink,
+            # a dotfiles-managed link) is left alone — same rule as skills.
+            if [[ "$cur_target" == "$HIVESMITH_DIR/agents/"* ]]; then
+                run rm "$link"
+                GONE+=("$name"$'\t'"$a"$'\t'"renamed")
+            else
+                say "WARN: $link exists and is not a hivesmith symlink — skipping"
+                continue
+            fi
         elif [[ -e "$link" ]]; then
             say "WARN: $link exists and is not a hivesmith symlink — skipping"
             continue

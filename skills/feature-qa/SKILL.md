@@ -37,7 +37,7 @@ This skill owns Stage = `QA`. Before doing any work:
    - **`AGENTS.md`**: every command listed under build / lint / test is a required check.
    - **Spec's user flows** (if the spec lists explicit user flows under Desired behavior): each flow is a required end-to-end check.
 
-2. **Execute the checklist.** Prefer parallel sub-agents for independent checks (use the multi-reviewer fanout pattern from `/review-pr`). Spawn one Agent (`subagent_type: "hs-validator"`, falling back to `"general-purpose"` if unavailable) per validator dimension:
+2. **Execute the checklist.** Prefer parallel sub-agents for independent checks (use the multi-reviewer fanout pattern from `/review-pr`). Spawn one Agent (`subagent_type: "hs-validator"`) per validator dimension. **Fallback:** dispatch it; if the Agent tool errors on an unrecognized `subagent_type`, retry once with `"general-purpose"` and note the downgrade in the verdict. Do not pre-check for the agent's existence — a failed dispatch is the signal.
    - **Build/lint/test** — runs the AGENTS.md commands; reports pass/fail per command with the failing output if any.
    - **Acceptance criteria** — exercises each Success criterion (read the diff, confirm the code actually delivers the observable signal; for behavioral signals, run a script or test that demonstrates it).
    - **Non-goals** — confirm the change did not bleed into out-of-scope areas.
