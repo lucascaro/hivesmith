@@ -47,6 +47,7 @@ This repo dogfoods hivesmith on itself. Project-local skill symlinks live under 
 - **Brain tests:** `scripts/brain/test/run-all.sh` (covers redaction, cross-project isolation, promote/garden, lazy-init, index regen). Uses bash 3.2-compatible features.
 - **Install smoke:** `HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update --dry-run` (then repeat with `--prefix ""`).
 - **Render correctness:** `HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update` then `grep -q '/hs-feature-plan' .rendered/hs-/skills/hs-feature-research/SKILL.md` and `! grep -q '/feature-plan\b' .rendered/hs-/skills/hs-feature-research/SKILL.md`.
+- **Subagent linking:** the `subagent-linking` job in `.github/workflows/ci.yml` — real (non-dry-run) install, idempotence, user-symlink preservation, stale sweep, uninstall. Run it locally by pasting the job's script when changing `install.sh`'s agent loop or anything under `agents/`.
 - **review-pr regression suite:** `skills/review-pr/fixtures/bin/run-case <case>` (graded LLM harness; run when changing `skills/review-pr/`).
 - **Changelog non-empty:** `awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q .` (mirrors CI changelog gate).
 - **Everything (informal):** run all of the above plus `actionlint` over `.github/workflows/*.yml` if installed locally.
