@@ -1,0 +1,11 @@
+{
+  "title": "feat(pricing): include tax in line and order totals",
+  "body": "line_total and order_total now take an explicit tax_rate. Callers pass the rate through from the order context.",
+  "baseRefName": "main",
+  "headRefName": "feat-pricing-tax",
+  "files": [
+    { "path": "src/pricing.py", "additions": 8, "deletions": 6 }
+  ],
+  "comments": [],
+  "reviews": []
+}

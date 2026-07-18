@@ -6,9 +6,10 @@ Fixture-based regression tests for `skills/review-pr/SKILL.md`. The skill is exe
 
 | Case | Asserts |
 |---|---|
-| `tiny-docs` | Triage gate fires. Single-pass review, verdict `APPROVE`, 0 BLOCKING/IMPORTANT findings. |
-| `planted-bugs` | All 4 planted issues caught: SQL injection, race, off-by-one, hardcoded secret. Verdict `REQUEST_CHANGES`. |
+| `tiny-docs` | Fan-out gate fires. Baseline review only, **zero agents dispatched**, verdict `APPROVE`, 0 BLOCKING/IMPORTANT findings. |
+| `planted-bugs` | All 4 planted issues caught: SQL injection, race, off-by-one, hardcoded secret. Verdict `REQUEST_CHANGES`. All four are in-diff and in one file — this is the diff-level fidelity floor. |
 | `clean-refactor` | False-positive floor. A pure rename with no real issues should yield ≤ 1 MINOR finding and verdict `APPROVE`. |
+| `cross-file` | **Out-of-diff** breakage: an exported signature gains a required param and a caller in a file that is *not in the diff* is left broken. Only catchable by a dispatched agent that greps callers. Guards the §2 correctness trigger and the §5.2 rule that keeps out-of-diff citations. |
 
 ## Layout
 
@@ -47,7 +48,7 @@ The grader prints precision, recall, false-positive count, verdict match, and ex
 1. Create `cases/<name>/`.
 2. Write `pr.patch` — a real unified diff. Make it apply cleanly to `snapshot/`.
 3. Write `meta.json` — at minimum: `{title, body, baseRefName, headRefName, files, comments, reviews}`. Mirrors `gh pr view --json title,body,baseRefName,headRefName,files,comments,reviews`.
-4. Populate `snapshot/` with the post-patch state of changed files (the verification pass reads these).
+4. Populate `snapshot/` with the post-patch state of changed files (the verification pass reads these). If the case tests out-of-diff effects, `snapshot/` must also hold the *unchanged* files the effect lands in — they appear nowhere in `pr.patch` by design. Verify the patch and snapshot agree: `cd snapshot && git apply --reverse --check ../pr.patch`.
 5. Write `expected.yaml`:
    ```yaml
    verdict: REQUEST_CHANGES   # or APPROVE / COMMENT

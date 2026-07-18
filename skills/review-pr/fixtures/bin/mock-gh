@@ -23,6 +23,15 @@ case "$cmd $sub" in
     # needs. Real `gh` would project; the difference is harmless here.
     cat "$FIXTURE_DIR/meta.json"
     ;;
+  "api graphql")
+    # reviewThreads query. Serve threads.json if the case defines one,
+    # otherwise an empty thread list — no case yet exercises prior threads.
+    if [ -f "$FIXTURE_DIR/threads.json" ]; then
+      cat "$FIXTURE_DIR/threads.json"
+    else
+      printf '%s\n' '{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}}'
+    fi
+    ;;
   *)
     echo "mock-gh: unsupported command: $*" >&2
     exit 64

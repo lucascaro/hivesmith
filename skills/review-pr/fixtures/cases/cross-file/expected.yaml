@@ -1,0 +1,19 @@
+# Cross-file regression guard.
+#
+# `line_total` gains a required `tax_rate` parameter. The diff updates the one
+# call site that lives in the same file (order_total) — and misses the caller in
+# src/invoice.py, which is NOT in the diff at all.
+#
+# This is the point of the case: a diff-only review pass structurally cannot see
+# src/invoice.py. Catching it requires an agent that greps callers beyond the
+# diff. If a future change to the skill stops dispatching a correctness agent on
+# signature changes, or drops findings that cite files outside the diff range,
+# this case goes red.
+verdict: REQUEST_CHANGES
+must_find:
+  - file: src/invoice.py
+    line_range: [6, 10]
+    category: correctness
+    keywords: [line_total, tax_rate]
+must_not_find: []
+max_findings: 5
