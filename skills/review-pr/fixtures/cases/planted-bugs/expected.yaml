@@ -4,9 +4,12 @@ must_find:
     line_range: [10, 14]
     category: security
     keywords: [sql, injection]
+  # The unsynchronized _counter increment sits under two checklists: "Concurrency
+  # — data races" (correctness) and "global/module-level mutable state" (safety).
+  # Either label is a correct reading, so grade on the defect, not the taxonomy.
   - file: app/db.py
     line_range: [17, 22]
-    category: safety
+    category: safety|correctness
     keywords: [race]
   - file: app/db.py
     line_range: [25, 33]

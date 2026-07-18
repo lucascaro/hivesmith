@@ -95,7 +95,7 @@ git clone https://github.com/lucascaro/hivesmith ~/.hivesmith
 
 This symlinks each skill into every detected agent's skills directory (`~/.claude/skills/`, `~/.codex/skills/`, `~/.factory/skills/`, `~/.gemini/skills/`, `~/.copilot/skills/`). Agents whose parent directory does not exist are skipped automatically.
 
-It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/review-pr` and `/feature-qa` use them to run their parallel fan-out on a cheaper model; both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
+It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/feature-qa` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` only to escalate a single oversized investigation (it reviews the diff itself in one linear pass). Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
 
 ### Namespaced install (`--prefix`)
 

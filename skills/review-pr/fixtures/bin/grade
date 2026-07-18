@@ -132,9 +132,16 @@ def matches_must_find(spec, finding):
     lo, hi = spec["line_range"]
     if not (lo <= line <= hi):
         return False
+    # Category may be a '|'-separated alternation. Some defects legitimately sit
+    # under more than one checklist (a data race is both a concurrency bug and a
+    # shared-mutable-state bug), and which label a reviewer picks is a judgment
+    # call. Grading on the label would fail a review that found the right defect
+    # at the right line for the right reason.
     cat = spec.get("category", "").lower()
-    if cat and cat not in finding.get("category", "").lower():
-        return False
+    if cat:
+        actual = finding.get("category", "").lower()
+        if not any(alt in actual for alt in cat.split("|")):
+            return False
     blob = (finding.get("title", "") + " " + finding.get("why", "")).lower()
     keywords = spec.get("keywords", []) or []
     if keywords and not all(k.lower() in blob for k in keywords):
