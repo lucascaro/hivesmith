@@ -264,18 +264,29 @@ done
 
 AGENTS_JSON="$HIVESMITH_DIR/agents.json"
 TARGETS=()
-while IFS=$'\t' read -r name skills_dir detect_dir; do
+AGENT_TARGETS=()   # entries: "harness\tagents_dir" — only harnesses declaring agents_dir
+while IFS=$'\t' read -r name skills_dir agents_dir detect_dir; do
     skills_dir="${skills_dir/#~/$HOME}"
+    agents_dir="${agents_dir/#~/$HOME}"
     detect_dir="${detect_dir/#~/$HOME}"
     if [[ -d "$detect_dir" ]]; then
         TARGETS+=("$name"$'\t'"$skills_dir")
+        [[ -n "$agents_dir" ]] && AGENT_TARGETS+=("$name"$'\t'"$agents_dir")
     fi
 done < <(python3 -c "
 import json, sys
 with open(sys.argv[1]) as f:
     for a in json.load(f)['agents']:
-        print(a['name'] + '\t' + a['skills_dir'] + '\t' + a['detect_dir'])
+        print(a['name'] + '\t' + a['skills_dir'] + '\t' + a.get('agents_dir', '') + '\t' + a['detect_dir'])
 " "$AGENTS_JSON")
+
+# Subagent definitions are shipped verbatim (no prefix rendering — the `name:`
+# frontmatter is the dispatch key and filenames are already hs-prefixed).
+SUBAGENTS=()
+for f in "$HIVESMITH_DIR"/agents/*.md; do
+    [[ -f "$f" ]] || continue
+    SUBAGENTS+=("$(basename "$f")")
+done
 
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
     say "No supported AI agent installations detected."
@@ -321,6 +332,16 @@ if [[ "$MODE" == "uninstall" ]]; then
                     run rm "$skills_dir/$skill"
                     GONE+=("$name"$'\t'"$skill"$'\t'"uninstall")
                 fi
+            fi
+        done
+    done
+    for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
+        IFS=$'\t' read -r name agents_dir <<< "$entry"
+        for a in ${SUBAGENTS[@]+"${SUBAGENTS[@]}"}; do
+            link="$agents_dir/$a"
+            if [[ -L "$link" && "$(readlink "$link")" == "$HIVESMITH_DIR/agents/$a" ]]; then
+                run rm "$link"
+                GONE+=("$name"$'\t'"$a"$'\t'"uninstall")
             fi
         done
     done
@@ -488,6 +509,31 @@ for entry in "${TARGETS[@]}"; do
         ADDED+=("$name"$'\t'"$link_name")
     done
     say "  [$name] $skills_dir — linked"
+done
+
+# ---- Subagents (harnesses that declare agents_dir) -----------------------
+
+for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
+    IFS=$'\t' read -r name agents_dir <<< "$entry"
+    [[ ${#SUBAGENTS[@]} -eq 0 ]] && continue
+    run mkdir -p "$agents_dir"
+    for a in "${SUBAGENTS[@]}"; do
+        src="$HIVESMITH_DIR/agents/$a"
+        link="$agents_dir/$a"
+        if [[ -L "$link" ]]; then
+            if [[ "$(readlink "$link")" == "$src" ]]; then
+                skipped=$((skipped + 1)); continue
+            fi
+            run rm "$link"
+        elif [[ -e "$link" ]]; then
+            say "WARN: $link exists and is not a hivesmith symlink — skipping"
+            continue
+        fi
+        run ln -s "$src" "$link"
+        created=$((created + 1))
+        ADDED+=("$name"$'\t'"$a")
+    done
+    say "  [$name] $agents_dir — linked"
 done
 
 say ""

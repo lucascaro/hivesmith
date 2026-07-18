@@ -95,12 +95,16 @@ Write the bundle to a temp JSON file and pass its path to each agent. Do not pas
 
 ## 4. Reviewer agents
 
-Launch in parallel with `subagent_type: Explore` (read-only, lighter than general-purpose). Each agent receives the **same** preamble plus its dimension-specific checklist.
+Launch in parallel with `subagent_type: hs-reviewer` (read-only, pinned to a cheaper model — this is the highest-fanout step in the pipeline). If that agent is unavailable, fall back to `subagent_type: Explore`.
+
+**Agent 3 (Security) is the exception: dispatch it with an explicit `model: opus` override.** Security findings are the ones that are most expensive to miss and least tolerant of a cheaper reviewer. The other dimensions take the agent's default model.
+
+Each agent receives the **same** preamble plus its dimension-specific checklist.
 
 ### Shared agent preamble
 
 ```
-You are reviewing PR #<N> as a read-only Explore agent. You will NOT edit files.
+You are reviewing PR #<N> as a read-only reviewer agent. You will NOT edit files.
 
 INPUT:
   - Context bundle JSON at: <bundle_path>
