@@ -98,6 +98,39 @@ Then:
 You hold the whole diff. Review it against **all four checklists below**, one at
 a time, in order.
 
+### 2.0 Size gate — split Pass 1 on a large diff
+
+<!-- ponytail: flat thresholds from two data points; recalibrate as real PRs run through -->
+**If the diff exceeds ~1000 changed lines OR ~15 changed files, do not run Pass 1
+yourself.** Dispatch the four checklists as four parallel `hs-reviewer` agents
+(`Explore` on dispatch failure), one checklist each, and pool their findings into
+§5. Below the threshold, run all four inline — that is the default and the common
+case.
+
+This threshold is not a guess dressed as a rule; both sides of it were measured.
+
+- Below: `fixtures/cases/subtle-bug/` (~190 lines) — one reader carrying all four
+  checklists and a dedicated single-dimension specialist both caught a
+  deliberately subtle defect 3/3, and the multiplexed reader was *better* at
+  linking it across dimensions, at 3.8× less cost.
+- Above: this skill's own PR (1,356 lines / 23 files) — four dimension agents
+  found 13 findings (8 IMPORTANT); one linear reader found 6 (4 IMPORTANT) and
+  missed nine defects in the skill's own logic, including a verification gap that
+  a specialist caught immediately. It cost 3.1× less and was worth less.
+
+Attention dilutes with diff size. One reader holding four checklists is sharper
+and cheaper on an ordinary PR and demonstrably degrades on a large one, so the
+shape follows the size rather than being fixed in advance. **Pass 2 always stays
+linear regardless of size** — beyond-diff investigation is shared across
+dimensions, and splitting it is what makes four agents grep the same call sites
+four times.
+
+When you do split, each agent gets the §4 preamble's anti-injection and
+verification rules plus exactly one checklist below, and you still run §3, §5,
+§6 and §7 yourself.
+
+### 2.1 Running Pass 1 inline
+
 **This is a walk, not a skim.** Take each checklist, hold it against the diff,
 and decide. The failure mode of a single reader carrying four checklists is
 drifting into a general impression instead of applying each one — the discipline
@@ -201,7 +234,14 @@ retrieval in its own context and hands you back a compressed answer.
 Before starting an angle, measure it — don't guess:
 
 ```bash
-grep -rl '<symbol>' --include='*.<ext>' . | grep -v '<changed files>' | wc -l
+# $CHANGED holds the diff's file list, one path per line — grep -vxF -f excludes
+# ALL of them. A single -v pattern would exclude only one, inflating the count
+# and escalating investigations that should have run inline.
+printf '%s\n' "${CHANGED_FILES[@]}" > /tmp/changed.$$
+grep -rl --exclude-dir={.git,node_modules,vendor,dist,build} \
+     --include='*.<ext>' '<symbol>' . \
+  | sed 's|^\./||' | grep -vxF -f /tmp/changed.$$ | wc -l
+rm -f /tmp/changed.$$
 ```
 
 <!-- ponytail: flat file-count threshold; calibrate once real PRs have run through it -->
@@ -238,8 +278,11 @@ RULES:
 
 OUTPUT: a single JSON array, no prose before or after. Each element:
   {"file":"<repo-relative>","line":<int>,"severity":"BLOCKING"|"IMPORTANT"|"MINOR",
-   "category":"<angle>","confidence":<1-10>,"title":"<≤80 chars",
+   "category":"correctness"|"safety"|"security"|"performance"|"ux"|"consistency",
+   "confidence":<1-10>,"title":"<≤80 chars",
    "why":"<1-3 sentences>","fix":"<concrete fix; null for MINOR>"}
+Name the investigation angle in `title` or `why`, not in `category` — `category`
+must come from the enum above so your findings pool with the caller's.
 Emit [] if there is nothing to report. Cap 10.
 ```
 
@@ -254,7 +297,7 @@ Finding schema:
   "file":       "<repo-relative path>",
   "line":       <int>,
   "severity":   "BLOCKING" | "IMPORTANT" | "MINOR",
-  "category":   "correctness" | "safety" | "security" | "performance",
+  "category":   "correctness" | "safety" | "security" | "performance" | "ux" | "consistency",
   "confidence": <int 1-10>,
   "title":      "<≤80 char summary>",
   "why":        "<why it matters, 1-3 sentences>",
@@ -266,12 +309,15 @@ Then:
 
 1. **Parse.** If an escalated agent returned non-JSON, log a warning, treat it as zero findings, and continue. One malformed response does not sink the review.
 2. **Drop uncitable findings.** Drop a finding only when its `file:line` does not exist in the repo at all. **Out-of-diff citations are valid and must be kept** — a broken caller in an unchanged file is exactly what Pass 2 is for. Resolve citations against the working tree, never against the diff range.
-3. **Verify agent findings.** For each finding from an escalated agent, Read the cited file at the cited line and confirm the code matches the `why`. Drop what doesn't hold up. Findings from your own passes need no re-read — you read that code in context.
-4. **Dedup.** Group by `(file, line ± 3)` — **not** by category. One defect often sits under two checklists (a data race is both a concurrency bug and a shared-mutable-state bug), so keying on category would split one defect into two findings. Keep the highest severity; if tied, the highest confidence; merge `why` when they add distinct information.
-5. **Drop style-only MINORs.** Enforce the §8 rule here rather than trusting it was applied during the passes: a MINOR whose entire content is formatting, import placement, naming taste, or annotation completeness gets dropped unless it violates a documented `AGENTS.md` convention. This is the main noise source of a single reader running four checklists — it sees everything and wants to report all of it.
+3. **Verify every finding you did not read in context.** Open the cited file at the cited line and confirm the code matches the `why`; drop what doesn't hold up, and correct the line number when the described code sits elsewhere in the file.
+   - **Pass 1 findings are exempt** — you read those exact lines in the diff.
+   - **Pass 2 findings are NOT exempt.** They come from `grep` hits in files you never opened, so a hit is a lead, not a finding. This is the same rule §4 imposes on an escalated agent ("a grep hit is a lead, not a finding"); the inline path must not be weaker than the path it replaces.
+   - **Escalated-agent findings are NOT exempt**, and neither are findings from split Pass 1 agents under §2.0.
+4. **Dedup.** Group candidates by `(file, line ± 3)`, then **merge only when the grouped findings describe the same underlying defect**. Position alone is not identity: an injection on one line and an off-by-one on the next are two defects, and blind positional merging would silently discard one. Do not key on `category` — one defect often sits under two checklists (a data race is both a concurrency bug and a shared-mutable-state bug), so keying on it splits one defect in two. When merging, keep the highest severity; if tied, the highest confidence; merge `why` when they add distinct information.
+5. **Drop style-only MINORs.** Enforce the §8 rule here rather than trusting it was applied during the passes: a MINOR whose entire content is formatting, import placement, naming taste, or annotation completeness gets dropped unless it violates a documented `AGENTS.md` convention. This is the main noise source of a reader running four checklists — it sees everything and wants to report all of it.
 6. **Cap.** Limit to 15 findings, and at most 5 MINOR. Drop order: MINOR by ascending confidence → IMPORTANT with confidence < 7 → IMPORTANT with confidence ≥ 7. **Never drop BLOCKING** even if it pushes over the cap.
 
-`category` is informational — it tells the reader which lens caught the issue, and nothing downstream branches on it. Pick the checklist that best explains the defect and move on; do not deliberate over the label.
+`category` records which lens caught the defect. Pick the checklist that best explains it and move on rather than deliberating over the label — dedup deliberately does not key on it, and the fixture suite grades on `file` + `line` + keywords, not on the label. Do still pick from the schema's enum: a label outside it reads as a schema violation to anyone consuming the output.
 
 Zero escalations is the normal case, not a coverage gap — do not annotate it as one.
 

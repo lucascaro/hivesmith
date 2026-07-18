@@ -127,4 +127,37 @@ Measured, it does not.
   sonnet with security on opus; a sonnet specialist would likely do *worse*
   than these results, not better, which strengthens the conclusion rather than
   weakening it.
-- Re-run this case before ever reintroducing per-dimension fan-out.
+
+### Follow-up: the "one diff size" caveat was load-bearing
+
+The same comparison was later run on a real 1,356-line / 23-file PR (the one that
+shipped the linear collapse). **The result inverted:**
+
+| Arm | tokens | findings | IMPORTANT |
+| --- | --- | --- | --- |
+| Four dimension agents | 296,694 | **13** | **8** |
+| One linear reader | 96,320 | 6 | 4 |
+
+The linear reader cost 3.1× less and found under half as much. The nine findings
+it missed were almost all defects in the skill's *own* logic — including a
+verification gap that let any cited `file:line` go unchecked — while its two
+unique findings were both about what the diff reached downstream. Read together
+with the results above, the pattern is:
+
+- **Pass 1 (in-diff scrutiny) degrades with diff size.** One reader holding four
+  checklists is sharper *and* cheaper at ~190 lines and demonstrably worse at
+  ~1,350.
+- **Pass 2 (beyond-diff investigation) does not.** It is shared across
+  dimensions, so splitting it just makes N agents grep the same call sites N
+  times.
+
+That is exactly the shape `SKILL.md` §2.0 now encodes: split Pass 1 above
+~1000 lines / ~15 files, keep Pass 2 linear always. Per token the linear reader
+was still *more* efficient (0.062 findings/1k vs 0.044) — the four agents did not
+find more because fan-out is smarter, but because they spent 3× the compute. The
+gate is therefore a budget decision tied to size, not a claim that either shape
+is universally better.
+
+**Re-run this case, and repeat the large-diff comparison, before changing the
+§2.0 threshold in either direction.** Neither number is load-bearing on its own;
+the gate only makes sense with both.
