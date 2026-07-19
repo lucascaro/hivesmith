@@ -24,8 +24,13 @@ case "$cmd $sub" in
     cat "$FIXTURE_DIR/meta.json"
     ;;
   "api graphql")
-    # reviewThreads query. Serve threads.json if the case defines one,
-    # otherwise an empty thread list — no case yet exercises prior threads.
+    # Only the reviewThreads query is mocked. Answering every GraphQL query with
+    # a threads payload would silently feed a wrong shape to any future query the
+    # skill adds, so anything else is an explicit failure.
+    if ! printf '%s\n' "$@" | grep -q 'reviewThreads'; then
+      echo "mock-gh: unmocked graphql query (only reviewThreads is supported)" >&2
+      exit 64
+    fi
     if [ -f "$FIXTURE_DIR/threads.json" ]; then
       cat "$FIXTURE_DIR/threads.json"
     else

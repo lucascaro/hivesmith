@@ -4,7 +4,7 @@
   "baseRefName": "main",
   "headRefName": "feat-pricing-tax",
   "files": [
-    { "path": "src/pricing.py", "additions": 8, "deletions": 6 }
+    { "path": "src/pricing.py", "additions": 7, "deletions": 5 }
   ],
   "comments": [],
   "reviews": []
