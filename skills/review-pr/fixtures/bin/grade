@@ -132,9 +132,14 @@ def matches_must_find(spec, finding):
     lo, hi = spec["line_range"]
     if not (lo <= line <= hi):
         return False
-    cat = spec.get("category", "").lower()
-    if cat and cat not in finding.get("category", "").lower():
-        return False
+    # `category` is NOT graded, deliberately. Many defects sit under more than one
+    # checklist — a data race is both a concurrency bug and a shared-mutable-state
+    # bug; a broken caller is defensibly correctness or consistency — so the label
+    # a reviewer picks is a judgment call, not a fact about the defect. Grading on
+    # it fails reviews that found the right defect at the right line for the right
+    # reason, which trains the next person to relax the spec instead of
+    # investigating. `file` + `line_range` + `keywords` already anchor every spec.
+    # The `category:` key stays in expected.yaml as documentation of intent.
     blob = (finding.get("title", "") + " " + finding.get("why", "")).lower()
     keywords = spec.get("keywords", []) or []
     if keywords and not all(k.lower() in blob for k in keywords):

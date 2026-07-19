@@ -15,7 +15,7 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 - **PR convergence** — `/review-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
 - **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs.
 - **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-research` / `feature-plan` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `review-loop`. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
-- **A parallel PR review** — three independent review agents (correctness & logic, safety & test isolation, performance & UX consistency) run in parallel and synthesize a single structured verdict.
+- **A size-adaptive PR review** — `/review-pr` reviews the diff against four dimensions (correctness, safety, security, performance/UX/consistency) and then investigates what the diff reaches outside itself. It runs as one linear pass on an ordinary PR and splits the diff review across parallel agents only on a large one, where a single reader measurably degrades.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
 ## What you get
@@ -53,7 +53,7 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 
 | Skill | What it does |
 |---|---|
-| `/review-pr <#>` | Parallel-agent deep PR review (used by `/review-loop`) |
+| `/review-pr <#>` | Deep PR review — linear two-pass, fans out only on large diffs (used by `/review-loop`) |
 | `/autofix [#]` | Apply safe fixes from review findings, CI failures, or PR comments (used by `/review-loop`) |
 | `/changelog-update` | Add an `[Unreleased]` entry to `CHANGELOG.md` |
 | `/release <version>` | Pre-flight checks, version-bump suggestion, runs `scripts/release.sh` |
@@ -95,7 +95,7 @@ git clone https://github.com/lucascaro/hivesmith ~/.hivesmith
 
 This symlinks each skill into every detected agent's skills directory (`~/.claude/skills/`, `~/.codex/skills/`, `~/.factory/skills/`, `~/.gemini/skills/`, `~/.copilot/skills/`). Agents whose parent directory does not exist are skipped automatically.
 
-It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/review-pr` and `/feature-qa` use them to run their parallel fan-out on a cheaper model; both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
+It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/feature-qa` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` for its two fan-out paths — splitting the diff review on a large PR, and escalating a single oversized out-of-diff investigation — and reviews everything else inline. Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
 
 ### Namespaced install (`--prefix`)
 
