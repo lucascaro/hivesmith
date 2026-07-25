@@ -107,6 +107,50 @@ To avoid name collisions with other skills, install under a prefix:
 
 Skills install as `/hs-feature-plan`, `/hs-release`, etc. Cross-skill references inside each `SKILL.md` are rewritten so the pipeline still works end-to-end. The prefix is persisted to `~/.hivesmith.toml`, so `--update` and `--uninstall` don't need it re-passed. Pass `--prefix ""` to clear it on a later run.
 
+### Local (per-project) install (`--local`)
+
+By default the installer targets your home directories (`~/.claude/`, …). Pass `--local` to install into the **current project** instead — skills and subagents are symlinked under `./.claude/skills`, `./.claude/agents`, etc., so they travel with the repo:
+
+```bash
+cd ~/code/my-project
+~/.hivesmith/install.sh --local
+```
+
+On the first local install it detects which harness dirs already exist in the project (e.g. `./.claude`) and — when run interactively — asks which to install into. Pass `--agents` to choose non-interactively, and the choice is remembered:
+
+```bash
+~/.hivesmith/install.sh --local --agents claude,codex
+```
+
+Local scope keeps its **own** config file, `./.hivesmith.toml` (override with `HIVESMITH_LOCAL_CONFIG`), holding the remembered `agents = [...]`, any local `prefix`, and `disable`. It never reads or writes the global `~/.hivesmith.toml`. The daily auto-upgrade cron is global-only, so `--auto-upgrade` is rejected with `--local`. (The brain helper scripts still live at the global `~/.hivesmith/bin` — they're referenced by absolute path — and a local uninstall never touches them or the cron.)
+
+> Contributors dogfooding a checkout should still use `scripts/dev-link-local.sh` (bare skill names, no prefix) — that's a separate developer tool, not the same as `--local`.
+
+### Force overwrite (`--force`)
+
+If a real file or a foreign symlink is sitting where a skill link should go, the installer skips it with a warning and leaves it untouched. Pass `--force` to overwrite such blockers (it only ever deletes the exact path inside the target dir):
+
+```bash
+~/.hivesmith/install.sh --force            # global
+~/.hivesmith/install.sh --local --force    # project
+```
+
+### Inspect & validate (`--status`, `--doctor`)
+
+`--status` prints a read-only summary of what's installed — per harness link counts, resolved prefix, brain-bin health, and auto-upgrade state — for both global and local scopes (narrow with `--global`/`--local`):
+
+```bash
+~/.hivesmith/install.sh --status
+```
+
+`--doctor` validates the installs, reporting any dangling (broken) hivesmith symlinks with a fix hint and exiting **non-zero** if problems are found — handy in CI:
+
+```bash
+~/.hivesmith/install.sh --doctor || echo "hivesmith needs repair"
+```
+
+Output is colored when writing to a terminal; color is disabled automatically when piped, when `NO_COLOR` is set, or with `--no-color`.
+
 ## Update
 
 ```bash
@@ -169,10 +213,11 @@ This splits each `features/<state>/<NNN>-*.md` file into a product spec (`docs/p
 ## Uninstall
 
 ```bash
-~/.hivesmith/install.sh --uninstall
+~/.hivesmith/install.sh --uninstall            # global
+~/.hivesmith/install.sh --uninstall --local    # current project only
 ```
 
-Removes all symlinks from every agent's skills directory. The `~/.hivesmith` clone is preserved; `rm -rf ~/.hivesmith` to remove it entirely.
+Removes every hivesmith symlink from the targeted scope's agent directories (ownership-checked, so it also clears prefixed links without re-passing `--prefix`). A global uninstall additionally removes the rendered-prefix tree, the auto-upgrade cron, and the `~/.hivesmith/bin` brain helpers; a local uninstall touches none of those. The `~/.hivesmith` clone is preserved; `rm -rf ~/.hivesmith` to remove it entirely.
 
 ## Contributing
 
