@@ -110,8 +110,13 @@ while [[ $# -gt 0 ]]; do
         --local) SCOPE="local"; SCOPE_SET=1; shift ;;
         --force) FORCE=1; shift ;;
         --no-color) NO_COLOR_CLI=1; shift ;;
-        --agents) AGENTS_CLI="${2-}"; AGENTS_CLI_SET=1; shift 2 ;;
-        --agents=*) AGENTS_CLI="${1#--agents=}"; AGENTS_CLI_SET=1; shift ;;
+        --agents)
+            [[ $# -ge 2 && -n "$2" ]] || { echo "Error: --agents requires a non-empty value (e.g. --agents claude,codex)" >&2; exit 1; }
+            AGENTS_CLI="$2"; AGENTS_CLI_SET=1; shift 2 ;;
+        --agents=*)
+            AGENTS_CLI="${1#--agents=}"; AGENTS_CLI_SET=1
+            [[ -n "$AGENTS_CLI" ]] || { echo "Error: --agents requires a non-empty value (e.g. --agents=claude,codex)" >&2; exit 1; }
+            shift ;;
         --auto-upgrade) AUTO_UPGRADE_CLI=1; shift ;;
         --no-auto-upgrade) AUTO_UPGRADE_CLI=0; shift ;;
         --no-auto-update)
@@ -204,6 +209,40 @@ if [[ -f "$CONFIG" ]]; then
     AGENT_ONLY_TABLE="${AGENT_ONLY_TABLE}|"
 fi
 
+# Upsert or remove a top-level key in $CONFIG.
+#   $1 = bare key name (e.g. "prefix")
+#   $2 = full rendered line (e.g. 'prefix = "hs-"'), or "" to remove the key
+# Honors --dry-run. Inserts before the first [section] header, else appends.
+upsert_config_key() {
+    local key="$1" rendered="$2" line
+    if [[ "$DRY_RUN" == "1" ]]; then
+        if [[ -z "$rendered" ]]; then say "DRY: would remove $key from $CONFIG"
+        else say "DRY: would write $rendered to $CONFIG"; fi
+        return 0
+    fi
+    touch "$CONFIG"
+    local tmp_cfg found=0; tmp_cfg="$(mktemp)"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^[[:space:]]*"$key"[[:space:]]*= ]]; then
+            [[ -n "$rendered" ]] && echo "$rendered" >> "$tmp_cfg"
+            found=1
+        else
+            echo "$line" >> "$tmp_cfg"
+        fi
+    done < "$CONFIG"
+    if [[ "$found" == "0" && -n "$rendered" ]]; then
+        if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
+            local tmp_cfg2; tmp_cfg2="$(mktemp)"
+            awk -v line="$rendered" '!d && /^\[/ { print line; print ""; d=1 } { print }' "$tmp_cfg" > "$tmp_cfg2"
+            mv "$tmp_cfg2" "$tmp_cfg"
+        else
+            echo "$rendered" >> "$tmp_cfg"
+        fi
+    fi
+    mv "$tmp_cfg" "$CONFIG"
+    return 0
+}
+
 # ---- Resolve effective prefix --------------------------------------------
 
 if [[ "$PREFIX_CLI_SET" == "1" ]]; then
@@ -218,38 +257,13 @@ if [[ -n "$PREFIX" && ! "$PREFIX" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     exit 1
 fi
 
-# Writeback: upsert prefix line in config when CLI set it (and not uninstall)
+# Writeback: upsert prefix line in config when CLI set it (and not uninstall).
+# Empty prefix removes the key.
 if [[ "$PREFIX_CLI_SET" == "1" && "$MODE" != "uninstall" ]]; then
-    if [[ "$DRY_RUN" == "1" ]]; then
-        say "DRY: would write prefix = \"$PREFIX\" to $CONFIG"
+    if [[ -n "$PREFIX" ]]; then
+        upsert_config_key prefix "prefix = \"$PREFIX\""
     else
-        touch "$CONFIG"
-        tmp_cfg="$(mktemp)"
-        found=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            if [[ "$line" =~ ^[[:space:]]*prefix[[:space:]]*= ]]; then
-                if [[ -n "$PREFIX" ]]; then
-                    echo "prefix = \"$PREFIX\"" >> "$tmp_cfg"
-                fi
-                found=1
-            else
-                echo "$line" >> "$tmp_cfg"
-            fi
-        done < "$CONFIG"
-        if [[ "$found" == "0" && -n "$PREFIX" ]]; then
-            # Insert before first [section] header, else append
-            if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
-                tmp_cfg2="$(mktemp)"
-                awk -v line="prefix = \"$PREFIX\"" '
-                    !done && /^\[/ { print line; print ""; done=1 }
-                    { print }
-                ' "$tmp_cfg" > "$tmp_cfg2"
-                mv "$tmp_cfg2" "$tmp_cfg"
-            else
-                echo "prefix = \"$PREFIX\"" >> "$tmp_cfg"
-            fi
-        fi
-        mv "$tmp_cfg" "$CONFIG"
+        upsert_config_key prefix ""
     fi
 fi
 
@@ -281,40 +295,8 @@ write_config_auto_upgrade() {
     # Upsert or remove the top-level auto_upgrade key in $CONFIG.
     # Arg: "true" | "false" | "" (remove).
     local value="$1"
-    if [[ "$DRY_RUN" == "1" ]]; then
-        if [[ -z "$value" ]]; then
-            say "DRY: would remove auto_upgrade from $CONFIG"
-        else
-            say "DRY: would write auto_upgrade = $value to $CONFIG"
-        fi
-        return
-    fi
-    touch "$CONFIG"
-    local tmp_cfg; tmp_cfg="$(mktemp)"
-    local found=0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" =~ ^[[:space:]]*auto_upgrade[[:space:]]*= ]]; then
-            if [[ -n "$value" ]]; then
-                echo "auto_upgrade = $value" >> "$tmp_cfg"
-            fi
-            found=1
-        else
-            echo "$line" >> "$tmp_cfg"
-        fi
-    done < "$CONFIG"
-    if [[ "$found" == "0" && -n "$value" ]]; then
-        if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
-            local tmp_cfg2; tmp_cfg2="$(mktemp)"
-            awk -v line="auto_upgrade = $value" '
-                !done && /^\[/ { print line; print ""; done=1 }
-                { print }
-            ' "$tmp_cfg" > "$tmp_cfg2"
-            mv "$tmp_cfg2" "$tmp_cfg"
-        else
-            echo "auto_upgrade = $value" >> "$tmp_cfg"
-        fi
-    fi
-    mv "$tmp_cfg" "$CONFIG"
+    if [[ -n "$value" ]]; then upsert_config_key auto_upgrade "auto_upgrade = $value"
+    else upsert_config_key auto_upgrade ""; fi
 }
 
 if [[ -n "$AUTO_UPGRADE_PERSIST" && "$MODE" != "uninstall" ]]; then
@@ -358,6 +340,13 @@ with open(sys.argv[1]) as f:
     for a in json.load(f)['agents']:
         print('\x1f'.join([a['name'], a['skills_dir'], a.get('agents_dir', ''), a['detect_dir']]))
 " "$AGENTS_JSON")
+
+# An empty registry means the load itself failed (unreadable/malformed
+# agents.json) — surface that instead of the misleading "no installations" later.
+if [[ ${#AGENT_REGISTRY[@]} -eq 0 ]]; then
+    err "Could not load agent registry from $AGENTS_JSON (unreadable or malformed?)"
+    exit 1
+fi
 
 ALL_AGENT_NAMES=""
 for rec in "${AGENT_REGISTRY[@]}"; do
@@ -408,22 +397,7 @@ write_config_agents() {  # $1 = space list; upsert `agents = [...]` in $CONFIG
     local list="$1" quoted="" a
     for a in $list; do quoted="$quoted, \"$a\""; done
     quoted="[${quoted#, }]"
-    if [[ "$DRY_RUN" == "1" ]]; then say "DRY: would write agents = $quoted to $CONFIG"; return; fi
-    touch "$CONFIG"
-    local tmp_cfg; tmp_cfg="$(mktemp)"; local found=0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" =~ ^[[:space:]]*agents[[:space:]]*= ]]; then
-            echo "agents = $quoted" >> "$tmp_cfg"; found=1
-        else echo "$line" >> "$tmp_cfg"; fi
-    done < "$CONFIG"
-    if [[ "$found" == "0" ]]; then
-        if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
-            local t2; t2="$(mktemp)"
-            awk -v line="agents = $quoted" '!d && /^\[/ { print line; print ""; d=1 } { print }' "$tmp_cfg" > "$t2"
-            mv "$t2" "$tmp_cfg"
-        else echo "agents = $quoted" >> "$tmp_cfg"; fi
-    fi
-    mv "$tmp_cfg" "$CONFIG"
+    upsert_config_key agents "agents = $quoted"
 }
 
 # For local install/uninstall, decide which harnesses to target and remember it.
@@ -495,7 +469,7 @@ if [[ "$MODE" != "status" && "$MODE" != "doctor" ]]; then
             err "No local target harnesses resolved. Pass --agents claude (or a comma list)."
         else
             err "No supported AI agent installations detected."
-            say "Expected one of: ~/.claude, ~/.codex, ~/.factory, ~/.gemini, ~/.copilot"
+            say "Expected one of these as a ~/.<name> directory: $ALL_AGENT_NAMES"
         fi
         exit 1
     fi
@@ -543,18 +517,29 @@ inspect_scope() {  # $1 = scope
     if [[ "$scope" == "local" ]]; then cfg="${HIVESMITH_LOCAL_CONFIG:-$PWD/.hivesmith.toml}"
     else cfg="${HIVESMITH_DIR_CONFIG:-$HOME/.hivesmith.toml}"; fi
 
+    # When --agents was passed, it narrows what status/doctor inspect.
+    local cli_filter=""
+    [[ "$AGENTS_CLI_SET" == "1" ]] && cli_filter="$(validate_agents "$AGENTS_CLI")"
+
     saved_select="$SELECT_AGENTS"
     if [[ "$scope" == "local" ]]; then
         SELECT_AGENTS="$(printf '%s %s' "$(detected_local_agents)" "$(cfg_list agents "$cfg")" \
             | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')"
+        # Intersect with the --agents filter, if any.
+        if [[ -n "$cli_filter" ]]; then
+            local kept="" a
+            for a in $SELECT_AGENTS; do in_list "$a" $cli_filter && kept="$kept $a"; done
+            SELECT_AGENTS="${kept# }"
+        fi
         if [[ -z "${SELECT_AGENTS// }" ]]; then
             SELECT_AGENTS="$saved_select"
             heading "local ($PWD)"
-            say "  no local install detected"
+            say "  no local install detected$([[ -n "$cli_filter" ]] && printf ' for --agents %s' "$cli_filter")"
             return 0
         fi
     else
-        SELECT_AGENTS=""
+        # Global: empty = all detected; --agents narrows via build_targets' filter.
+        SELECT_AGENTS="$cli_filter"
     fi
     build_targets "$scope"
     SELECT_AGENTS="$saved_select"
@@ -725,7 +710,11 @@ if [[ "$MODE" == "uninstall" ]]; then
                     run rm -f "$link"
                 fi
             done
-            rmdir "$BRAIN_BIN_DIR" 2>/dev/null || true
+            if [[ "$DRY_RUN" == "1" ]]; then
+                say "DRY: rmdir $BRAIN_BIN_DIR (if empty)"
+            else
+                rmdir "$BRAIN_BIN_DIR" 2>/dev/null || true
+            fi
         fi
     fi
     if (( ${#GONE[@]} > 0 )); then
@@ -784,8 +773,11 @@ render_tree() {
 if [[ -n "$PREFIX" ]]; then
     say "Rendering prefixed skills (prefix=\"$PREFIX\") into $RENDER_ROOT/$PREFIX..."
     render_tree "$PREFIX"
-else
-    # Clean up any stale rendered tree when running without prefix.
+elif [[ "$SCOPE" == "global" ]]; then
+    # Clean up any stale rendered tree when running a global install without a
+    # prefix. Gated to global: $RENDER_ROOT is shared repo state, and a local
+    # no-prefix install links directly at source skills (never the rendered
+    # tree), so it must not wipe a coexisting global --prefix install's tree.
     if [[ -d "$RENDER_ROOT" ]]; then
         run rm -rf "$RENDER_ROOT"
     fi

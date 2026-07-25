@@ -39,7 +39,7 @@ Each step lists the command and what to confirm.
    - Repair: `run --local --force`; `run --doctor --local` → `No problems found`, exit 0.
 
 7. **Local uninstall isolation** — `run --uninstall --local`
-   - All local links removed; `$FAKE_HOME/.hivesmith/bin` (brain helpers) still present.
+   - All local links removed; `$FAKE_HOME/.hivesmith/bin` (brain helpers) still present. Note step 1's local install already created this global brain-bin (skills reference it by absolute path), so this assertion is live — a local uninstall must not touch it.
 
 8. **Prefix-independent uninstall**
    - `run --local --prefix hs-` → links install as `hs-*`, `./.hivesmith.toml` has `prefix = "hs-"`.
@@ -53,7 +53,7 @@ Each step lists the command and what to confirm.
     - `bash "$HS/install.sh" --help` lists `--local`, `--global`, `--force`, `--status`, `--doctor`, `--agents`, `--no-color`.
 
 11. **Multi-harness detection** — `mkdir -p "$FAKE_HOME/.gemini" "$FAKE_HOME/.copilot"` then `run --global`
-    - All three of claude/gemini/copilot get 24 skills each; only claude gets subagents. (Regression guard: these harnesses have an empty `agents_dir`, which a tab-delimited registry would mis-parse.)
+    - claude/gemini/copilot each get the **same non-zero** skill count (matching `ls "$HS/skills" | wc -l`); only claude gets subagents. (Regression guard: these harnesses have an empty `agents_dir`, which a tab-delimited registry would mis-parse — the fix uses a non-whitespace separator.)
 
 ## Known limitation
 
