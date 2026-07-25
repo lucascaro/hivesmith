@@ -39,7 +39,9 @@ setup_colors() {
 }
 say()     { printf '%s\n' "$*"; }
 ok()      { printf '%s%s%s\n' "$C_GREEN" "$*" "$C_RESET"; }
-warn()    { printf '%sWARN:%s %s\n' "$C_YELLOW" "$C_RESET" "$*" >&2; }
+# warn goes to stdout: these are part of the reconcile report stream (callers
+# and CI grep them from stdout). err goes to stderr for fatal, aborting errors.
+warn()    { printf '%sWARN:%s %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
 err()     { printf '%sError:%s %s\n' "$C_RED" "$C_RESET" "$*" >&2; }
 heading() { printf '%s%s%s\n' "$C_BOLD" "$*" "$C_RESET"; }
 tag()     { printf '%s[%s]%s' "$C_CYAN" "$1" "$C_RESET"; }   # colored [name]
@@ -366,7 +368,9 @@ scope_path() {  # $1=raw path, $2=scope
 SELECT_AGENTS=""
 validate_agents() {  # $1 = comma/space list; echoes normalized space list
     local raw="${1//,/ }" out="" a
+    # shellcheck disable=SC2086  # intentional word-split of space-separated lists
     for a in $raw; do
+        # shellcheck disable=SC2086  # intentional word-split of space-separated lists
         in_list "$a" $ALL_AGENT_NAMES || { err "Unknown agent '$a' (known: ${ALL_AGENT_NAMES})"; exit 1; }
         out="$out $a"
     done
@@ -428,10 +432,12 @@ build_targets() {  # $1 = scope
     for rec in "${AGENT_REGISTRY[@]}"; do
         IFS="$US" read -r name skills_raw agents_raw detect_raw <<< "$rec"
         if [[ "$scope" == "local" ]]; then
+            # shellcheck disable=SC2086  # intentional word-split of space-separated lists
             in_list "$name" $SELECT_AGENTS || continue
         else
             detect_dir="$(scope_path "$detect_raw" global)"
             [[ -d "$detect_dir" ]] || continue
+            # shellcheck disable=SC2086  # intentional word-split of space-separated lists
             [[ -n "$SELECT_AGENTS" ]] && { in_list "$name" $SELECT_AGENTS || continue; }
         fi
         skills_dir="$(scope_path "$skills_raw" "$scope")"
@@ -528,6 +534,7 @@ inspect_scope() {  # $1 = scope
         # Intersect with the --agents filter, if any.
         if [[ -n "$cli_filter" ]]; then
             local kept="" a
+            # shellcheck disable=SC2086  # intentional word-split of space-separated lists
             for a in $SELECT_AGENTS; do in_list "$a" $cli_filter && kept="$kept $a"; done
             SELECT_AGENTS="${kept# }"
         fi
