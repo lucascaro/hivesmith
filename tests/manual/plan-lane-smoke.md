@@ -88,7 +88,24 @@ On a repo with a spec at `stage: PLAN`:
 - `--html` on the same plan boots `/plan-html`; `<plan>.approved.json` gates approval; `stop.sh` runs on exit.
 - `HIVESMITH_PLAN_HTML=0` forces text even on a large plan.
 
-## 8. Untrusted plan content is never executed
+## 8. Every active exec plan can actually be handed off (automatable)
+
+The handoff gate reads `## Verification` from the exec plan. A plan scaffolded
+before that section existed refuses forever until backfilled, so this is a
+standing regression guard, not a one-time fix:
+
+```bash
+set -euo pipefail
+fail=0
+for f in docs/exec-plans/active/*.md; do
+  grep -q '^## Verification' "$f" || { echo "FAIL: $f has no ## Verification — /feature-plan-handoff will refuse it"; fail=1; }
+done
+grep -q '^## Verification' docs/exec-plans/_template.md          || { echo "FAIL: template regressed"; fail=1; }
+grep -q '^## Verification' templates/docs/exec-plans/_template.md || { echo "FAIL: templates/ copy regressed"; fail=1; }
+exit $fail
+```
+
+## 9. Untrusted plan content is never executed
 
 Add to a plan's `## Verification`:
 

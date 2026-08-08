@@ -61,6 +61,41 @@ This repo uses shell-script smokes, not unit tests. Equivalent verifications:
 - Release smoke: bump VERSION, run `scripts/release.sh` — `.changesets/` is emptied, new `## [X.Y.Z] — <date>` section appears, `[Unreleased]` body is regenerated empty.
 - Shellcheck: `scripts/regen-generated.sh` and `scripts/migrate-to-changesets.sh` are listed in CI's `additional_files`.
 
+## Verification
+
+<!-- Backfilled: this plan predates `## Verification` in `docs/exec-plans/_template.md`.
+     Commands are lifted from this plan's own `### Tests` section plus the
+     build/lint/test gates in `AGENTS.md`. -->
+
+```bash
+# Regeneration is deterministic and idempotent — this plan owns the generator,
+# not the freshness of the committed aggregates. (Committed-vs-generated parity
+# is enforced by the `regenerate-generated` bot on main; as of 2026-08-08 that
+# job cannot push to a protected branch, so asserting parity here would fail for
+# reasons this plan does not control. See the changesets workflow.)
+# Run in a throwaway checkout — regen-generated.py rewrites files in place.
+W=$(mktemp -d); git worktree add -q "$W" HEAD
+(
+  cd "$W"
+  python3 scripts/regen-generated.py
+  cp docs/product-specs/index.md /tmp/idx.1; cp CHANGELOG.md /tmp/chg.1
+  python3 scripts/regen-generated.py
+  diff -q docs/product-specs/index.md /tmp/idx.1
+  diff -q CHANGELOG.md /tmp/chg.1
+  # every changeset is represented in the regenerated changelog
+  test "$(ls .changesets/[0-9]*.md | wc -l)" -gt 0
+)
+rc=$?; git worktree remove --force "$W"; rm -f /tmp/idx.1 /tmp/chg.1; test $rc -eq 0
+
+# A changeset exists for this change
+ls .changesets/*.md >/dev/null
+
+# CI mirrors `block-generated-edits`: generated files must not be hand-edited in a PR
+if git diff --name-only origin/main...HEAD | grep -qE '^(CHANGELOG\.md|docs/product-specs/index\.md)$'; then
+  echo "FAIL: PR hand-edits a generated file"; exit 1
+fi
+```
+
 ## Decision log
 
 - **2026-05-15** — Frontmatter is the sole source of truth for `stage:`; `Stage:` line removed from exec-plan template. Why: adversarial review #5 — two writers with no arbiter risks unrecoverable hybrid state on partial writes.

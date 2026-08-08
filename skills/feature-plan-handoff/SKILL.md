@@ -39,7 +39,7 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
 
    The `Reads` column matters: exec plans carry no frontmatter and no `## Non-goals` — non-goals live in `docs/product-specs/<NNN>-*.md`, which is where `/feature-qa` reads them from too. Asserting on the plan file in both lanes would refuse every spec-driven plan.
 
-   `## Verification` was added to `docs/exec-plans/_template.md` alongside this skill. A plan scaffolded from an older template will not have it; that is a real gate failure and `/feature-plan-review` backfills it.
+   `## Verification` was added to `docs/exec-plans/_template.md` alongside this skill. A plan scaffolded from an older template will not have it; that is a real gate failure. This skill never backfills it — refuse and send the user to `/feature-plan-review`, which fixes it where the added commands get reviewed. `/feature-plan` backfills too, if it reaches the plan first.
 
    On any failure, list each one with the section it's in, which file it was read from, and what would satisfy it, then point the user at `/feature-plan-review <target>`. Stop there.
 

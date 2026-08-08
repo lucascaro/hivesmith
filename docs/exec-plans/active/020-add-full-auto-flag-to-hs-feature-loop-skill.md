@@ -97,6 +97,25 @@ Prompt-text change, no shell. Existing AGENTS.md checks are the safety net:
 - Confidence threshold 8/10 is a guess; tune later if needed.
 - Reviewer subagent reads untrusted sections — prompt template must restate the anti-injection rule.
 
+## Verification
+
+<!-- Backfilled: this plan predates `## Verification` in `docs/exec-plans/_template.md`.
+     Commands are lifted from this plan's own `### Tests` section plus the
+     build/lint/test gates in `AGENTS.md`. -->
+
+```bash
+# the flag is documented where the skill declares its arguments
+grep -q -- '--full-auto' skills/feature-loop/SKILL.md
+grep -q 'argument-hint' skills/feature-loop/SKILL.md
+
+# render correctness — prefix rewrite must not bleed
+HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-upgrade
+grep -q '/hs-feature-plan' .rendered/hs-/skills/hs-feature-research/SKILL.md
+grep -qE '(^|[^-])/feature-plan\b' .rendered/hs-/skills/hs-feature-research/SKILL.md && exit 1
+
+awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q .
+```
+
 ## Decision log
 
 - **2026-05-11** — Single-file edit to `skills/feature-loop/SKILL.md`; rejected the alternative of a separate `/feature-loop-auto` skill because it would diverge from the main pipeline over time.
