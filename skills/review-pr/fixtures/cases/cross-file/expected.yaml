@@ -1,0 +1,25 @@
+# Cross-file regression guard.
+#
+# `line_total` gains a required `tax_rate` parameter. The diff updates the one
+# call site that lives in the same file (order_total) — and misses the caller in
+# src/invoice.py, which is NOT in the diff at all.
+#
+# This is the point of the case: reviewing only the diff structurally cannot see
+# src/invoice.py. Catching it requires actually grepping callers beyond the diff.
+# Two guards in the skill keep that working, and this case goes red if either
+# regresses:
+#   1. §3 Pass 2, "Call sites" angle — triggers on any exported signature change
+#      and greps every caller repo-wide. Here it runs inline (one caller, far
+#      under §4's escalation threshold); on a large fan-out it would be a
+#      dispatched retrieval task. Either way the angle must fire.
+#   2. §5 step 2 — out-of-diff citations are kept, resolved against the working
+#      tree. An earlier revision dropped any finding citing a line outside the
+#      diff range, which deleted exactly this finding before it reached output.
+verdict: REQUEST_CHANGES
+must_find:
+  - file: src/invoice.py
+    line_range: [6, 10]
+    category: correctness
+    keywords: [line_total, tax_rate]
+must_not_find: []
+max_findings: 5

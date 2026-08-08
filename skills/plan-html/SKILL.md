@@ -12,8 +12,8 @@ Rich HTML review UX for plan-producing skills. The skill takes structured plan c
 
 ## When to invoke
 
-- Directly: `/hs-plan-html <task description>` — generates a plan + launches review UX.
-- Indirectly: `/hs-feature-loop plan <description>` uses this skill by default (set `HIVESMITH_PLAN_HTML=0` or pass `--no-html` to fall back to the inline text-plan draft).
+- Directly: `/plan-html <task description>` — generates a plan + launches review UX.
+- Indirectly: `/feature-loop plan <description>` uses this skill by default (set `HIVESMITH_PLAN_HTML=0` or pass `--no-html` to fall back to the inline text-plan draft).
 - Any other plan-producing skill that wants the same review UX can call into the assets here directly: build a manifest, call `render_plan.py`, then `start.sh`.
 
 ## Procedural instructions (for the agent)
@@ -31,12 +31,20 @@ Rich HTML review UX for plan-producing skills. The skill takes structured plan c
    - Sequence: `sequenceDiagram`.
    - Comparison: plain HTML table.
    - Linear single-file change: no diagram.
-5. **Render.** `python3 skills/plan-html/render_plan.py --manifest <path>.json --template skills/plan-html/template.html --out <plan>.html`. The script is stdlib-only.
-6. **Start the server (background).** `skills/plan-html/start.sh <plan>.html`. The server itself binds on `127.0.0.1` (OS-picked free port by default — set `PLAN_FEEDBACK_PORT` to request a specific one; explicit-port collisions auto-fall-back to OS-picked). A URL token is generated; sidecars `<plan>.server.{pid,port,token,log}` are written; unless `PLAN_HTML_AUTO_OPEN=false`, the URL is opened in the user's browser. `start.sh` returns once the server has bound and written `<plan>.server.port`; the server keeps running in the background.
-7. **Tell the user** what the URL is (it includes `?t=<token>` — the server rejects requests without it).
-8. **Watch for approval.** Poll `<plan>.approved.json` (existence == approval). When the user says "done", "review the feedback", or "read my notes", read `<plan>.feedback.json` — keys are section IDs, values are the user's notes. If the user revises the plan, rebuild the manifest with `changed: true` on the affected sections and re-render to the same path (the running server serves the new file on next GET).
-9. **Approve path.** When `<plan>.approved.json` exists, the calling skill is unblocked. If you're invoked from `feature-loop`, this satisfies the plan-mode gate and you advance to scaffolding artifacts.
-10. **Stop the server.** `skills/plan-html/stop.sh <plan>.html` cleans up. Always run on exit, including on error paths.
+5. **Render, serve, iterate, stop** — steps 3–6 of the **Canonical call sequence** below. It is the single source of truth for the invocation, the guard, and the fallback chain; do not restate it here.
+
+## Canonical call sequence (for calling skills)
+
+Any plan-producing skill that wants this review UX follows exactly this sequence. **Reference this section rather than restating it** — it exists in one place so the guard and the fallback chain can't drift between callers.
+
+1. **Guard.** Use the HTML path only when *all* of: `skills/plan-html/template.html` exists, `HIVESMITH_PLAN_HTML` is unset or non-`0`, and the user did not pass `--no-html` / `--text`. The template check matters — a calling skill may be running in a project that has no hivesmith checkout on disk, where none of the repo-relative paths below resolve.
+2. **Fall back, in order,** when the guard fails or any step below exits non-zero: native plan mode if the runtime has one (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`) → an inline text draft under a `### Draft plan for review` heading. Say which fallback you took and why; never fail the caller because the HTML path was unavailable.
+3. **Render.** Build the manifest JSON (schema in `render_plan.py`'s module docstring), then `python3 skills/plan-html/render_plan.py --manifest <path>.json --template skills/plan-html/template.html --out <plan>.html`.
+4. **Serve.** `skills/plan-html/start.sh <plan>.html`. Tell the user the URL — it includes `?t=<token>` and the server rejects requests without it.
+5. **Iterate.** Poll `<plan>.approved.json` (existence == approval). On feedback, read `<plan>.feedback.json`, rebuild the manifest with `changed: true` on affected sections, re-render to the **same** path.
+6. **Stop.** `skills/plan-html/stop.sh <plan>.html` on every exit path *after `start.sh` succeeded*, including error paths. If `start.sh` was never reached, there is no server to stop — do not call it.
+
+Callers today: `/feature-loop`, `/feature-plan`, `/feature-plan-review`.
 
 ## Configuration knobs (env vars read by start.sh)
 

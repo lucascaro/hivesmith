@@ -68,6 +68,50 @@ jobs:
           ! grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
           grep -q 'scripts/release.sh' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-release/SKILL.md"
 
+  subagent-linking:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Subagents link, stay idempotent, and never clobber user files
+        run: |
+          export HOME="$(mktemp -d)"
+          mkdir -p "$HOME/.claude"
+          REPO="$(pwd)"
+
+          ./install.sh --no-auto-upgrade
+          test -L "$HOME/.claude/agents/hs-reviewer.md"
+          test -L "$HOME/.claude/agents/hs-validator.md"
+
+          # Idempotence: a second run creates nothing new.
+          ./install.sh --no-auto-upgrade | grep -E '^Linked: 0 new'
+
+          # A user-owned symlink at a name we ship must survive untouched.
+          rm "$HOME/.claude/agents/hs-reviewer.md"
+          echo mine > "$HOME/mine.md"
+          ln -s "$HOME/mine.md" "$HOME/.claude/agents/hs-reviewer.md"
+          ./install.sh --no-auto-upgrade | grep -q 'WARN.*hs-reviewer.md'
+          test "$(readlink "$HOME/.claude/agents/hs-reviewer.md")" = "$HOME/mine.md"
+          rm "$HOME/.claude/agents/hs-reviewer.md"
+
+          # `disable` opts a single subagent out without touching the others.
+          printf 'disable = ["hs-reviewer"]\n' > "$HOME/.hivesmith.toml"
+          ./install.sh --no-auto-upgrade
+          test ! -L "$HOME/.claude/agents/hs-reviewer.md"
+          test -L "$HOME/.claude/agents/hs-validator.md"
+          rm "$HOME/.hivesmith.toml"
+          ./install.sh --no-auto-upgrade
+          test -L "$HOME/.claude/agents/hs-reviewer.md"
+
+          # A hivesmith link with no matching agent file is swept.
+          ln -s "$REPO/agents/hs-gone.md" "$HOME/.claude/agents/hs-gone.md"
+          ./install.sh --no-auto-upgrade
+          test ! -L "$HOME/.claude/agents/hs-gone.md"
+
+          # Uninstall clears our links, including one we no longer enumerate.
+          ln -s "$REPO/agents/hs-orphan.md" "$HOME/.claude/agents/hs-orphan.md"
+          ./install.sh --uninstall
+          test -z "$(ls -A "$HOME/.claude/agents/" 2>/dev/null)"
+
   brain-tests:
     runs-on: ubuntu-latest
     steps:

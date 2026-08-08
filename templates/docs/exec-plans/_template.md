@@ -38,6 +38,14 @@ this file or from the generated `docs/product-specs/index.md`.
 
 - <named test functions or files that will be added/changed>
 
+## Verification
+
+<Exact runnable commands that prove the change works end to end — the build, lint, and test commands from `AGENTS.md` plus anything specific to this change. Not "run the tests". `/feature-plan-handoff` refuses a plan whose commands are missing or vague.>
+
+```bash
+<command>
+```
+
 ## Decision log
 
 <Append-only. One entry per non-trivial decision made during implementation. Keep entries short.>

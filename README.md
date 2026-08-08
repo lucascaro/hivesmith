@@ -15,7 +15,7 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 - **PR convergence** — `/review-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
 - **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs.
 - **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-research` / `feature-plan` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `review-loop`. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
-- **A parallel PR review** — three independent review agents (correctness & logic, safety & test isolation, performance & UX consistency) run in parallel and synthesize a single structured verdict.
+- **A size-adaptive PR review** — `/review-pr` reviews the diff against four dimensions (correctness, safety, security, performance/UX/consistency) and then investigates what the diff reaches outside itself. It runs as one linear pass on an ordinary PR and splits the diff review across parallel agents only on a large one, where a single reader measurably degrades.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
 ## What you get
@@ -32,7 +32,9 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 | `/feature-ingest <#>` | Ingest a GitHub issue into `docs/product-specs/` |
 | `/feature-triage [#]` | Classify type, complexity, and priority |
 | `/feature-research [#]` | Explore the codebase, create the exec plan |
-| `/feature-plan [#]` | Fill the exec plan's Approach, Files, and Tests sections |
+| `/feature-plan [# \| slug \| "description"]` | Turn an issue — or an ambiguous one-line prompt — into an executable plan. Interrogates you until the design is settled, then writes the exec plan (issue mode) or `~/.hivesmith/plans/<slug>.md` (free-form mode) |
+| `/feature-plan-review [# \| slug]` | Verify a plan against the code it claims to touch, find the gaps, strip the YAGNI, resolve the open questions. Edits the plan in place |
+| `/feature-plan-handoff [# \| slug]` | Gate a plan for readiness and print copy-pasteable pickup instructions for a fresh agent in any harness or worktree |
 | `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/review-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
 | `/feature-loop [# \| description]` | Drive one feature through TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE with confirmation gates |
@@ -53,7 +55,7 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 
 | Skill | What it does |
 |---|---|
-| `/review-pr <#>` | Parallel-agent deep PR review (used by `/review-loop`) |
+| `/review-pr <#>` | Deep PR review — linear two-pass, fans out only on large diffs (used by `/review-loop`) |
 | `/autofix [#]` | Apply safe fixes from review findings, CI failures, or PR comments (used by `/review-loop`) |
 | `/changelog-update` | Add an `[Unreleased]` entry to `CHANGELOG.md` |
 | `/release <version>` | Pre-flight checks, version-bump suggestion, runs `scripts/release.sh` |
@@ -95,6 +97,8 @@ git clone https://github.com/lucascaro/hivesmith ~/.hivesmith
 
 This symlinks each skill into every detected agent's skills directory (`~/.claude/skills/`, `~/.codex/skills/`, `~/.factory/skills/`, `~/.gemini/skills/`, `~/.copilot/skills/`). Agents whose parent directory does not exist are skipped automatically.
 
+It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/feature-qa` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` for its two fan-out paths — splitting the diff review on a large PR, and escalating a single oversized out-of-diff investigation — and reviews everything else inline. Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
+
 ### Namespaced install (`--prefix`)
 
 To avoid name collisions with other skills, install under a prefix:
@@ -104,6 +108,50 @@ To avoid name collisions with other skills, install under a prefix:
 ```
 
 Skills install as `/hs-feature-plan`, `/hs-release`, etc. Cross-skill references inside each `SKILL.md` are rewritten so the pipeline still works end-to-end. The prefix is persisted to `~/.hivesmith.toml`, so `--update` and `--uninstall` don't need it re-passed. Pass `--prefix ""` to clear it on a later run.
+
+### Local (per-project) install (`--local`)
+
+By default the installer targets your home directories (`~/.claude/`, …). Pass `--local` to install into the **current project** instead — skills and subagents are symlinked under `./.claude/skills`, `./.claude/agents`, etc., so they travel with the repo:
+
+```bash
+cd ~/code/my-project
+~/.hivesmith/install.sh --local
+```
+
+On the first local install it detects which harness dirs already exist in the project (e.g. `./.claude`) and — when run interactively — asks which to install into. Pass `--agents` to choose non-interactively, and the choice is remembered:
+
+```bash
+~/.hivesmith/install.sh --local --agents claude,codex
+```
+
+Local scope keeps its **own** config file, `./.hivesmith.toml` (override with `HIVESMITH_LOCAL_CONFIG`), holding the remembered `agents = [...]`, any local `prefix`, and `disable`. It never reads or writes the global `~/.hivesmith.toml`. The daily auto-upgrade cron is global-only, so `--auto-upgrade` is rejected with `--local`. (The brain helper scripts still live at the global `~/.hivesmith/bin` — they're referenced by absolute path — and a local uninstall never touches them or the cron.)
+
+> Contributors dogfooding a checkout should still use `scripts/dev-link-local.sh` (bare skill names, no prefix) — that's a separate developer tool, not the same as `--local`.
+
+### Force overwrite (`--force`)
+
+If a real file or a foreign symlink is sitting where a skill link should go, the installer skips it with a warning and leaves it untouched. Pass `--force` to overwrite such blockers (it only ever deletes the exact path inside the target dir):
+
+```bash
+~/.hivesmith/install.sh --force            # global
+~/.hivesmith/install.sh --local --force    # project
+```
+
+### Inspect & validate (`--status`, `--doctor`)
+
+`--status` prints a read-only summary of what's installed — per harness link counts, resolved prefix, brain-bin health, and auto-upgrade state — for both global and local scopes (narrow with `--global`/`--local`):
+
+```bash
+~/.hivesmith/install.sh --status
+```
+
+`--doctor` validates the installs, reporting any dangling (broken) hivesmith symlinks with a fix hint and exiting **non-zero** if problems are found — handy in CI:
+
+```bash
+~/.hivesmith/install.sh --doctor || echo "hivesmith needs repair"
+```
+
+Output is colored when writing to a terminal; color is disabled automatically when piped, when `NO_COLOR` is set, or with `--no-color`.
 
 ## Update
 
@@ -167,10 +215,11 @@ This splits each `features/<state>/<NNN>-*.md` file into a product spec (`docs/p
 ## Uninstall
 
 ```bash
-~/.hivesmith/install.sh --uninstall
+~/.hivesmith/install.sh --uninstall            # global
+~/.hivesmith/install.sh --uninstall --local    # current project only
 ```
 
-Removes all symlinks from every agent's skills directory. The `~/.hivesmith` clone is preserved; `rm -rf ~/.hivesmith` to remove it entirely.
+Removes every hivesmith symlink from the targeted scope's agent directories (ownership-checked, so it also clears prefixed links without re-passing `--prefix`). A global uninstall additionally removes the rendered-prefix tree, the auto-upgrade cron, and the `~/.hivesmith/bin` brain helpers; a local uninstall touches none of those. The `~/.hivesmith` clone is preserved; `rm -rf ~/.hivesmith` to remove it entirely.
 
 ## Contributing
 

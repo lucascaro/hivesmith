@@ -1,0 +1,15 @@
+"""Pricing helpers."""
+
+
+def line_total(unit_price: float, quantity: int, tax_rate: float) -> float:
+    """Total for one invoice line, including tax.
+
+    tax_rate is a fraction: 0.2 means 20%.
+    """
+    subtotal = unit_price * quantity
+    return round(subtotal * (1 + tax_rate), 2)
+
+
+def order_total(lines: list, tax_rate: float) -> float:
+    """Total for a whole order."""
+    return round(sum(line_total(l["price"], l["qty"], tax_rate) for l in lines), 2)

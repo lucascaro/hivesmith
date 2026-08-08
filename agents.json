@@ -3,6 +3,7 @@
     {
       "name": "claude",
       "skills_dir": "~/.claude/skills",
+      "agents_dir": "~/.claude/agents",
       "detect_dir": "~/.claude"
     },
     {

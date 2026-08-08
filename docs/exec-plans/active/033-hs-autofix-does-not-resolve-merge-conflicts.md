@@ -84,6 +84,25 @@ The autofix/review-loop skills are markdown specifications consumed by an LLM; t
   6. Repeat invoking via `/hs-review-loop <PR#>` with an LGTM review already on the PR — verify autofix still fires due to the conflict.
 - **`shellcheck` + brain tests:** no shell changes, but run the full `AGENTS.md` lint/test set to confirm no regressions.
 
+## Verification
+
+<!-- Backfilled: this plan predates `## Verification` in `docs/exec-plans/_template.md`.
+     Commands are lifted from this plan's own `### Tests` section plus the
+     build/lint/test gates in `AGENTS.md`. -->
+
+```bash
+# the conflict path is documented in the skill
+grep -q 'Unmerged paths' skills/autofix/SKILL.md
+grep -q 'git merge --abort' skills/autofix/SKILL.md
+grep -q 'MERGE_HEAD' skills/autofix/SKILL.md
+
+# install still smoke-passes with the edited skill
+HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-upgrade --dry-run
+
+shellcheck install.sh
+awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q .
+```
+
 ## Decision log
 
 - **2026-05-15** — Use `git merge`, not `git rebase`, for the pre-flight initiator. Why: flat MERGE_HEAD state is easier to reason about and abort than N replayed commits; project squash-merges absorb the extra merge commit at land time.

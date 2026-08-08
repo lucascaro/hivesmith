@@ -1,0 +1,15 @@
+{
+  "title": "refactor(orders): extract validation, add discount codes and type hints",
+  "body": "Pulls order validation into _validate and line pricing into _order_total, adds type hints and structured logging across the service, and introduces discount code support via svc/discount.py. Tests extended to cover the extracted helpers and the discount path.",
+  "baseRefName": "main",
+  "headRefName": "refactor-orders-discounts",
+  "files": [
+    { "path": "svc/discount.py", "additions": 22, "deletions": 0 },
+    { "path": "svc/inventory.py", "additions": 6, "deletions": 2 },
+    { "path": "svc/notify.py", "additions": 2, "deletions": 1 },
+    { "path": "svc/orders.py", "additions": 37, "deletions": 13 },
+    { "path": "tests/test_orders.py", "additions": 21, "deletions": 1 }
+  ],
+  "comments": [],
+  "reviews": []
+}

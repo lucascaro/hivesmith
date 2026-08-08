@@ -4,6 +4,10 @@ must_find:
     line_range: [10, 14]
     category: security
     keywords: [sql, injection]
+  # NOTE: `category` throughout this suite documents intent and is NOT graded —
+  # see the comment in bin/grade. The unsynchronized _counter increment is the
+  # clearest example: it sits under both "Concurrency — data races" (correctness)
+  # and "global/module-level mutable state" (safety), and either reading is right.
   - file: app/db.py
     line_range: [17, 22]
     category: safety

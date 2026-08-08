@@ -76,6 +76,25 @@ Rejected alternative: require callers to always set `feedback` and hard-fail whe
   - Render a manifest where `feedback: false` is set on a section; assert the output does **not** contain a feedback aside for that section.
   - Render a manifest with no `global_feedback`; assert the global aside is present.
 
+## Verification
+
+<!-- Backfilled: this plan predates `## Verification` in `docs/exec-plans/_template.md`.
+     Commands are lifted from this plan's own `### Tests` section plus the
+     build/lint/test gates in `AGENTS.md`. -->
+
+```bash
+# renderer self-test covers the allowlist and feedback defaults
+python3 skills/plan-html/render_plan.py --self-test
+
+# feedback boxes are default-on in the renderer, not caller-supplied
+grep -q 'feedback' skills/plan-html/render_plan.py
+
+# plan-html is the default path in feature-loop, with the documented opt-out
+grep -q 'HIVESMITH_PLAN_HTML' skills/feature-loop/SKILL.md
+
+shellcheck skills/plan-html/start.sh skills/plan-html/stop.sh
+```
+
 ## Decision log
 
 - **2026-05-15** — Treat per-section feedback as default-on in `render_plan.py` rather than requiring all callers to set it. Why: the template already supports it, the manifests almost always want it, and `false` is a clean explicit opt-out.
