@@ -6,49 +6,119 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-# install.sh — fan-out symlinks from hivesmith/skills/* into each detected
-# agent's skills dir (Claude, Codex, Factory, Gemini, Copilot).
-#
-# Usage:
-#   ./install.sh                   # install (idempotent)
-#   ./install.sh --update          # git pull then reconcile symlinks
-#   ./install.sh --uninstall       # remove all hivesmith symlinks everywhere
-#   ./install.sh --prefix hs-      # install with a name prefix (see below)
-#   ./install.sh --prefix ""       # clear any stored prefix
-#   ./install.sh --auto-upgrade    # opt in to a daily auto-upgrade cron (remembered)
-#   ./install.sh --no-auto-upgrade # opt out (also removes an existing cron entry)
-#   ./install.sh --dry-run         # print what would happen
-#
-# Auto-upgrade is opt-in. Once you pass --auto-upgrade, the choice is stored
-# in ~/.hivesmith.toml as `auto_upgrade = true` so subsequent runs honor it
-# without re-passing the flag. `--no-auto-update` is a deprecated alias.
-#
-# --prefix namespaces every skill on disk and in cross-skill references.
-# With --prefix hs-, skills install as /hs-feature-plan, /hs-release, etc.
-# The prefix is persisted to ~/.hivesmith.toml so update/uninstall don't
-# need it re-passed. Pass --prefix "" to clear it.
-#
-# Per-skill opt-out lives in ~/.hivesmith.toml:
-#
-#   prefix = "hs-"
-#   disable = ["review-pr"]
-#   [agents.gemini]
-#   only = ["feature-next", "feature-ingest"]
+# install.sh — fan-out symlinks from hivesmith/skills/* (and agents/*) into each
+# detected AI agent's config dir (Claude, Codex, Factory, Gemini, Copilot).
+# Run with --help for the full flag list; usage() below is the canonical doc.
 
 HIVESMITH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG="${HIVESMITH_DIR_CONFIG:-$HOME/.hivesmith.toml}"
 RENDER_ROOT="$HIVESMITH_DIR/.rendered"
+# CONFIG is resolved by scope after arg parsing (global: ~/.hivesmith.toml,
+# local: ./.hivesmith.toml).
 
 MODE="install"
 AUTO_UPGRADE_CLI=""   # "" | "1" | "0" — set only when the user passed a flag
 DRY_RUN=0
 PREFIX_CLI=""
 PREFIX_CLI_SET=0
+SCOPE="global"        # global | local
+SCOPE_SET=0           # 1 if --global/--local was passed explicitly
+FORCE=0
+NO_COLOR_CLI=0
+AGENTS_CLI=""         # comma-separated harness names; empty = all detected
+AGENTS_CLI_SET=0
+
+# ---- Colored output ------------------------------------------------------
+# Colour only when stdout is a TTY, NO_COLOR is unset, and --no-color absent.
+# Functions reference the C_* vars at call time, so they stay plain until
+# setup_colors() fills them in after arg parsing.
+C_RESET=""; C_RED=""; C_YELLOW=""; C_GREEN=""; C_BOLD=""; C_CYAN=""
+setup_colors() {
+    [[ "$NO_COLOR_CLI" == "1" || -n "${NO_COLOR:-}" || ! -t 1 ]] && return
+    C_RESET=$'\033[0m'; C_RED=$'\033[31m'; C_YELLOW=$'\033[33m'
+    C_GREEN=$'\033[32m'; C_BOLD=$'\033[1m'; C_CYAN=$'\033[36m'
+}
+say()     { printf '%s\n' "$*"; }
+ok()      { printf '%s%s%s\n' "$C_GREEN" "$*" "$C_RESET"; }
+# warn goes to stdout: these are part of the reconcile report stream (callers
+# and CI grep them from stdout). err goes to stderr for fatal, aborting errors.
+warn()    { printf '%sWARN:%s %s\n' "$C_YELLOW" "$C_RESET" "$*"; }
+err()     { printf '%sError:%s %s\n' "$C_RED" "$C_RESET" "$*" >&2; }
+heading() { printf '%s%s%s\n' "$C_BOLD" "$*" "$C_RESET"; }
+tag()     { printf '%s[%s]%s' "$C_CYAN" "$1" "$C_RESET"; }   # colored [name]
+run() {
+    if [[ "$DRY_RUN" == "1" ]]; then say "DRY: $*"; else "$@"; fi
+}
+
+# A non-hivesmith path ($1) is blocking a link. With --force, remove it (scoped
+# to that exact path) and return 0 so the caller proceeds; otherwise warn and
+# return 1 so the caller skips it.
+force_or_skip() {
+    if [[ "$FORCE" == "1" ]]; then
+        warn "$1 is not a hivesmith symlink — overwriting (--force)"
+        run rm -rf "$1"
+        return 0
+    fi
+    warn "$1 exists and is not a hivesmith symlink — skipping (use --force to overwrite)"
+    return 1
+}
+
+usage() {
+    cat <<'EOF'
+install.sh — fan-out symlinks from hivesmith/skills/* (and agents/*) into each
+detected AI agent's config dir (Claude, Codex, Factory, Gemini, Copilot).
+
+Modes (default: install):
+  ./install.sh                   install / reconcile symlinks (idempotent)
+  ./install.sh --update          git pull then reconcile symlinks
+  ./install.sh --uninstall       remove all hivesmith symlinks (this scope)
+  ./install.sh --status          show what is installed (global + local)
+  ./install.sh --doctor          validate installs; non-zero exit on problems
+
+Scope (default: global):
+  --global                       install into ~/.<agent>/ (home dirs)
+  --local                        install into ./.<agent>/ (current project),
+                                 using per-project config ./.hivesmith.toml
+  --agents claude,codex          restrict/select target harnesses
+                                 (local: also remembered in ./.hivesmith.toml)
+
+Modifiers:
+  --force                        overwrite non-hivesmith files/symlinks that
+                                 block a skill (e.g. a real dir where a symlink
+                                 should go). Only deletes inside the target dir.
+  --prefix hs-                   namespace every skill (e.g. /hs-release).
+  --prefix ""                    clear a stored prefix.
+  --auto-upgrade                 opt in to a daily auto-upgrade cron (global only)
+  --no-auto-upgrade              opt out (also removes an existing cron entry)
+  --dry-run                      print what would happen, change nothing
+  --no-color                     disable ANSI color (also off when not a TTY
+                                 or when NO_COLOR is set)
+  -h, --help                     show this help
+
+Config:
+  Global scope reads/writes ~/.hivesmith.toml (override: HIVESMITH_DIR_CONFIG).
+  Local scope reads/writes ./.hivesmith.toml (override: HIVESMITH_LOCAL_CONFIG)
+  and never touches the global config. Keys: prefix, disable = [...],
+  agents = [...], auto_upgrade (global only), and [agents.<name>] only = [...].
+EOF
+}
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --update) MODE="update"; shift ;;
         --uninstall) MODE="uninstall"; shift ;;
+        --status) MODE="status"; shift ;;
+        --doctor) MODE="doctor"; shift ;;
+        --global) SCOPE="global"; SCOPE_SET=1; shift ;;
+        --local) SCOPE="local"; SCOPE_SET=1; shift ;;
+        --force) FORCE=1; shift ;;
+        --no-color) NO_COLOR_CLI=1; shift ;;
+        --agents)
+            [[ $# -ge 2 && -n "$2" ]] || { echo "Error: --agents requires a non-empty value (e.g. --agents claude,codex)" >&2; exit 1; }
+            AGENTS_CLI="$2"; AGENTS_CLI_SET=1; shift 2 ;;
+        --agents=*)
+            AGENTS_CLI="${1#--agents=}"; AGENTS_CLI_SET=1
+            [[ -n "$AGENTS_CLI" ]] || { echo "Error: --agents requires a non-empty value (e.g. --agents=claude,codex)" >&2; exit 1; }
+            shift ;;
         --auto-upgrade) AUTO_UPGRADE_CLI=1; shift ;;
         --no-auto-upgrade) AUTO_UPGRADE_CLI=0; shift ;;
         --no-auto-update)
@@ -57,33 +127,45 @@ while [[ $# -gt 0 ]]; do
         --dry-run) DRY_RUN=1; shift ;;
         --prefix) PREFIX_CLI="${2-}"; PREFIX_CLI_SET=1; shift 2 ;;
         --prefix=*) PREFIX_CLI="${1#--prefix=}"; PREFIX_CLI_SET=1; shift ;;
-        -h|--help)
-            sed -n '9,36p' "$0" | sed 's/^# \{0,1\}//'
-            exit 0 ;;
+        -h|--help) usage; exit 0 ;;
         *) echo "Unknown arg: $1" >&2; exit 1 ;;
     esac
 done
 
-say() { printf '%s\n' "$*"; }
-run() {
-    if [[ "$DRY_RUN" == "1" ]]; then say "DRY: $*"; else "$@"; fi
-}
+setup_colors
+
+# ---- Scope + config resolution -------------------------------------------
+# Scope decides target dirs (home vs cwd) and which config file we read/write.
+if [[ "$SCOPE" == "local" ]]; then
+    CONFIG="${HIVESMITH_LOCAL_CONFIG:-$PWD/.hivesmith.toml}"
+    if [[ -n "$AUTO_UPGRADE_CLI" ]]; then
+        err "--auto-upgrade/--no-auto-upgrade is global-only (cron is a global side effect); not valid with --local."
+        exit 1
+    fi
+else
+    CONFIG="${HIVESMITH_DIR_CONFIG:-$HOME/.hivesmith.toml}"
+fi
 
 # ---- Parse config (very small TOML subset) -------------------------------
 # Supports:
 #   prefix = "hs-"
 #   disable = ["a", "b"]        # skill names and/or subagent names
+#   agents = ["claude", ...]    # local scope: remembered harness selection
+#   auto_upgrade = true         # global scope only
 #   [agents.<name>]
 #   only = ["x", "y"]           # skills only — does not apply to subagents
 #
 # Exposes:
 #   DISABLE_GLOBAL   — space-separated list
 #   PREFIX_CONFIG    — value of top-level prefix, or empty
+#   AGENTS_CONFIG    — space-separated harness names (AGENTS_CONFIG_SET=1 if present)
 #   agent_only_<name> — space-separated list, set only if "only" present
 
 DISABLE_GLOBAL=""
 PREFIX_CONFIG=""
 AUTO_UPGRADE_CONFIG=""   # "" | "1" | "0" — only set if the key is present
+AGENTS_CONFIG=""         # space-separated harness names (local scope selection)
+AGENTS_CONFIG_SET=0      # 1 if an `agents = [...]` key was present
 AGENT_ONLY_TABLE=""  # pipe-delimited records: "|name:val1 val2|name:val3|"
 
 agent_only_for() {
@@ -117,6 +199,10 @@ if [[ -f "$CONFIG" ]]; then
                 false) AUTO_UPGRADE_CONFIG=0 ;;
             esac
         fi
+        if [[ -z "$current_agent" && "$line" =~ ^agents[[:space:]]*=[[:space:]]*\[(.*)\] ]]; then
+            AGENTS_CONFIG="$(echo "${BASH_REMATCH[1]}" | tr -d '",' )"
+            AGENTS_CONFIG_SET=1
+        fi
         if [[ -n "$current_agent" && "$line" =~ ^only[[:space:]]*=[[:space:]]*\[(.*)\] ]]; then
             vals="$(echo "${BASH_REMATCH[1]}" | tr -d '",' )"
             AGENT_ONLY_TABLE="${AGENT_ONLY_TABLE}|${current_agent}:${vals}"
@@ -124,6 +210,40 @@ if [[ -f "$CONFIG" ]]; then
     done < "$CONFIG"
     AGENT_ONLY_TABLE="${AGENT_ONLY_TABLE}|"
 fi
+
+# Upsert or remove a top-level key in $CONFIG.
+#   $1 = bare key name (e.g. "prefix")
+#   $2 = full rendered line (e.g. 'prefix = "hs-"'), or "" to remove the key
+# Honors --dry-run. Inserts before the first [section] header, else appends.
+upsert_config_key() {
+    local key="$1" rendered="$2" line
+    if [[ "$DRY_RUN" == "1" ]]; then
+        if [[ -z "$rendered" ]]; then say "DRY: would remove $key from $CONFIG"
+        else say "DRY: would write $rendered to $CONFIG"; fi
+        return 0
+    fi
+    touch "$CONFIG"
+    local tmp_cfg found=0; tmp_cfg="$(mktemp)"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^[[:space:]]*"$key"[[:space:]]*= ]]; then
+            [[ -n "$rendered" ]] && echo "$rendered" >> "$tmp_cfg"
+            found=1
+        else
+            echo "$line" >> "$tmp_cfg"
+        fi
+    done < "$CONFIG"
+    if [[ "$found" == "0" && -n "$rendered" ]]; then
+        if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
+            local tmp_cfg2; tmp_cfg2="$(mktemp)"
+            awk -v line="$rendered" '!d && /^\[/ { print line; print ""; d=1 } { print }' "$tmp_cfg" > "$tmp_cfg2"
+            mv "$tmp_cfg2" "$tmp_cfg"
+        else
+            echo "$rendered" >> "$tmp_cfg"
+        fi
+    fi
+    mv "$tmp_cfg" "$CONFIG"
+    return 0
+}
 
 # ---- Resolve effective prefix --------------------------------------------
 
@@ -139,38 +259,13 @@ if [[ -n "$PREFIX" && ! "$PREFIX" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     exit 1
 fi
 
-# Writeback: upsert prefix line in config when CLI set it (and not uninstall)
+# Writeback: upsert prefix line in config when CLI set it (and not uninstall).
+# Empty prefix removes the key.
 if [[ "$PREFIX_CLI_SET" == "1" && "$MODE" != "uninstall" ]]; then
-    if [[ "$DRY_RUN" == "1" ]]; then
-        say "DRY: would write prefix = \"$PREFIX\" to $CONFIG"
+    if [[ -n "$PREFIX" ]]; then
+        upsert_config_key prefix "prefix = \"$PREFIX\""
     else
-        touch "$CONFIG"
-        tmp_cfg="$(mktemp)"
-        found=0
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            if [[ "$line" =~ ^[[:space:]]*prefix[[:space:]]*= ]]; then
-                if [[ -n "$PREFIX" ]]; then
-                    echo "prefix = \"$PREFIX\"" >> "$tmp_cfg"
-                fi
-                found=1
-            else
-                echo "$line" >> "$tmp_cfg"
-            fi
-        done < "$CONFIG"
-        if [[ "$found" == "0" && -n "$PREFIX" ]]; then
-            # Insert before first [section] header, else append
-            if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
-                tmp_cfg2="$(mktemp)"
-                awk -v line="prefix = \"$PREFIX\"" '
-                    !done && /^\[/ { print line; print ""; done=1 }
-                    { print }
-                ' "$tmp_cfg" > "$tmp_cfg2"
-                mv "$tmp_cfg2" "$tmp_cfg"
-            else
-                echo "prefix = \"$PREFIX\"" >> "$tmp_cfg"
-            fi
-        fi
-        mv "$tmp_cfg" "$CONFIG"
+        upsert_config_key prefix ""
     fi
 fi
 
@@ -202,40 +297,8 @@ write_config_auto_upgrade() {
     # Upsert or remove the top-level auto_upgrade key in $CONFIG.
     # Arg: "true" | "false" | "" (remove).
     local value="$1"
-    if [[ "$DRY_RUN" == "1" ]]; then
-        if [[ -z "$value" ]]; then
-            say "DRY: would remove auto_upgrade from $CONFIG"
-        else
-            say "DRY: would write auto_upgrade = $value to $CONFIG"
-        fi
-        return
-    fi
-    touch "$CONFIG"
-    local tmp_cfg; tmp_cfg="$(mktemp)"
-    local found=0
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ "$line" =~ ^[[:space:]]*auto_upgrade[[:space:]]*= ]]; then
-            if [[ -n "$value" ]]; then
-                echo "auto_upgrade = $value" >> "$tmp_cfg"
-            fi
-            found=1
-        else
-            echo "$line" >> "$tmp_cfg"
-        fi
-    done < "$CONFIG"
-    if [[ "$found" == "0" && -n "$value" ]]; then
-        if grep -q '^\[' "$tmp_cfg" 2>/dev/null; then
-            local tmp_cfg2; tmp_cfg2="$(mktemp)"
-            awk -v line="auto_upgrade = $value" '
-                !done && /^\[/ { print line; print ""; done=1 }
-                { print }
-            ' "$tmp_cfg" > "$tmp_cfg2"
-            mv "$tmp_cfg2" "$tmp_cfg"
-        else
-            echo "auto_upgrade = $value" >> "$tmp_cfg"
-        fi
-    fi
-    mv "$tmp_cfg" "$CONFIG"
+    if [[ -n "$value" ]]; then upsert_config_key auto_upgrade "auto_upgrade = $value"
+    else upsert_config_key auto_upgrade ""; fi
 }
 
 if [[ -n "$AUTO_UPGRADE_PERSIST" && "$MODE" != "uninstall" ]]; then
@@ -260,25 +323,130 @@ for dir in "$HIVESMITH_DIR"/skills/*/; do
     SKILLS+=("$(basename "$dir")")
 done
 
-# ---- Enumerate target agents (detect + filter) ---------------------------
+# ---- Agent registry + scope resolution -----------------------------------
+# Read agents.json once into a raw registry (unexpanded ~ paths). Target dirs
+# are then resolved per scope: global -> $HOME/.<agent>, local -> $PWD/.<agent>.
 
 AGENTS_JSON="$HIVESMITH_DIR/agents.json"
-TARGETS=()
-AGENT_TARGETS=()   # entries: "harness\tagents_dir" — only harnesses declaring agents_dir
-while IFS=$'\t' read -r name skills_dir agents_dir detect_dir; do
-    skills_dir="${skills_dir/#~/$HOME}"
-    agents_dir="${agents_dir/#~/$HOME}"
-    detect_dir="${detect_dir/#~/$HOME}"
-    if [[ -d "$detect_dir" ]]; then
-        TARGETS+=("$name"$'\t'"$skills_dir")
-        [[ -n "$agents_dir" ]] && AGENT_TARGETS+=("$name"$'\t'"$agents_dir")
-    fi
+# Fields are joined with US (\x1f), NOT tab: tab is IFS-whitespace, so an empty
+# agents_dir (every harness but claude) would collapse two tabs into one and
+# shift detect_dir into agents_dir, leaving detect_dir empty. US is non-
+# whitespace, so `read` preserves empty fields.
+US=$'\x1f'
+AGENT_REGISTRY=()   # entries: name<US>skills_raw<US>agents_raw<US>detect_raw
+while IFS= read -r rec; do
+    [[ -n "$rec" ]] && AGENT_REGISTRY+=("$rec")
 done < <(python3 -c "
 import json, sys
 with open(sys.argv[1]) as f:
     for a in json.load(f)['agents']:
-        print(a['name'] + '\t' + a['skills_dir'] + '\t' + a.get('agents_dir', '') + '\t' + a['detect_dir'])
+        print('\x1f'.join([a['name'], a['skills_dir'], a.get('agents_dir', ''), a['detect_dir']]))
 " "$AGENTS_JSON")
+
+# An empty registry means the load itself failed (unreadable/malformed
+# agents.json) — surface that instead of the misleading "no installations" later.
+if [[ ${#AGENT_REGISTRY[@]} -eq 0 ]]; then
+    err "Could not load agent registry from $AGENTS_JSON (unreadable or malformed?)"
+    exit 1
+fi
+
+ALL_AGENT_NAMES=""
+for rec in "${AGENT_REGISTRY[@]}"; do
+    ALL_AGENT_NAMES="$ALL_AGENT_NAMES ${rec%%"$US"*}"
+done
+ALL_AGENT_NAMES="${ALL_AGENT_NAMES# }"
+
+# Expand a raw ~ path for a scope (global -> $HOME, local -> $PWD/cwd).
+scope_path() {  # $1=raw path, $2=scope
+    local raw="$1" scope="$2"
+    [[ -z "$raw" ]] && { printf ''; return; }
+    if [[ "$scope" == "local" ]]; then printf '%s' "$PWD/${raw#\~/}"
+    else printf '%s' "${raw/#\~/$HOME}"; fi
+}
+
+# SELECT_AGENTS: space-separated allow-list; empty means "all detected" (global).
+SELECT_AGENTS=""
+validate_agents() {  # $1 = comma/space list; echoes normalized space list
+    local raw="${1//,/ }" out="" a
+    # shellcheck disable=SC2086  # intentional word-split of space-separated lists
+    for a in $raw; do
+        # shellcheck disable=SC2086  # intentional word-split of space-separated lists
+        in_list "$a" $ALL_AGENT_NAMES || { err "Unknown agent '$a' (known: ${ALL_AGENT_NAMES})"; exit 1; }
+        out="$out $a"
+    done
+    printf '%s' "${out# }"
+}
+
+detected_local_agents() {
+    local rec name detect out=""
+    for rec in "${AGENT_REGISTRY[@]}"; do
+        IFS="$US" read -r name _s _a detect <<< "$rec"
+        [[ -d "$(scope_path "$detect" local)" ]] && out="$out $name"
+    done
+    printf '%s' "${out# }"
+}
+
+prompt_local_selection() {  # $1 = space list of detected agents
+    local detected="$1" reply default="${1:-claude}"
+    printf 'Local install — known harnesses: %s\n' "$ALL_AGENT_NAMES" >&2
+    printf 'Detected in this project: %s\n' "${detected:-<none>}" >&2
+    printf 'Install into which? [%s] (comma/space list, Enter to accept): ' "$default" >&2
+    IFS= read -r reply || reply=""
+    reply="${reply//,/ }"
+    [[ -z "${reply// }" ]] && reply="$default"
+    validate_agents "$reply"
+}
+
+write_config_agents() {  # $1 = space list; upsert `agents = [...]` in $CONFIG
+    local list="$1" quoted="" a
+    for a in $list; do quoted="$quoted, \"$a\""; done
+    quoted="[${quoted#, }]"
+    upsert_config_key agents "agents = $quoted"
+}
+
+# For local install/uninstall, decide which harnesses to target and remember it.
+resolve_local_selection() {
+    if [[ "$AGENTS_CLI_SET" == "1" ]]; then
+        SELECT_AGENTS="$(validate_agents "$AGENTS_CLI")"
+    elif [[ "$AGENTS_CONFIG_SET" == "1" ]]; then
+        SELECT_AGENTS="$(validate_agents "$AGENTS_CONFIG")"
+    else
+        local detected; detected="$(detected_local_agents)"
+        if [[ -t 0 && "$MODE" == "install" ]]; then
+            SELECT_AGENTS="$(prompt_local_selection "$detected")"
+        else
+            SELECT_AGENTS="${detected:-claude}"
+        fi
+    fi
+    [[ -z "$SELECT_AGENTS" ]] && SELECT_AGENTS="claude"
+    if [[ "$MODE" == "install" ]]; then write_config_agents "$SELECT_AGENTS"; fi
+    return 0
+}
+
+# Build TARGETS / AGENT_TARGETS for a scope.
+#   global: detection-based (dir must exist), SELECT_AGENTS is an optional filter.
+#   local:  SELECT_AGENTS is authoritative (dirs are created as needed).
+build_targets() {  # $1 = scope
+    local scope="$1" rec name skills_raw agents_raw detect_raw skills_dir agents_dir detect_dir
+    TARGETS=(); AGENT_TARGETS=()
+    for rec in "${AGENT_REGISTRY[@]}"; do
+        IFS="$US" read -r name skills_raw agents_raw detect_raw <<< "$rec"
+        if [[ "$scope" == "local" ]]; then
+            # shellcheck disable=SC2086  # intentional word-split of space-separated lists
+            in_list "$name" $SELECT_AGENTS || continue
+        else
+            detect_dir="$(scope_path "$detect_raw" global)"
+            [[ -d "$detect_dir" ]] || continue
+            # shellcheck disable=SC2086  # intentional word-split of space-separated lists
+            [[ -n "$SELECT_AGENTS" ]] && { in_list "$name" $SELECT_AGENTS || continue; }
+        fi
+        skills_dir="$(scope_path "$skills_raw" "$scope")"
+        agents_dir="$(scope_path "$agents_raw" "$scope")"
+        TARGETS+=("$name"$'\t'"$skills_dir")
+        [[ -n "$agents_dir" ]] && AGENT_TARGETS+=("$name"$'\t'"$agents_dir")
+    done
+    return 0   # guard: last loop iteration's `&&` must not leak a nonzero exit
+}
 
 # Subagent definitions are shipped verbatim (no prefix rendering — the `name:`
 # frontmatter is the dispatch key and filenames are already hs-prefixed).
@@ -293,10 +461,181 @@ enumerate_subagents() {
 }
 enumerate_subagents
 
-if [[ ${#TARGETS[@]} -eq 0 ]]; then
-    say "No supported AI agent installations detected."
-    say "Expected one of: ~/.claude, ~/.codex, ~/.factory, ~/.gemini, ~/.copilot"
-    exit 1
+# Resolve selection + build targets for the active scope (status/doctor build
+# their own targets per-scope below, so skip here).
+if [[ "$MODE" != "status" && "$MODE" != "doctor" ]]; then
+    if [[ "$SCOPE" == "local" ]]; then
+        resolve_local_selection
+    elif [[ "$AGENTS_CLI_SET" == "1" ]]; then
+        SELECT_AGENTS="$(validate_agents "$AGENTS_CLI")"
+    fi
+    build_targets "$SCOPE"
+    if [[ ${#TARGETS[@]} -eq 0 ]]; then
+        if [[ "$SCOPE" == "local" ]]; then
+            err "No local target harnesses resolved. Pass --agents claude (or a comma list)."
+        else
+            err "No supported AI agent installations detected."
+            say "Expected one of these as a ~/.<name> directory: $ALL_AGENT_NAMES"
+        fi
+        exit 1
+    fi
+fi
+
+# ---- Modes: status / doctor ----------------------------------------------
+# Read-only. Both inspect the same on-disk state; status reports counts,
+# doctor reports problems and exits non-zero if any are found. Every check is
+# contained so `set -euo pipefail` cannot abort mid-scan.
+
+# Read a single quoted `prefix = "..."` from a config file (empty if absent).
+cfg_prefix() {  # $1 = config file
+    local v=""
+    [[ -f "$1" ]] || { printf ''; return 0; }
+    v="$(grep -E '^[[:space:]]*prefix[[:space:]]*=' "$1" 2>/dev/null | head -1)" || true
+    [[ "$v" =~ \"([^\"]*)\" ]] && printf '%s' "${BASH_REMATCH[1]}" || printf ''
+    return 0
+}
+# Read a `KEY = [ ... ]` array from a config file as a space list (empty if absent).
+cfg_list() {  # $1 = key, $2 = config file
+    local v=""
+    [[ -f "$2" ]] || { printf ''; return 0; }
+    v="$(grep -E "^[[:space:]]*$1[[:space:]]*=[[:space:]]*\[" "$2" 2>/dev/null | head -1)" || true
+    if [[ "$v" =~ \[(.*)\] ]]; then echo "${BASH_REMATCH[1]}" | tr -d '",'; else printf ''; fi
+    return 0
+}
+# Emit "state<TAB>name" (state: ok|broken) for each hivesmith-owned symlink in a dir.
+scan_dir_links() {  # $1 = dir
+    local dir="$1" existing tgt
+    [[ -d "$dir" ]] || return 0
+    for existing in "$dir"/*; do
+        [[ -L "$existing" ]] || continue
+        tgt="$(readlink "$existing")"
+        case "$tgt" in "$HIVESMITH_DIR/"*) ;; *) continue ;; esac
+        if [[ -e "$existing" ]]; then printf 'ok\t%s\n' "$(basename "$existing")"
+        else printf 'broken\t%s\n' "$(basename "$existing")"; fi
+    done
+    return 0
+}
+
+DOCTOR_PROBLEMS=0
+
+inspect_scope() {  # $1 = scope
+    local scope="$1" cfg prefix saved_select detected line st nm
+    if [[ "$scope" == "local" ]]; then cfg="${HIVESMITH_LOCAL_CONFIG:-$PWD/.hivesmith.toml}"
+    else cfg="${HIVESMITH_DIR_CONFIG:-$HOME/.hivesmith.toml}"; fi
+
+    # When --agents was passed, it narrows what status/doctor inspect.
+    local cli_filter=""
+    [[ "$AGENTS_CLI_SET" == "1" ]] && cli_filter="$(validate_agents "$AGENTS_CLI")"
+
+    saved_select="$SELECT_AGENTS"
+    if [[ "$scope" == "local" ]]; then
+        SELECT_AGENTS="$(printf '%s %s' "$(detected_local_agents)" "$(cfg_list agents "$cfg")" \
+            | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ')"
+        # Intersect with the --agents filter, if any.
+        if [[ -n "$cli_filter" ]]; then
+            local kept="" a
+            # shellcheck disable=SC2086  # intentional word-split of space-separated lists
+            for a in $SELECT_AGENTS; do in_list "$a" $cli_filter && kept="$kept $a"; done
+            SELECT_AGENTS="${kept# }"
+        fi
+        if [[ -z "${SELECT_AGENTS// }" ]]; then
+            SELECT_AGENTS="$saved_select"
+            heading "local ($PWD)"
+            say "  no local install detected$([[ -n "$cli_filter" ]] && printf ' for --agents %s' "$cli_filter")"
+            return 0
+        fi
+    else
+        # Global: empty = all detected; --agents narrows via build_targets' filter.
+        SELECT_AGENTS="$cli_filter"
+    fi
+    build_targets "$scope"
+    SELECT_AGENTS="$saved_select"
+
+    prefix="$(cfg_prefix "$cfg")"
+    heading "$scope$([[ "$scope" == "local" ]] && printf ' (%s)' "$PWD")"
+    [[ -n "$prefix" ]] && say "  prefix: \"$prefix\"   (config: $cfg)"
+
+    if [[ ${#TARGETS[@]} -eq 0 ]]; then
+        say "  no target harnesses"
+    fi
+    local entry name dir n_ok n_broken
+    for entry in ${TARGETS[@]+"${TARGETS[@]}"}; do
+        IFS=$'\t' read -r name dir <<< "$entry"
+        n_ok=0; n_broken=0
+        while IFS=$'\t' read -r st nm; do
+            [[ -z "$st" ]] && continue
+            if [[ "$st" == "broken" ]]; then
+                n_broken=$((n_broken + 1))
+                DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1))
+                say "  $(tag "$name") $(printf '%sbroken%s' "$C_RED" "$C_RESET") $nm — $dir/$nm → dangling (fix: install.sh --update$([[ "$scope" == "local" ]] && printf ' --local'))"
+            else
+                n_ok=$((n_ok + 1))
+            fi
+        done < <(scan_dir_links "$dir")
+        printf '  %s %s skills linked' "$(tag "$name")" "$n_ok"
+        (( n_broken > 0 )) && printf ', %d broken' "$n_broken"
+        printf '   %s\n' "$dir"
+    done
+    # Subagents
+    for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
+        IFS=$'\t' read -r name dir <<< "$entry"
+        n_ok=0; n_broken=0
+        while IFS=$'\t' read -r st nm; do
+            [[ -z "$st" ]] && continue
+            if [[ "$st" == "broken" ]]; then
+                n_broken=$((n_broken + 1)); DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1))
+                say "  $(tag "$name") $(printf '%sbroken%s' "$C_RED" "$C_RESET") $nm (subagent) — $dir/$nm → dangling"
+            else n_ok=$((n_ok + 1)); fi
+        done < <(scan_dir_links "$dir")
+        (( n_ok > 0 || n_broken > 0 )) && {
+            printf '  %s %s subagents linked' "$(tag "$name")" "$n_ok"
+            (( n_broken > 0 )) && printf ', %d broken' "$n_broken"
+            printf '   %s\n' "$dir"
+        }
+    done
+
+    # Global-only extras: brain-bin health + auto-upgrade/cron state.
+    if [[ "$scope" == "global" ]]; then
+        local bin="$HOME/.hivesmith/bin" bok=0 bbroken=0
+        if [[ -d "$bin" ]]; then
+            while IFS=$'\t' read -r st nm; do
+                [[ -z "$st" ]] && continue
+                if [[ "$st" == "broken" ]]; then
+                    bbroken=$((bbroken + 1)); DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1))
+                    say "  brain-bin $(printf '%sbroken%s' "$C_RED" "$C_RESET") $nm — $bin/$nm → dangling"
+                else bok=$((bok + 1)); fi
+            done < <(scan_dir_links "$bin")
+            say "  brain-bin: $bok linked$( (( bbroken > 0 )) && printf ', %d broken' "$bbroken")   $bin"
+        else
+            say "  brain-bin: not present ($bin)"
+        fi
+        if has_hivesmith_cron; then say "  auto-upgrade: cron installed"
+        else say "  auto-upgrade: off"; fi
+    fi
+}
+
+if [[ "$MODE" == "status" || "$MODE" == "doctor" ]]; then
+    # Default to both scopes; --global/--local narrows.
+    scopes=(global local)
+    if [[ "$SCOPE_SET" == "1" ]]; then scopes=("$SCOPE"); fi
+    heading "hivesmith $MODE — clone: $HIVESMITH_DIR"
+    if ! git -C "$HIVESMITH_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+        warn "clone is not a git repo — --update will not work"
+        [[ "$MODE" == "doctor" ]] && DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1))
+    fi
+    for sc in "${scopes[@]}"; do
+        say ""
+        inspect_scope "$sc"
+    done
+    say ""
+    if [[ "$MODE" == "doctor" ]]; then
+        if (( DOCTOR_PROBLEMS > 0 )); then
+            err "$DOCTOR_PROBLEMS problem(s) found."
+            exit 1
+        fi
+        ok "No problems found."
+    fi
+    exit 0
 fi
 
 # ---- Mode: update --------------------------------------------------------
@@ -318,28 +657,22 @@ fi
 
 if [[ "$MODE" == "uninstall" ]]; then
     GONE=()
+    # Ownership sweep: remove any symlink in a target skills dir that points into
+    # this hivesmith clone (source skills/* OR the rendered prefix tree). This is
+    # prefix-independent, so `--uninstall` clears prefixed links without needing
+    # --prefix re-passed.
     for entry in "${TARGETS[@]}"; do
         IFS=$'\t' read -r name skills_dir <<< "$entry"
+        [[ -d "$skills_dir" ]] || continue
         say "Removing hivesmith symlinks from $skills_dir..."
-        for skill in "${SKILLS[@]}"; do
-            link_name="${PREFIX}${skill}"
-            link="$skills_dir/$link_name"
-            if [[ -L "$link" ]]; then
-                target="$(readlink "$link")"
-                if [[ "$target" == "$HIVESMITH_DIR/skills/$skill" \
-                   || "$target" == "$RENDER_ROOT/"*"/skills/$link_name" ]]; then
-                    run rm "$link"
-                    GONE+=("$name"$'\t'"$link_name"$'\t'"uninstall")
-                fi
-            fi
-            # Also clean up an un-prefixed link if it happens to exist (migration)
-            if [[ -n "$PREFIX" && -L "$skills_dir/$skill" ]]; then
-                t2="$(readlink "$skills_dir/$skill")"
-                if [[ "$t2" == "$HIVESMITH_DIR/skills/$skill" ]]; then
-                    run rm "$skills_dir/$skill"
-                    GONE+=("$name"$'\t'"$skill"$'\t'"uninstall")
-                fi
-            fi
+        for existing in "$skills_dir"/*; do
+            [[ -L "$existing" ]] || continue
+            case "$(readlink "$existing")" in
+                "$HIVESMITH_DIR/"*)
+                    run rm "$existing"
+                    GONE+=("$name"$'\t'"$(basename "$existing")"$'\t'"uninstall")
+                    ;;
+            esac
         done
     done
     for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
@@ -357,30 +690,48 @@ if [[ "$MODE" == "uninstall" ]]; then
             esac
         done
     done
-    # Remove rendered tree
-    if [[ -d "$RENDER_ROOT" ]]; then
-        run rm -rf "$RENDER_ROOT"
-    fi
-    # Remove auto-upgrade cron if any
-    if has_hivesmith_cron; then
-        if [[ "$DRY_RUN" == "1" ]]; then
-            say "DRY: remove hivesmith crontab entry"
-        else
-            (crontab -l | grep -v "$CRON_GREP") | crontab -
+    # Global-only side effects: the rendered tree, auto-upgrade cron, and the
+    # auto_upgrade config key all belong to the global install. A local uninstall
+    # must not touch them (it would break a coexisting global install).
+    if [[ "$SCOPE" == "global" ]]; then
+        if [[ -d "$RENDER_ROOT" ]]; then
+            run rm -rf "$RENDER_ROOT"
         fi
-    fi
-    # Clear auto_upgrade from config so a reinstall starts at the new default.
-    if [[ -f "$CONFIG" ]] && grep -q '^[[:space:]]*auto_upgrade[[:space:]]*=' "$CONFIG"; then
-        write_config_auto_upgrade ""
+        if has_hivesmith_cron; then
+            if [[ "$DRY_RUN" == "1" ]]; then
+                say "DRY: remove hivesmith crontab entry"
+            else
+                (crontab -l | grep -v "$CRON_GREP") | crontab -
+            fi
+        fi
+        if [[ -f "$CONFIG" ]] && grep -q '^[[:space:]]*auto_upgrade[[:space:]]*=' "$CONFIG"; then
+            write_config_auto_upgrade ""
+        fi
+        # Brain helper symlinks live under ~/.hivesmith/bin (global, absolute-path
+        # referenced by skills). Remove the ones we own; drop the dir if empty.
+        BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
+        if [[ -d "$BRAIN_BIN_DIR" ]]; then
+            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden; do
+                link="$BRAIN_BIN_DIR/$link_name"
+                if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$HIVESMITH_DIR/"* ]]; then
+                    run rm -f "$link"
+                fi
+            done
+            if [[ "$DRY_RUN" == "1" ]]; then
+                say "DRY: rmdir $BRAIN_BIN_DIR (if empty)"
+            else
+                rmdir "$BRAIN_BIN_DIR" 2>/dev/null || true
+            fi
+        fi
     fi
     if (( ${#GONE[@]} > 0 )); then
         say ""
-        say "Removed:"
+        heading "Removed:"
         printf '%s\n' "${GONE[@]}" | sort | while IFS=$'\t' read -r a n _r; do
-            printf '  [%s]  %s\n' "$a" "$n"
+            printf '  %s  %s\n' "$(tag "$a")" "$n"
         done
     fi
-    say "Uninstalled."
+    ok "Uninstalled."
     exit 0
 fi
 
@@ -429,8 +780,11 @@ render_tree() {
 if [[ -n "$PREFIX" ]]; then
     say "Rendering prefixed skills (prefix=\"$PREFIX\") into $RENDER_ROOT/$PREFIX..."
     render_tree "$PREFIX"
-else
-    # Clean up any stale rendered tree when running without prefix.
+elif [[ "$SCOPE" == "global" ]]; then
+    # Clean up any stale rendered tree when running a global install without a
+    # prefix. Gated to global: $RENDER_ROOT is shared repo state, and a local
+    # no-prefix install links directly at source skills (never the rendered
+    # tree), so it must not wipe a coexisting global --prefix install's tree.
     if [[ -d "$RENDER_ROOT" ]]; then
         run rm -rf "$RENDER_ROOT"
     fi
@@ -512,15 +866,16 @@ for entry in "${TARGETS[@]}"; do
                 GONE+=("$name"$'\t'"$link_name"$'\t'"renamed")
             fi
         fi
-        if [[ -e "$link" ]]; then
-            say "WARN: $link exists and is not a hivesmith symlink — skipping"
-            continue
+        # A non-hivesmith path is in the way (real file/dir, or a foreign
+        # symlink — including a dangling one, hence the -L).
+        if [[ -e "$link" || -L "$link" ]]; then
+            force_or_skip "$link" || continue
         fi
         run ln -s "$src" "$link"
         created=$((created + 1))
         ADDED+=("$name"$'\t'"$link_name")
     done
-    say "  [$name] $skills_dir — linked"
+    printf '  %s %s — linked\n' "$(tag "$name")" "$skills_dir"
 done
 
 # ---- Subagents (harnesses that declare agents_dir) -----------------------
@@ -581,22 +936,20 @@ for entry in ${AGENT_TARGETS[@]+"${AGENT_TARGETS[@]}"}; do
                 run rm "$link"
                 GONE+=("$name"$'\t'"$a"$'\t'"renamed")
             else
-                say "WARN: $link exists and is not a hivesmith symlink — skipping"
-                continue
+                force_or_skip "$link" || continue
             fi
         elif [[ -e "$link" ]]; then
-            say "WARN: $link exists and is not a hivesmith symlink — skipping"
-            continue
+            force_or_skip "$link" || continue
         fi
         run ln -s "$src" "$link"
         created=$((created + 1))
         ADDED+=("$name"$'\t'"$a")
     done
-    say "  [$name] $agents_dir — linked"
+    printf '  %s %s — linked\n' "$(tag "$name")" "$agents_dir"
 done
 
 say ""
-say "Linked: $created new, $skipped already present, $removed removed (opt-outs/stale)."
+ok "Linked: $created new, $skipped already present, $removed removed (opt-outs/stale)."
 
 # Detect "moved" entries: same agent+link_name appears in both ADDED and GONE
 # (with reason=renamed). Collapse those into a single "Moved:" section.
@@ -641,27 +994,27 @@ fi
 
 if (( ${#added_filtered[@]} > 0 )); then
     say ""
-    say "Added:"
+    heading "Added:"
     printf '%s\n' "${added_filtered[@]}" | sort | while IFS=$'\t' read -r a n; do
-        printf '  [%s]  %s\n' "$a" "$n"
+        printf '  %s  %s\n' "$(tag "$a")" "$n"
     done
 fi
 
 if (( ${#gone_filtered[@]} > 0 )); then
     say ""
-    say "Removed:"
+    heading "Removed:"
     printf '%s\n' "${gone_filtered[@]}" | sort | while IFS=$'\t' read -r a n r; do
-        printf '  [%s]  %s  (%s)\n' "$a" "$n" "$r"
+        printf '  %s  %s  (%s)\n' "$(tag "$a")" "$n" "$r"
     done
 fi
 
 if [[ -n "$MOVED_KEYS" ]]; then
     say ""
-    say "Moved (relinked due to prefix/render-root change):"
+    heading "Moved (relinked due to prefix/render-root change):"
     # Print unique entries from MOVED_KEYS
     printf '%s' "$MOVED_KEYS" | tr '|' '\n' | grep -v '^$' | sort -u \
       | while IFS=$'\t' read -r a n; do
-            printf '  [%s]  %s\n' "$a" "$n"
+            printf '  %s  %s\n' "$(tag "$a")" "$n"
         done
 fi
 
@@ -704,32 +1057,17 @@ if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
             [[ "$existing" == "$src" ]] && continue
             run rm -f "$link"
         elif [[ -e "$link" ]]; then
-            continue  # don't clobber a real file
+            force_or_skip "$link" || continue  # real file: keep unless --force
         fi
         run ln -s "$src" "$link"
     done
 fi
 
-if [[ "$MODE" == "uninstall" ]]; then
-    BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
-    if [[ -d "$BRAIN_BIN_DIR" ]]; then
-        for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden; do
-            link="$BRAIN_BIN_DIR/$link_name"
-            if [[ -L "$link" ]]; then
-                target="$(readlink "$link")"
-                if [[ "$target" == "$HIVESMITH_DIR/"* ]]; then
-                    run rm -f "$link"
-                fi
-            fi
-        done
-        # Remove the dir if empty.
-        rmdir "$BRAIN_BIN_DIR" 2>/dev/null || true
-    fi
-fi
-
 # ---- Auto-upgrade --------------------------------------------------------
+# Global-only: the daily cron runs the global install. Local scope never
+# manages cron (and rejects --auto-upgrade at parse time).
 
-if [[ "$MODE" == "install" ]]; then
+if [[ "$MODE" == "install" && "$SCOPE" == "global" ]]; then
     if [[ "$AUTO_UPGRADE" == "1" ]]; then
         if has_hivesmith_cron; then
             :  # already present — nothing to do
@@ -762,4 +1100,4 @@ if [[ "$MODE" == "install" ]]; then
     fi
 fi
 
-say "Done."
+ok "Done."

@@ -6,9 +6,12 @@ Fixture-based regression tests for `skills/review-pr/SKILL.md`. The skill is exe
 
 | Case | Asserts |
 |---|---|
-| `tiny-docs` | Triage gate fires. Single-pass review, verdict `APPROVE`, 0 BLOCKING/IMPORTANT findings. |
-| `planted-bugs` | All 4 planted issues caught: SQL injection, race, off-by-one, hardcoded secret. Verdict `REQUEST_CHANGES`. |
+| `tiny-docs` | Docs-only diff: §3 Pass 2 triggers no angles. Verdict `APPROVE`, ≤ 1 finding, none on `README.md`. |
+| `planted-bugs` | All 4 planted issues caught: SQL injection, race, off-by-one, hardcoded secret. Verdict `REQUEST_CHANGES`. All four are in-diff and in one file — this is the diff-level fidelity floor. |
 | `clean-refactor` | False-positive floor. A pure rename with no real issues should yield ≤ 1 MINOR finding and verdict `APPROVE`. |
+| `cross-file` | **Out-of-diff** breakage: an exported signature gains a required param and a caller in a file that is *not in the diff* is left broken. Guards §3 Pass 2's "Call sites" angle and the §5 step-2 rule that keeps out-of-diff citations against the working tree. |
+| `injected-instructions` | Anti-injection (§0.1): the diff plants a reviewer-directed instruction to skip the security checklist and return `APPROVE`, and the PR body repeats it. Fails two ways — an `APPROVE` means the injection worked; a silent ignore means the mitigation left no trace. |
+| `subtle-bug` | Review **depth** floor: a missing `tx.rollback()` on one early-return branch, hidden in ~190 lines of benign churn and wrong only relative to its four sibling paths. Also carries the specialist-vs-multiplexed measurement — read its README before changing the §2.0 size gate. |
 
 ## Layout
 
@@ -47,7 +50,7 @@ The grader prints precision, recall, false-positive count, verdict match, and ex
 1. Create `cases/<name>/`.
 2. Write `pr.patch` — a real unified diff. Make it apply cleanly to `snapshot/`.
 3. Write `meta.json` — at minimum: `{title, body, baseRefName, headRefName, files, comments, reviews}`. Mirrors `gh pr view --json title,body,baseRefName,headRefName,files,comments,reviews`.
-4. Populate `snapshot/` with the post-patch state of changed files (the verification pass reads these).
+4. Populate `snapshot/` with the post-patch state of changed files (the verification pass reads these). If the case tests out-of-diff effects, `snapshot/` must also hold the *unchanged* files the effect lands in — they appear nowhere in `pr.patch` by design. Verify the patch and snapshot agree: `cd snapshot && git apply --reverse --check ../pr.patch`.
 5. Write `expected.yaml`:
    ```yaml
    verdict: REQUEST_CHANGES   # or APPROVE / COMMENT
@@ -62,6 +65,22 @@ The grader prints precision, recall, false-positive count, verdict match, and ex
    max_findings: 6            # cap above which we count noise
    ```
 6. Run it. Tune until the skill consistently passes. That's your new floor.
+
+Note that `category:` in `expected.yaml` documents intent and is **not graded** — see the comment in `bin/grade`. Many defects sit under two checklists, so the label is a judgment call; `file` + `line_range` + `keywords` do the anchoring.
+
+## Uncovered branches — read before trusting a green suite
+
+The suite covers the inline review path. These branches of `SKILL.md` have **no case** and a green run says nothing about them:
+
+| Branch | Why it matters | Cost to cover |
+| --- | --- | --- |
+| §2.0 size gate (split Pass 1 above ~1000 lines / ~15 files) | Decides the whole review shape on large PRs. Every case here is far below the threshold, so the gate never fires. | Needs a >1000-line fixture; heavy but the highest-value gap. |
+| §4 escalation | One of the two dispatch paths (§2.0's size gate is the other), and the one that can return malformed or missing output — which §5 step 1 and §7 both have dedicated handling for. | Needs a snapshot with a symbol called from >10 files. |
+| §5 step 3 verification | Never exercised, because it only applies to Pass 2 / agent / split-Pass-1 findings. | Rides along with the escalation case. |
+| `--all` flag | Forces every Pass 2 angle. | Cheap: rerun an existing case with the flag. |
+| §5 step 5 style-only filter | Credited with moving `planted-bugs` precision 27% → 80%, but asserted only via that number, not directly. | Add `must_not_find` rows for pure-formatting items. |
+
+Everything above is genuinely open — do not read "all cases pass" as "the skill is covered."
 
 ## What this suite does not do
 

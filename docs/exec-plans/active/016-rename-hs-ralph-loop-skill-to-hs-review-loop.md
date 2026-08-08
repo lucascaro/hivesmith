@@ -167,6 +167,25 @@ This is a documentation/rename change with no code logic. Validation is mechanic
 
 8. **graphify sync** (AGENTS.md line 5): `graphify . --update` after edits, if the tool is available locally. Not gating.
 
+## Verification
+
+<!-- Backfilled: this plan predates `## Verification` in `docs/exec-plans/_template.md`.
+     Commands are lifted from this plan's own `### Tests` section plus the
+     build/lint/test gates in `AGENTS.md`. -->
+
+```bash
+# no stale references to the old name anywhere in source
+! grep -rn 'ralph-loop' skills/ templates/ docs/ README.md AGENTS.md
+
+# render correctness for the renamed skill
+HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-upgrade
+grep -q '^name: hs-review-loop' .rendered/hs-/skills/hs-review-loop/SKILL.md
+
+# repo-wide gates
+shellcheck $(grep -oE '(scripts|skills|templates)/[^ ]+\.sh|install\.sh' AGENTS.md | sort -u)
+awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q .
+```
+
 ## Decision log
 
 - **2026-05-10** — Treat references/ citation and historical CHANGELOG/exec-plan entries as immutable. Why: they are historical record, not live config; rewriting them rewrites history.

@@ -1,0 +1,25 @@
+# Subtle in-diff bug — the specialist-vs-multiplexed measurement case.
+#
+# svc/orders.py gains a discount branch. When apply_discount returns None the
+# function returns early WITHOUT calling tx.rollback(), leaking the open
+# transaction. Every sibling error path in the same function (empty order,
+# missing user, bad quantity, out of stock, not found) does roll back, and the
+# except block rolls back — so the omission is a single missing line inside an
+# otherwise-correct function.
+#
+# What makes it subtle, unlike planted-bugs:
+#   - it is an ABSENCE, not a suspicious present line — nothing looks wrong
+#   - the surrounding diff is ~190 lines of benign churn (type hints, logging,
+#     helper extraction, new module, new tests) that divides attention
+#   - the new branch reads as correct in isolation; it is only wrong relative
+#     to the convention its four siblings establish
+#
+# This is the axis planted-bugs / clean-refactor / cross-file do not cover.
+verdict: REQUEST_CHANGES
+must_find:
+  - file: svc/orders.py
+    line_range: [44, 47]
+    category: correctness
+    keywords: [rollback]
+must_not_find: []
+max_findings: 6
