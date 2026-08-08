@@ -32,7 +32,9 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 | `/feature-ingest <#>` | Ingest a GitHub issue into `docs/product-specs/` |
 | `/feature-triage [#]` | Classify type, complexity, and priority |
 | `/feature-research [#]` | Explore the codebase, create the exec plan |
-| `/feature-plan [#]` | Fill the exec plan's Approach, Files, and Tests sections |
+| `/feature-plan [# \| slug \| "description"]` | Turn an issue — or an ambiguous one-line prompt — into an executable plan. Interrogates you until the design is settled, then writes the exec plan (issue mode) or `~/.hivesmith/plans/<slug>.md` (free-form mode) |
+| `/feature-plan-review [# \| slug]` | Verify a plan against the code it claims to touch, find the gaps, strip the YAGNI, resolve the open questions. Edits the plan in place |
+| `/feature-plan-handoff [# \| slug]` | Gate a plan for readiness and print copy-pasteable pickup instructions for a fresh agent in any harness or worktree |
 | `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/review-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
 | `/feature-loop [# \| description]` | Drive one feature through TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE with confirmation gates |
