@@ -9,7 +9,7 @@ jobs:
   gitleaks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e  # v2 as of 2026-04-13
@@ -19,7 +19,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: reviewdog/action-actionlint@50842263c20a7c46bd0065b9e624d3c569db061e  # v1 as of 2026-04-13
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
