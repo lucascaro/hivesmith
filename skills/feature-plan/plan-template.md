@@ -1,4 +1,8 @@
 <!--
+Every `<...>` below is guidance to replace, not content to keep. A plan that
+still contains one was never instantiated, and `/feature-plan-handoff` treats
+that as a failed readiness check.
+
 Standalone plan schema. Written by `/feature-plan`, edited by
 `/feature-plan-review`, gated by `/feature-plan-handoff`.
 
@@ -13,7 +17,7 @@ No "as discussed above". No pronouns pointing at a conversation that is gone.
 ---
 slug: <yyyy-mm-dd-kebab-title>
 title: <one line>
-status: DRAFT
+status: DRAFT          # DRAFT (feature-plan) -> REVIEWED (feature-plan-review) -> HANDED-OFF (feature-plan-handoff)
 created: <yyyy-mm-dd>
 source: free-form
 repo: <absolute path to the repo this applies to; omit the key if none>
@@ -76,7 +80,11 @@ the project's conventions from `AGENTS.md`. Never vague.>
 
 ## Open questions
 
-<Must be empty before handoff. `/feature-plan-handoff` refuses otherwise.>
+None.
+
+<!-- Replace with real questions while drafting. This section must read "None."
+     (or list only resolved items) before handoff — `/feature-plan-handoff`
+     refuses on anything unresolved, and on a leftover `<...>` placeholder. -->
 
 ## Review log
 

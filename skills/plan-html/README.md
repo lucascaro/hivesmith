@@ -4,7 +4,7 @@ Rich HTML review UX for plan-producing hivesmith skills.
 
 ## What it gives you
 
-When you invoke `/hs-feature-loop plan <task>` (or `/hs-plan-html <task>` directly), instead of reviewing a plain text plan you get:
+When you invoke `/feature-loop plan <task>` (or `/plan-html <task>` directly), instead of reviewing a plain text plan you get:
 
 - A self-contained `<plan>.html` opened in your browser (dark by default, light theme follows OS preference).
 - Per-section `<textarea>` slots that **autosave** to `<plan>.feedback.json` (1.2s debounce, ⌘S also saves).
