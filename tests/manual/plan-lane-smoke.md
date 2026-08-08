@@ -6,20 +6,32 @@ Run after changing any of the three `SKILL.md` files or `skills/feature-plan/pla
 ## 1. Install + prefix render (automatable)
 
 ```bash
-export HOME_BAK="$HOME"; HOME=$(mktemp -d); mkdir -p "$HOME/.claude"
-./install.sh --prefix hs- --no-auto-update
+set -euo pipefail
+HOME_BAK="$HOME"; trap 'HOME="$HOME_BAK"' EXIT
+HOME=$(mktemp -d); mkdir -p "$HOME/.claude"
+./install.sh --prefix hs- --no-auto-upgrade
 
 R=.rendered/hs-/skills
-grep -q '^name: hs-feature-plan-review'  "$R/hs-feature-plan-review/SKILL.md"
-grep -q '^name: hs-feature-plan-handoff' "$R/hs-feature-plan-handoff/SKILL.md"
+
+# `set -e` does NOT fire on a `!`-inverted command, so negative assertions
+# must be spelled out. Use these two helpers for every check below.
+has()  { grep -qE "$1" "$2" || { echo "FAIL: expected /$1/ in $2"; exit 1; }; }
+lacks(){ grep -qE "$1" "$2" && { echo "FAIL: unexpected /$1/ in $2"; exit 1; }; :; }
+
+has '^name: hs-feature-plan-review'  "$R/hs-feature-plan-review/SKILL.md"
+has '^name: hs-feature-plan-handoff' "$R/hs-feature-plan-handoff/SKILL.md"
 
 # feature-plan's rewrite rule must NOT bleed into the longer names
-grep -q '/hs-feature-plan-review' "$R/hs-feature-plan/SKILL.md"
-! grep -qE '/hs-feature-plan-(review|handoff)-' "$R/hs-feature-plan/SKILL.md"
-! grep -qE '(^|[^-])/feature-plan\b' "$R/hs-feature-plan/SKILL.md"
-
-HOME="$HOME_BAK"
+has   '/hs-feature-plan-review'              "$R/hs-feature-plan/SKILL.md"
+lacks '/hs-feature-plan-(review|handoff)-'   "$R/hs-feature-plan/SKILL.md"
+lacks '(^|[^-])/feature-plan\b'              "$R/hs-feature-plan/SKILL.md"
+echo "step 1 OK"
 ```
+
+Every assertion is load-bearing. `set -e` alone is not enough: bash exempts
+`!`-inverted commands from it, so `! grep -q X f` silently passes when `X` **is**
+present — which is precisely the render-bleed regression this step exists to
+catch. Hence `lacks`, which exits explicitly.
 
 Then, from the source tree — golden principle #5, no rendered prefix in source:
 

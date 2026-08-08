@@ -54,7 +54,8 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
 
      Plan:  ~/.hivesmith/plans/<slug>.md
      Repo:  <repo: from the plan's frontmatter, or "none">
-     Mode:  standalone
+     Mode:  standalone (plan lives outside the repo — already visible
+            from every worktree, nothing to commit)
 
    In a fresh agent session (any harness), paste:
 
@@ -71,8 +72,10 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
      Plan:  docs/exec-plans/active/<NNN>-<slug>.md
      Repo:  <repo root>
      Mode:  spec-driven (issue #<N>, stage IMPLEMENT)
+     Plan is committed on <branch> — it travels with the branch to any
+     clone or worktree that checks it out.
 
-   The plan is committed, so it travels with the branch. In a fresh session:
+   In a fresh session:
 
      /feature-implement <N>
 
@@ -85,7 +88,10 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
 
    Substitute the real values. Do not print a template with placeholders still in it.
 
-5. **Warn on portability.** Key this on the resolved plan path, not on frontmatter — exec plans have no `repo:` key. If the plan file is inside a git repo and `git status --porcelain -- <plan-path>` reports it untracked or modified, warn that an uncommitted plan does not travel to another worktree, and suggest committing it before handoff. Standalone plans live under `~/.hivesmith/plans/` outside any repo, so this check is a no-op for them.
+5. **State the portability mechanism, and warn only when it's actually broken.** The two lanes travel by different means, and the pickup block must say which — conflating them is what makes users think a plan won't reach the next session.
+
+   - **Standalone** — the plan lives at `~/.hivesmith/plans/<slug>.md`, outside every repo. It is already visible from every worktree and every project on this machine. There is nothing to commit and this check is a **no-op**. Never tell the user to commit a standalone plan.
+   - **Spec-driven** — the plan is a tracked project artifact inside the repo, so it travels through git like any other file. Key the check on the resolved plan path, never on frontmatter (exec plans have no `repo:` key): if `git status --porcelain -- <plan-path>` reports it untracked or modified, warn that the uncommitted version exists only in this working tree, and suggest committing it. Do **not** refuse — committing the exec plan is on the normal path anyway, and blocking here buys nothing. Print the pickup block with the warning attached and **omit the "travels with the branch" line**, which is false until the commit lands.
 
 <!-- ponytail: pickup is a pasted prose instruction, which works in every harness with zero code.
      Add a `/feature-implement --plan <slug>` flag only if manual pickup proves annoying in practice. -->
