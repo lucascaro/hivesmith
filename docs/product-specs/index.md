@@ -18,6 +18,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
+| #34 | Clarify GitHub issue policy wording in hivesmith init | #38 | 2026-05-16 | [034-clarify-github-issue-policy-wording](034-clarify-github-issue-policy-wording.md) |
 | #29 | Add opt-in HTML plan review skill (hs-plan-html) | #30 | 2026-05-15 | [029-add-opt-in-html-plan-review-skill](029-add-opt-in-html-plan-review-skill.md) |
 | #24 | Plan-first starting point for hs-feature-loop | #25 | 2026-05-12 | [024-plan-first-starting-point-for-feature-loop](024-plan-first-starting-point-for-feature-loop.md) |
 | #11 | Add hive brain — a second brain for hivesmith | #12 | 2026-05-10 | [011-add-hive-brain-second-brain-for-hivesmith](011-add-hive-brain-second-brain-for-hivesmith.md) |
