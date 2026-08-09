@@ -11,9 +11,11 @@
 #      to catch interaction bugs; requires at least one new
 #      `.changesets/*.md` (unless labelled `no-changeset`).
 #   3. regenerate-generated — on push to main, regenerates aggregates and
-#      opens (or updates) a PR with the result, then enables auto-merge.
-#      A PR rather than a direct push because a protected `main` rejects
-#      bot pushes: "Changes must be made through a pull request."
+#      direct-pushes the result with `[skip ci]`. A protected `main` must
+#      let this identity through, or the push is rejected and the job fails
+#      loudly: add the github-actions app as a ruleset bypass actor, or set
+#      a REGEN_TOKEN secret. (Classic branch protection can't express this
+#      on user-owned repos — bypass allowances are org-only.)
 #
 # Merge this workflow into your existing CI file or keep it standalone.
 name: changesets
@@ -97,7 +99,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -105,9 +106,7 @@ jobs:
           fetch-depth: 0
       - name: Regenerate aggregates
         run: scripts/regen-generated.sh
-      - name: Open or update the regen PR
-        env:
-          GH_TOKEN: ${{ secrets.REGEN_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Commit + push if changed
         run: |
           GENERATED=(
             CHANGELOG.md
@@ -118,38 +117,19 @@ jobs:
             echo "no changes to commit"
             exit 0
           fi
-
-          BRANCH=chore/regen-aggregates
           git config user.name  "hivesmith-bot"
           git config user.email "hivesmith-bot@users.noreply.github.com"
-          git switch -c "$BRANCH"
           git add "${GENERATED[@]}"
-          git commit -m "chore: regenerate aggregates"
-          # Force-push: the branch is a scratch surface, always rebuilt from
-          # the current main. If a regen PR is already open, this updates it
-          # in place rather than opening a second one.
-          git push -f origin "$BRANCH"
-
-          if [ "$(gh pr list --head "$BRANCH" --state open --json number -q 'length')" -gt 0 ]; then
-            echo "Regen PR already open — force-push updated it."
-          else
-            # printf, not a multi-line shell string: continuation lines
-            # inside this `run: |` block carry the block's indentation, and
-            # 10 leading spaces would render the body as a code block.
-            printf '%s\n\n%s\n' \
-              'Automated. Regenerates `CHANGELOG.md`, `docs/product-specs/index.md`, and `docs/exec-plans/tech-debt-tracker.md` from their sources (`.changesets/`, spec frontmatter, `.tech-debt/`).' \
-              'Opened as a PR rather than direct-pushed because `main` requires changes to go through one. Merging this re-triggers the job; the second run finds nothing to regenerate and exits.' \
-              > /tmp/regen-pr-body.md
-            gh pr create --base main --head "$BRANCH" \
-              --title "chore: regenerate aggregates" \
-              --body-file /tmp/regen-pr-body.md \
-              --label regen-override --label no-changeset
+          git commit -m "chore: regenerate aggregates [skip ci]"
+          if ! git push; then
+            echo "::error::Push to main rejected. A protected main must let this"
+            echo "job through, or the aggregates silently stop regenerating."
+            echo "Fix it one of two ways:"
+            echo "  1. Add the github-actions app (id 15368) as a bypass actor"
+            echo "     on the ruleset protecting main. Rulesets support app"
+            echo "     bypass; classic branch protection does not on user-owned"
+            echo "     repos (bypass_pull_request_allowances is org-only)."
+            echo "  2. Set a REGEN_TOKEN secret — a PAT or GitHub App token"
+            echo "     whose identity is allowed to push to main."
+            exit 1
           fi
-
-          # Land it without a human in the loop where possible. With the
-          # default GITHUB_TOKEN the PR's checks open in an approval-required
-          # state, so auto-merge parks until someone clicks "Approve and run"
-          # — set a REGEN_TOKEN secret (a non-admin PAT with contents +
-          # pull-requests write) to make the whole path unattended.
-          gh pr merge "$BRANCH" --squash --auto --delete-branch \
-            || echo "::warning::Could not enable auto-merge — merge the regen PR manually."
