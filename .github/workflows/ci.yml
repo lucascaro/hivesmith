@@ -37,6 +37,9 @@ jobs:
             scripts/migrate-to-changesets.sh
             skills/brain-promote/promote.sh
             skills/brain-garden/garden.sh
+            scripts/hooks/pre-push
+            skills/plan-html/start.sh
+            skills/plan-html/stop.sh
 
   install-smoke:
     runs-on: ubuntu-latest
