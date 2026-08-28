@@ -20,7 +20,7 @@ Completeness is cheap when AI does the work — but a daily autonomous PR has to
 ## 1. Setup
 
 ```bash
-git fetch origin
+[ -z "$DRY_RUN" ] && git fetch origin
 [ -n "$(git status --short)" ] && { echo "ABORT: working tree dirty"; exit 1; }
 DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
 # --dry-run: skip the checkout/pull — review from wherever HEAD is; touch nothing.
