@@ -21,6 +21,7 @@ Completeness is cheap when AI does the work — but a daily autonomous PR has to
 
 ```bash
 # Bind flags from the skill arguments; `--dry-run` must gate every mutating step below.
+DRY_RUN=  # reset: an inherited env value must not silently make the run a no-op
 case " $ARGUMENTS " in *" --dry-run "*) DRY_RUN=1;; esac
 [ -z "$DRY_RUN" ] && git fetch origin
 [ -n "$(git status --short)" ] && { echo "ABORT: working tree dirty"; exit 1; }
