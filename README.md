@@ -47,7 +47,7 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 | `/review-loop [#]` | Drive a PR through review → autofix → re-review until findings clear or escalation criteria hit |
 | `/doc-garden` | Recurring sweep over `docs/` — detect stale docs, broken cross-links, drifted generated content; open one scoped fix-up PR per doc |
 | `/gc-sweep` | Read `golden-principles.md`, scan the codebase for deviations, open small targeted refactor PRs (one principle per PR) |
-| `/code-garden` | Daily incremental code-hygiene sweep — rotate one category (stale refs, deprecated usage, dead code, lint drift, dep patches, TODO triage, test gaps), fix one bounded thing, open at most one small PR; ledger in `.hivesmith/garden-ledger.md` |
+| `/code-garden` | Daily incremental code-hygiene sweep — rotate one category (stale refs, deprecated usage, dead code, lint drift, dep patches, TODO triage, test gaps, flaky tests), fix one bounded thing, open at most one small PR; ledger in `.hivesmith/garden-ledger.md` |
 | `/brain-ask <question>` | Search the brain and answer with citations |
 | `/brain-garden` | Tend `~/.hivesmith/brain/`: regenerate the index, archive expired entries, surface promotion + dedupe candidates |
 | `/brain-promote [<slug>]` | Broaden a brain entry's scope (project → user / ecosystem / universal). The only path that broadens scope. With no slug, presents a picker. |

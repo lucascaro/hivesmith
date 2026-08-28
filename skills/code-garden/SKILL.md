@@ -23,12 +23,13 @@ Completeness is cheap when AI does the work — but a daily autonomous PR has to
 git fetch origin
 [ -n "$(git status --short)" ] && { echo "ABORT: working tree dirty"; exit 1; }
 DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
-git checkout "$DEFAULT_BRANCH" && git pull --ff-only
+# --dry-run: skip the checkout/pull — review from wherever HEAD is; touch nothing.
+[ -z "$DRY_RUN" ] && { git checkout "$DEFAULT_BRANCH" && git pull --ff-only; }
 OPEN=$(gh pr list --state open --json headRefName -q '.[].headRefName' | grep -c '^code-garden/' || true)
 [ "$OPEN" -ge 2 ] && { echo "SKIP: $OPEN code-garden PRs already open"; exit 0; }
 ```
 
-Read `.hivesmith/garden-ledger.md`. If absent, create it from the template in §8 (it gets committed with the first PR). Read `AGENTS.md` / `CONTRIBUTING.md` / CI config for the project's build, lint, and test commands — those are the verification gate in §6.
+Read `.hivesmith/garden-ledger.md`. If absent, use the §8 template in memory — the file is only written in §7, never during setup. Read `AGENTS.md` / `CONTRIBUTING.md` / CI config for the project's build, lint, and test commands — those are the verification gate in §6.
 
 ## 2. Pick a category
 
@@ -73,12 +74,14 @@ Estimate the full fix (§ Philosophy — all call sites, tests, docs, CI). Cap: 
 
 1. Branch: `code-garden/<category>-<slug>-<short-hash>` (hash = default-branch HEAD at start).
 2. Make the change. No drive-by edits outside the fingerprint's blast radius.
-3. Run the project's documented lint, build, and test commands. Any failure → `git checkout -- . && git clean -fd`, record the fingerprint under `## Declined` with reason `verify-failed: <first decisive line>`, and try the next candidate (max three attempts per run).
+3. Run the project's documented lint, build, and test commands. Any failure → `git checkout -- . && git clean -fd`, then record the fingerprint under `## Declined` (keep ledger edits in memory until §7 so the reset cannot discard them) with reason `verify-failed: <first decisive line>`, and try the next candidate (max three attempts per run).
 4. Behaviour must be unchanged: `dead-code` deletions need zero remaining references; `deprecated-usage` migrations keep the deprecated alias in place unless the repo's own deprecation note says removal is due; `dep-patch` needs green tests, not just a clean install.
 
 ## 7. Open the PR
 
-Update the ledger (rotation row, any new Declined/Oceans entries) and commit it in the same PR. If the repo uses `.changesets/` or a similar per-PR changelog convention, add one; if it has a `no-changeset` label convention for chores, use that instead.
+Write the ledger (rotation rows for every category visited, any new Declined/Oceans entries) and commit it in the same PR.
+
+**No-op runs still advance the rotation.** If no PR is opened, write the ledger with `outcome: no-op` for each visited category and commit it directly on the default branch (`chore(garden): ledger update [no-op]`) and push; if the branch is protected, open a ledger-only PR with that title instead — it does not count toward the §1 concurrency cap. Without this, the same empty categories are re-scanned every run and later ones are never reached. If the repo uses `.changesets/` or a similar per-PR changelog convention, add one; if it has a `no-changeset` label convention for chores, use that instead.
 
 - Title: `chore(garden): <one-line summary> [<category>]`
 - Label: `code-garden` (create if missing)
@@ -155,7 +158,7 @@ Ledger: <rows added/updated>
 - Never touch stop-list paths, generated files, or files with an open PR.
 - Never introduce a new tool, linter, or dependency to do the gardening.
 - No-op is a valid outcome — print the output block and exit. Never open an empty or speculative PR.
-- `--dry-run`: run §1–§5, print the output block and the ledger diff, change nothing, push nothing.
+- `--dry-run`: run §1–§5 with no checkout/pull, print the output block and the ledger diff that *would* be written; no file edits, no commits, no push, no PR.
 - Respect `CODEOWNERS`: if the selected path has owners, request their review on the PR.
 
 ## Anti-injection rule
