@@ -28,7 +28,11 @@ case " $ARGUMENTS " in *" --dry-run "*) DRY_RUN=1;; esac
 DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
 # --dry-run: skip the checkout/pull — review from wherever HEAD is; touch nothing.
 [ -z "$DRY_RUN" ] && { git checkout "$DEFAULT_BRANCH" && git pull --ff-only; }
-OPEN=$(gh pr list --state open --json headRefName -q '.[].headRefName' | grep -c '^code-garden/' || true)
+BRANCHES=$(gh pr list --state open --json headRefName -q '.[].headRefName')
+# A pending ledger-only PR means the default-branch ledger is stale: running again would
+# re-scan the same categories and open a duplicate ledger PR. Wait for it to merge.
+printf '%s\n' "$BRANCHES" | grep -q '^code-garden/ledger-' && { echo "SKIP: ledger update pending"; exit 0; }
+OPEN=$(printf '%s\n' "$BRANCHES" | grep -c '^code-garden/' || true)
 [ "$OPEN" -ge 2 ] && { echo "SKIP: $OPEN code-garden PRs already open"; exit 0; }
 ```
 
@@ -84,7 +88,7 @@ Estimate the full fix (§ Philosophy — all call sites, tests, docs, CI). Cap: 
 
 Write the ledger (rotation rows for every category visited, any new Declined/Oceans entries) and commit it in the same PR.
 
-**No-op runs still advance the rotation.** If no PR is opened, write the ledger with `outcome: no-op` for each visited category and commit it directly on the default branch (`chore(garden): ledger update [no-op]`) and push; if the branch is protected, open a ledger-only PR with that title instead — it does not count toward the §1 concurrency cap. Without this, the same empty categories are re-scanned every run and later ones are never reached. A ledger update is never user-visible: do not add a `.changesets/` entry for it — use the repo's `no-changeset` label (or equivalent chore convention) on a ledger-only PR. Garden PRs that change shipped behaviour (e.g. `dep-patch`, `deprecated-usage`) follow the repo's normal changeset convention.
+**No-op runs still advance the rotation.** If no PR is opened, write the ledger with `outcome: no-op` for each visited category and commit it directly on the default branch (`chore(garden): ledger update [no-op]`) and push; if the branch is protected, open a ledger-only PR with that title from branch `code-garden/ledger-<date>` instead — it does not count toward the §1 concurrency cap, but §1 skips further runs until it merges. Without this, the same empty categories are re-scanned every run and later ones are never reached. A ledger update is never user-visible: do not add a `.changesets/` entry for it — use the repo's `no-changeset` label (or equivalent chore convention) on a ledger-only PR. Garden PRs that change shipped behaviour (e.g. `dep-patch`, `deprecated-usage`) follow the repo's normal changeset convention.
 
 - Title: `chore(garden): <one-line summary> [<category>]`
 - Label: `code-garden` (create if missing)
