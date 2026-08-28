@@ -20,6 +20,8 @@ Completeness is cheap when AI does the work — but a daily autonomous PR has to
 ## 1. Setup
 
 ```bash
+# Bind flags from the skill arguments; `--dry-run` must gate every mutating step below.
+case " $ARGUMENTS " in *" --dry-run "*) DRY_RUN=1;; esac
 [ -z "$DRY_RUN" ] && git fetch origin
 [ -n "$(git status --short)" ] && { echo "ABORT: working tree dirty"; exit 1; }
 DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)
@@ -81,7 +83,7 @@ Estimate the full fix (§ Philosophy — all call sites, tests, docs, CI). Cap: 
 
 Write the ledger (rotation rows for every category visited, any new Declined/Oceans entries) and commit it in the same PR.
 
-**No-op runs still advance the rotation.** If no PR is opened, write the ledger with `outcome: no-op` for each visited category and commit it directly on the default branch (`chore(garden): ledger update [no-op]`) and push; if the branch is protected, open a ledger-only PR with that title instead — it does not count toward the §1 concurrency cap. Without this, the same empty categories are re-scanned every run and later ones are never reached. If the repo uses `.changesets/` or a similar per-PR changelog convention, add one; if it has a `no-changeset` label convention for chores, use that instead.
+**No-op runs still advance the rotation.** If no PR is opened, write the ledger with `outcome: no-op` for each visited category and commit it directly on the default branch (`chore(garden): ledger update [no-op]`) and push; if the branch is protected, open a ledger-only PR with that title instead — it does not count toward the §1 concurrency cap. Without this, the same empty categories are re-scanned every run and later ones are never reached. A ledger update is never user-visible: do not add a `.changesets/` entry for it — use the repo's `no-changeset` label (or equivalent chore convention) on a ledger-only PR. Garden PRs that change shipped behaviour (e.g. `dep-patch`, `deprecated-usage`) follow the repo's normal changeset convention.
 
 - Title: `chore(garden): <one-line summary> [<category>]`
 - Label: `code-garden` (create if missing)
