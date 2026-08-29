@@ -37,6 +37,11 @@ jobs:
             scripts/migrate-to-changesets.sh
             skills/brain-promote/promote.sh
             skills/brain-garden/garden.sh
+            scripts/hooks/pre-push
+            skills/plan-html/start.sh
+            skills/plan-html/stop.sh
+            templates/scripts/migrate-to-changesets.sh
+            templates/scripts/regen-generated.sh
 
   install-smoke:
     runs-on: ubuntu-latest
@@ -44,12 +49,14 @@ jobs:
       - uses: actions/checkout@v7
       - name: Smoke test — with prefix
         run: |
-          export HOME="$(mktemp -d)"
+          HOME="$(mktemp -d)"
+          export HOME
           mkdir -p "$HOME/.claude"
           ./install.sh --prefix hs- --no-auto-update --dry-run
       - name: Smoke test — without prefix
         run: |
-          export HOME="$(mktemp -d)"
+          HOME="$(mktemp -d)"
+          export HOME
           mkdir -p "$HOME/.claude"
           ./install.sh --prefix "" --no-auto-update --dry-run
 
@@ -59,12 +66,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install with prefix and verify render
         run: |
-          export HOME="$(mktemp -d)"
+          HOME="$(mktemp -d)"
+          export HOME
           mkdir -p "$HOME/.claude"
           HIVESMITH_DIR="$(pwd)"
           ./install.sh --prefix hs- --no-auto-update
           grep -q '/hs-feature-plan' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
-          ! grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
+          if grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"; then exit 1; fi
           grep -q 'scripts/release.sh' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-release/SKILL.md"
 
   subagent-linking:
@@ -73,7 +81,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Subagents link, stay idempotent, and never clobber user files
         run: |
-          export HOME="$(mktemp -d)"
+          HOME="$(mktemp -d)"
+          export HOME
           mkdir -p "$HOME/.claude"
           REPO="$(pwd)"
 
@@ -128,6 +137,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Smoke test — macOS
         run: |
-          export HOME="$(mktemp -d)"
+          HOME="$(mktemp -d)"
+          export HOME
           mkdir -p "$HOME/.claude"
           ./install.sh --prefix hs- --no-auto-update --dry-run
