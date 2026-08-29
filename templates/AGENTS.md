@@ -50,6 +50,7 @@ This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills:
 - **PR convergence** — `/review-loop` drives review-respond-iterate on any PR until findings clear or it escalates.
 - **Doc gardening** — `/doc-garden` scans `docs/` for staleness and opens fix-up PRs.
 - **Golden-principle GC** — `/gc-sweep` reads `golden-principles.md` and opens small refactor PRs for deviations.
+- **Code gardening** — `/code-garden` runs a daily one-category hygiene sweep and opens at most one small PR.
 
 The previous flat `features/` layout has moved into `docs/`: specs to `docs/product-specs/`, plans to `docs/exec-plans/{active,completed}/`. `feature-*` skills read the new locations and fall back to `features/` for one release.
 
