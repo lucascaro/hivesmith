@@ -11,6 +11,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
 | P2 | #32 | Decentralize indices and changelog to eliminate merge conflicts | IMPLEMENT | [032-decentralize-indices-and-changelog](032-decentralize-indices-and-changelog.md) |
 | P2 | #35 | Make plan-html the default in feature-loop and add per-section feedback boxes | REVIEW | [035-plan-html-default-and-per-section-feedback](035-plan-html-default-and-per-section-feedback.md) |
+| P2 | #58 | Wire graphify into hivesmith with shared cache and auto-refresh hooks | REVIEW | [058-wire-graphify-into-hivesmith-with-shared-cache](058-wire-graphify-into-hivesmith-with-shared-cache.md) |
 | P2 | #— | hs-autofix does not resolve merge conflicts | REVIEW | [033-hs-autofix-does-not-resolve-merge-conflicts](033-hs-autofix-does-not-resolve-merge-conflicts.md) |
 | P3 | #20 | Add --full-auto flag to hs-feature-loop skill | IMPLEMENT | [020-add-full-auto-flag-to-hs-feature-loop-skill](020-add-full-auto-flag-to-hs-feature-loop-skill.md) |
 
@@ -19,7 +20,6 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
 | — | Convert feature-qa into a pre-merge merge-gate | #57 | 2026-08-30 | [036-convert-feature-qa-into-a-pre-merge-merge-gate](036-convert-feature-qa-into-a-pre-merge-merge-gate.md) |
-| #58 | Wire graphify into hivesmith with shared cache and auto-refresh hooks | #59 | 2026-08-30 | [058-wire-graphify-into-hivesmith-with-shared-cache](058-wire-graphify-into-hivesmith-with-shared-cache.md) |
 | #34 | Clarify GitHub issue policy wording in hivesmith init | #38 | 2026-05-16 | [034-clarify-github-issue-policy-wording](034-clarify-github-issue-policy-wording.md) |
 | #29 | Add opt-in HTML plan review skill (hs-plan-html) | #30 | 2026-05-15 | [029-add-opt-in-html-plan-review-skill](029-add-opt-in-html-plan-review-skill.md) |
 | #24 | Plan-first starting point for hs-feature-loop | #25 | 2026-05-12 | [024-plan-first-starting-point-for-feature-loop](024-plan-first-starting-point-for-feature-loop.md) |
