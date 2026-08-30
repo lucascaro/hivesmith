@@ -18,6 +18,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
+| — | Convert feature-qa into a pre-merge merge-gate | #57 | 2026-08-30 | [036-convert-feature-qa-into-a-pre-merge-merge-gate](036-convert-feature-qa-into-a-pre-merge-merge-gate.md) |
 | #34 | Clarify GitHub issue policy wording in hivesmith init | #38 | 2026-05-16 | [034-clarify-github-issue-policy-wording](034-clarify-github-issue-policy-wording.md) |
 | #29 | Add opt-in HTML plan review skill (hs-plan-html) | #30 | 2026-05-15 | [029-add-opt-in-html-plan-review-skill](029-add-opt-in-html-plan-review-skill.md) |
 | #24 | Plan-first starting point for hs-feature-loop | #25 | 2026-05-12 | [024-plan-first-starting-point-for-feature-loop](024-plan-first-starting-point-for-feature-loop.md) |
@@ -33,6 +34,6 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 - This file is **generated** from each spec's YAML frontmatter by `scripts/regen-generated.py`. Edit the spec, not this index.
 - `stage:` in the spec's frontmatter is the sole source of truth. Exec plans do not carry a Stage line.
-- Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → QA → DONE`. `REVIEW` = PR open, `/review-loop` driving convergence. `QA` = PR merged, awaiting `/feature-qa` validation. `DONE` = QA verdict PASS recorded.
-- A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `docs/exec-plans/completed/` on QA PASS; the spec stays put.
+- Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → GATE → DONE`. `REVIEW` = PR open, `/review-loop` driving convergence. `GATE` = review converged, `/merge-gate` validating the still-open PR against the spec. `DONE` = gate verdict PASS recorded and the plan moved to `completed/`; the merge is a separate later step, so a spec can be DONE while its PR is still open.
+- A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `docs/exec-plans/completed/` on gate PASS, inside the feature PR; the spec stays put.
 - `feature-next` reads from the Active list above, ordered by priority.
