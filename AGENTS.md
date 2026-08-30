@@ -1,8 +1,19 @@
-## Knowledge Graph (Graphify)
-This repository uses Graphify to maintain a structural map of its logic and assets.
-- **Orientation:** Always read `graphify-out/GRAPH_REPORT.md` before attempting repo-wide refactors.
-- **Workflow:** If you need to understand how module A connects to module B, use `graphify query`.
-- **Sync:** Run `graphify . --update` after every significant file change to ensure your local map remains accurate.
+<!-- BEGIN HIVESMITH GRAPHIFY -->
+## Knowledge graph (graphify)
+
+This project keeps a structural map of its own code in `graphify-out/`. It refreshes
+automatically — after agent edits (debounced) and on commit/checkout, in every
+worktree. Do not run a rebuild by hand as part of ordinary work.
+
+- **Orient** before a repo-wide change: read `graphify-out/GRAPH_REPORT.md`.
+- **Trace a connection:** `graphify query "how does X reach Y"`.
+- **Blast radius** before editing a shared symbol: `graphify affected "SymbolName"`.
+- **Rebuild concepts** (costs LLM tokens, so only when the *meaning* of the code
+  moved, not its structure): `/graphify`.
+
+Automatic refreshes are AST-only and never spend tokens. Set
+`HIVESMITH_GRAPHIFY_REFRESH=0` to silence them for a session.
+<!-- END HIVESMITH GRAPHIFY -->
 
 <!-- BEGIN HIVESMITH -->
 ## Hivesmith workflow
@@ -46,8 +57,9 @@ This repo dogfoods hivesmith on itself. Project-local skill symlinks live under 
 
 **Build / test / lint commands** — `/feature-implement` expects all of these to pass before opening a PR:
 
-- **Lint:** `shellcheck install.sh scripts/brain/append.sh scripts/brain/index.sh scripts/brain/lib.sh scripts/brain/list.sh scripts/brain/read.sh scripts/brain/redact.sh scripts/brain/search.sh scripts/brain/test/run-all.sh scripts/dev-link-local.sh scripts/hooks/pre-push scripts/migrate-to-changesets.sh scripts/regen-generated.sh scripts/release.sh skills/brain-garden/garden.sh skills/brain-promote/promote.sh skills/feature-ingest/ingest.sh skills/namecheck/namecheck.sh skills/plan-html/start.sh skills/plan-html/stop.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh` (mirrors `.github/workflows/ci.yml` shellcheck job).
+- **Lint:** `shellcheck install.sh scripts/brain/append.sh scripts/brain/index.sh scripts/brain/lib.sh scripts/brain/list.sh scripts/brain/read.sh scripts/brain/redact.sh scripts/brain/search.sh scripts/brain/test/run-all.sh scripts/dev-link-local.sh scripts/hooks/pre-push scripts/migrate-to-changesets.sh scripts/regen-generated.sh scripts/release.sh skills/brain-garden/garden.sh skills/brain-promote/promote.sh skills/feature-ingest/ingest.sh skills/namecheck/namecheck.sh skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/plan-html/start.sh skills/plan-html/stop.sh scripts/graphify-refresh.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh` (mirrors `.github/workflows/ci.yml` shellcheck job).
 - **Brain tests:** `scripts/brain/test/run-all.sh` (covers redaction, cross-project isolation, promote/garden, lazy-init, index regen). Uses bash 3.2-compatible features.
+- **graphify-init tests:** `GRAPHIFY_REQUIRED=1 skills/graphify-init/test/run-all.sh` (shared cache symlink, worktree guard patch, refresh debounce, idempotence, uninstall). Needs `graphify` on `PATH`.
 - **Install smoke:** `HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update --dry-run` (then repeat with `--prefix ""`).
 - **Render correctness:** `HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update` then `grep -q '/hs-feature-plan' .rendered/hs-/skills/hs-feature-research/SKILL.md` and `! grep -q '/feature-plan\b' .rendered/hs-/skills/hs-feature-research/SKILL.md`.
 - **Subagent linking:** the `subagent-linking` job in `.github/workflows/ci.yml` — real (non-dry-run) install, idempotence, user-symlink preservation, stale sweep, uninstall. Run it locally by pasting the job's script when changing `install.sh`'s agent loop or anything under `agents/`.

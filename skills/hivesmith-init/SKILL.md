@@ -106,12 +106,12 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    ```
    This creates `~/.hivesmith/brain/` (a git repo), seeded from `templates/brain/`. It's idempotent — safe to call on re-runs and existing brains.
 
-8. **Suggest installing graphify** if the user hasn't already. Brain entries can `[[wikilink]]` graphify nodes for code-structure context, and brain references stay rot-free when graphify auto-updates the per-project graph. Print:
+8. **Offer graphify wiring.** Ask whether to run `/hs-graphify-init`, which wires graphify into this project so its code knowledge graph maintains itself: a shared extraction cache across worktrees, worktree-aware git hooks, and a debounced auto-refresh after edits. Brain entries can `[[wikilink]]` graphify nodes for code-structure context, and those references stay rot-free while the graph auto-updates. Do not run it unprompted — it installs git hooks and an editor hook. Print:
    ```
-   Tip: install graphify alongside hivesmith for per-project code-structure memory.
-        Brain entries can reference graphify nodes via [[wikilinks]]; the gardener
-        validates these references on each run.
-        See: https://github.com/lucascaro/graphify
+   Tip: run /hs-graphify-init to wire graphify into this project — shared
+        extraction cache across worktrees, auto-refreshing code map, and
+        [[wikilink]]-able nodes for brain entries.
+        Needs graphify installed: https://github.com/lucascaro/graphify
    ```
    (Print only the text — do not run an install command without confirmation.)
 

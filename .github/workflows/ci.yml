@@ -42,6 +42,10 @@ jobs:
             skills/plan-html/stop.sh
             templates/scripts/migrate-to-changesets.sh
             templates/scripts/regen-generated.sh
+            skills/graphify-init/graphify-setup.sh
+            skills/graphify-init/graphify-refresh.sh
+            skills/graphify-init/test/run-all.sh
+            scripts/graphify-refresh.sh
 
   install-smoke:
     runs-on: ubuntu-latest
@@ -129,6 +133,24 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global user.name "ci"
           bash scripts/brain/test/run-all.sh
+
+  graphify-init-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install graphify
+        run: |
+          pipx install graphifyy || python3 -m pip install --user graphifyy
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify graphify is callable
+        run: graphify --version
+      - name: Run graphify-init test suite
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "ci"
+          # GRAPHIFY_REQUIRED=1: a missing graphify must fail the job, not
+          # quietly skip the guard-patch regression this suite exists to catch.
+          GRAPHIFY_REQUIRED=1 bash skills/graphify-init/test/run-all.sh
 
   # Informational — macOS smoke. Not used as a branch-protection context.
   install-smoke-macos:
