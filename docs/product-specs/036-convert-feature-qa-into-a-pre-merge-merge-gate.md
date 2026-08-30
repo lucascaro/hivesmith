@@ -40,7 +40,7 @@ pipeline stage is named `GATE` to match.
 - On FAIL the gate leaves `stage: GATE`, does not merge, and files no follow-up issue.
 - `scripts/regen-generated.py` and `templates/scripts/regen-generated.py` list `GATE` (not `QA`) in both `STAGES` and `ACTIVE_STAGES`; `scripts/regen-generated.sh` exits 0 against the repo, and a spec set to `stage: QA` fails with `invalid stage 'QA'`.
 - `feature-loop` merges only after the gate returns PASS: Phase 6 sets `stage: GATE` and pushes without merging, Phase 7 runs the gate, and Gate 6 runs `gh pr merge` afterwards.
-- `grep -rn "feature-qa\|stage: QA\|/hs-feature-qa" skills/ templates/ scripts/ agents/ AGENTS.md README.md` returns nothing.
+- `grep -rnE "feature-qa|/hs-feature-qa|\bQA\b" skills/ templates/ scripts/ agents/ docs/product-specs/_template.md AGENTS.md README.md` returns nothing outside deliberate legacy-fallback mentions of the older `## QA verdict` heading. (The narrower `stage: QA` pattern is insufficient — it cannot match an inline enum comment such as `stage: TRIAGE  # … | QA | …`.)
 - Driving one feature end to end through `/hs-feature-loop` produces exactly one PR, whose diff contains the `completed/` plan rename plus `stage: DONE` and `shipped:` but does **not** contain `docs/product-specs/index.md`, and which passes `block-generated-edits` and `verify-generated`.
 
 ## Non-goals

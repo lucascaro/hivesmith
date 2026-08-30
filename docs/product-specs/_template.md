@@ -4,7 +4,7 @@ title: <Title>
 type: bug | enhancement
 complexity: S | M | L
 priority: P1 | P2 | P3
-stage: TRIAGE          # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | QA | DONE | REJECTED
+stage: TRIAGE          # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
 # pr: <number>         # uncomment when PR opens
 # shipped: 2026-MM-DD  # uncomment on DONE
 # rejection_reason:    # required when stage=REJECTED

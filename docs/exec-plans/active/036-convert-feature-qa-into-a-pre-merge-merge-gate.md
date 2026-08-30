@@ -143,10 +143,14 @@ own. Then break one spec success criterion and confirm the gate returns FAIL, le
 - **2026-08-30** — Dropped the `build/lint/test` and `regression` dimensions. Why: the first is run twice already (`feature-loop` step 40 and `ci.yml`), the second substantially overlaps `/review-pr`. Kept acceptance and non-goals (unique) and doc accuracy (produced the only real catch on record, issue #22).
 - **2026-08-30** — `shipped:` = the date the gate runs, rather than teaching the regenerator to derive it from git. Why: the merge follows the gate within minutes, so drift is ~0 and never exceeds a day; the alternative makes `regen-generated.py` git-aware for no practical gain.
 - **2026-08-30** — No `QA` → `GATE` compatibility alias. Why: zero specs are at `stage: QA`, and `regen-generated.py:247` already emits an error that names the fix.
+- **2026-08-30** — Renamed the GitHub labels in place (`qa` → `gate`, `qa-passed` → `gate-passed`, `qa-followup` → `gate-followup`) and created the missing `gate-failed`. Why: renaming keeps the label attached to issues that already carry it; `qa-failed` never existed, so the old skill's FAIL label step was already broken and this closes that gap. Labels are not code in this repo, so this is a live-repo op recorded here rather than a diff.
+- **2026-08-30** — Dropped the `done` GitHub label step invented for Gate 6. Why: no such label existed, `/merge-gate` step 6 already moves `gate` → `gate-passed`, so the step was both broken and redundant.
 
 ## Progress
 
 - **2026-08-30** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
+- **2026-08-30** — Implemented; PR #57 opened; stage = REVIEW. All AGENTS.md gates green locally and all 12 CI checks green.
+- **2026-08-30** — review-loop iter 1: COMMENT, 0 unresolved threads. Fixed 3 confirmed findings — stale `QA` in both spec-template stage enums (missed because the success-criteria grep `stage: QA` cannot match `stage: TRIAGE  # … | QA | …`), the nonexistent `gate-*`/`done` labels, and Gate 6 reading the plan at its pre-move path.
 
 ## Open questions
 
