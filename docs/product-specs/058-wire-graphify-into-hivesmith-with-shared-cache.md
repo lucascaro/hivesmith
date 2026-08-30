@@ -5,12 +5,13 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 59
-stage: REVIEW
+shipped: 2026-08-30
+stage: DONE
 ---
 
 # Wire graphify into hivesmith with shared cache and auto-refresh hooks
 
-- **Exec plan:** [docs/exec-plans/active/058-wire-graphify-into-hivesmith-with-shared-cache.md](../exec-plans/active/058-wire-graphify-into-hivesmith-with-shared-cache.md)
+- **Exec plan:** [docs/exec-plans/completed/058-wire-graphify-into-hivesmith-with-shared-cache.md](../exec-plans/completed/058-wire-graphify-into-hivesmith-with-shared-cache.md)
 
 ## Problem
 
@@ -22,7 +23,7 @@ A project runs `/hs-graphify-init` once and thereafter its graphify knowledge gr
 
 ## Success criteria
 
-- `/hs-graphify-init` exists as a hivesmith skill, is installed by `install.sh`'s existing skill auto-discovery, and is scaffolded into new projects via `templates/scripts/`.
+- `/hs-graphify-init` exists as a hivesmith skill and is installed by `install.sh`'s existing skill auto-discovery. (Amended at gate: the original wording also required `templates/scripts/` copies. Implementation dropped those deliberately — the setup copies its own refresh script, so a template copy would be a third source of the same file to keep in sync, and `/hs-hivesmith-init` now offers to run the skill instead of scaffolding scripts it cannot keep current. See the exec plan's decision log.)
 - After setup, `graphify-out/cache` in both the primary checkout and any linked worktree is a symlink resolving to the same shared directory under `$(git rev-parse --git-common-dir)`.
 - A `git commit` inside a linked worktree triggers a graph rebuild (the upstream worktree guard is lifted).
 - If the upstream hook text no longer matches the expected guard, setup exits non-zero naming the graphify version — it never silently leaves worktrees stale.
