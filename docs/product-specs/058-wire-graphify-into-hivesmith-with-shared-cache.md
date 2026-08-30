@@ -4,7 +4,8 @@ title: Wire graphify into hivesmith with shared cache and auto-refresh hooks
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
+pr: 59
+stage: REVIEW
 ---
 
 # Wire graphify into hivesmith with shared cache and auto-refresh hooks

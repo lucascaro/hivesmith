@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/058-wire-graphify-into-hivesmith-with-shared-cache.md](../../product-specs/058-wire-graphify-into-hivesmith-with-shared-cache.md)
 - **Issue:** #58
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #59
+- **Branch:** `feature/58-wire-graphify-into-hivesmith-with-shared-cache`
 
 ## Summary
 
