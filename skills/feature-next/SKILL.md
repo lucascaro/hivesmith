@@ -15,7 +15,7 @@ Show the current state of the feature pipeline and recommend the next action.
    - `docs/product-specs/<NNN>-*.md` files with YAML frontmatter (current layout). The frontmatter `stage:` field is canonical; **do not** read from the generated `docs/product-specs/index.md` (it's a regenerated view, not a source).
    - `features/BACKLOG.md` (legacy fallback — one release only)
    If neither exists, suggest the user run `/hivesmith-init` first.
-2. **Current layout:** scan each `docs/product-specs/<NNN>-*.md`, parse YAML frontmatter, collect `issue`, `title`, `stage`, `complexity`, `priority`, `pr`, `shipped`. Active items are those with `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, QA}. **Legacy layout:** read the BACKLOG row for each active feature, then read its exec plan for the current stage.
+2. **Current layout:** scan each `docs/product-specs/<NNN>-*.md`, parse YAML frontmatter, collect `issue`, `title`, `stage`, `complexity`, `priority`, `pr`, `shipped`. Active items are those with `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, GATE}. **Legacy layout:** read the BACKLOG row for each active feature, then read its exec plan for the current stage.
 3. For each active item, optionally read its exec plan (`docs/exec-plans/active/<NNN>-<slug>.md`) to surface the PR field for REVIEW-stage items.
 4. Display a summary table:
 
@@ -30,7 +30,7 @@ Feature Pipeline Status
 
 5. Check for un-ingested GitHub issues: run `gh issue list --state open --json number,title` and compare against existing spec/plan files (current layout: `docs/product-specs/`, `docs/exec-plans/{active,completed}/`; legacy: `features/active/` and `features/completed/`).
 6. Recommend the next action based on priority. Stages later in the pipeline take precedence — work in flight clears first:
-   - If there are QA-stage items → "Run `/feature-qa <number>` to validate the merged feature"
+   - If there are GATE-stage items → "Run `/merge-gate <number>` to validate the open PR before merging"
    - If there are REVIEW-stage items → "Run `/review-loop <pr-number>` to drive PR convergence (or `/feature-loop <number>` to resume from REVIEW with merge gate)"
    - If there are IMPLEMENT-stage items → "Run `/feature-implement <number>` to implement"
    - If there are PLAN-stage items → "Run `/feature-plan <number>` to create implementation plan"

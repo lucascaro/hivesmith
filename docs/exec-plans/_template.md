@@ -68,8 +68,8 @@ this file or from the generated `docs/product-specs/index.md`.
 
 - **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; mergeable: <MERGEABLE|CONFLICTING|UNKNOWN>; findings_hash: <hex|empty>; action: <stop|autofix+push|autofix+push (conflict)|escalated:<reason>>; head_sha: <short-sha>.
 
-## QA verdict
+## Gate verdict
 
-<Filled by `/feature-qa` after the PR merges. Append-only; one entry per QA run. Stage advances to DONE only when the latest entry is PASS.>
+<Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
 
 - **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.

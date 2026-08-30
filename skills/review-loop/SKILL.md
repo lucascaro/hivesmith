@@ -172,7 +172,9 @@ Final verdict: APPROVE | ESCALATED
 
 ## 4a. On merge (best-effort post-loop hook)
 
-If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into review-loop after merging): if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `QA` in the spec's frontmatter — that's the sole stage write. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
+Once the loop converges with `APPROVE`, and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
+
+If the PR turns out to have been merged already (e.g. the user merged in a separate window before this skill exits), still set `GATE` and point at `/merge-gate` — it has a degraded post-merge path for exactly this case.
 
 ## 5. Rules
 

@@ -18,7 +18,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: TRIAGE` (sorted by `priority` then issue number).
-3. **Frontmatter is the source of truth.** In the current layout the spec's YAML frontmatter `stage:` field is canonical — read it from `docs/product-specs/<NNN>-*.md` directly, never from the generated `index.md`. If it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/feature-qa <N>` for QA, nothing for DONE). Never silently process the wrong stage. **Legacy fallback:** if no frontmatter exists, fall back to the legacy `features/BACKLOG.md` row's `Stage:` column.
+3. **Frontmatter is the source of truth.** In the current layout the spec's YAML frontmatter `stage:` field is canonical — read it from `docs/product-specs/<NNN>-*.md` directly, never from the generated `index.md`. If it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/merge-gate <N>` for GATE, nothing for DONE). Never silently process the wrong stage. **Legacy fallback:** if no frontmatter exists, fall back to the legacy `features/BACKLOG.md` row's `Stage:` column.
 
 ## Layout resolution
 
