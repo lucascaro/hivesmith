@@ -10,7 +10,7 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent
 
 Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → GATE → DONE — pausing for user confirmation before any mutation.
 
-`REVIEW` = PR open, `/review-loop` driving convergence. `GATE` = review converged, `/merge-gate` validating the **still-open** PR against the spec's acceptance criteria. `DONE` = gate verdict PASS recorded and the PR merged. The gate runs before the merge so a failure is fixed in the same PR, and so the DONE bookkeeping ships inside the feature PR rather than as a follow-up PR.
+`REVIEW` = PR open, `/review-loop` driving convergence. `GATE` = review converged, `/merge-gate` validating the **still-open** PR against the spec's acceptance criteria. `DONE` = gate verdict PASS recorded and the plan moved to `completed/`; the merge is a separate later step, so a spec can be `DONE` with its PR still open. The gate runs before the merge so a failure is fixed in the same PR, and so the DONE bookkeeping ships inside the feature PR rather than as a follow-up PR.
 
 **Input:**
 - A number → resume the matching active feature from its current stage
@@ -284,10 +284,9 @@ P12. Continue to Phase 5 (Implement).
 ## Phase 6: Review
 
 45. Run `/review-loop <pr-number>`. The loop writes a per-iteration line to the plan's **PR convergence ledger** so a fresh harness can pick up later. If it escalates, surface the reason and stop — do not advance to GATE.
-46. **On review-loop APPROVE, do not merge yet.** The merge is the last step of Phase 7, after the gate passes. Advance the feature to GATE on the branch:
-    - Last write — set the spec frontmatter `stage: GATE`. **Do not edit `docs/product-specs/index.md`** — it's generated.
-    - Commit (`chore: advance #<issue-number> to GATE`) and `git push` to the **same feature branch**. The PR stays open.
-    - Apply GitHub label (only when a GitHub issue exists — see the gating rule near the top of this file): `gh issue edit <number> --remove-label implementing --add-label gate`.
+46. **On review-loop APPROVE, do not merge yet.** The merge is the last step of Phase 7, after the gate passes. `/review-loop`'s §4a **already owns** this transition — it sets the spec frontmatter `stage: GATE`, commits (`chore: advance #<issue-number> to GATE`), pushes to the same feature branch, and swaps the `implementing` label for `gate`. It is the single owner because it also serves the standalone `/review-loop` → `/merge-gate` path.
+
+    So this step is **verify-only** — do not repeat those writes. Re-running them would produce an empty `git commit`, which exits non-zero and halts the loop. Confirm the spec frontmatter reads `stage: GATE` and the branch is pushed; only if §4a did not run (e.g. review-loop was skipped) perform the transition here yourself. **Do not edit `docs/product-specs/index.md`** — it's generated. The PR stays open.
 47. Continue to Phase 7 (Gate).
 
 ## Phase 7: Gate

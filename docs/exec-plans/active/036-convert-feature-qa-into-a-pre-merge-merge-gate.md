@@ -151,6 +151,7 @@ own. Then break one spec success criterion and confirm the gate returns FAIL, le
 
 - **2026-08-30** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
 - **2026-08-30** — Implemented; PR #57 opened; stage = REVIEW. All AGENTS.md gates green locally and all 12 CI checks green.
+- **2026-08-30** — review-loop iter 4: COMMENT, 0 threads, CI green. Fixed 8 findings. Two clusters, both self-inflicted by iter 3: the summary prose still defined `DONE` as "and the PR merged" in five places (including both `regen-generated.py` copies, which bake it into every regenerated index), and step 46 had become a duplicate of the transition §4a now owns — its empty `git commit` would exit non-zero and halt the loop. Also fixed `templates/PLANS.md`, which is scaffolded into every consumer repo and still described the old ordering.
 - **2026-08-30** — review-loop iter 3: COMMENT, 0 threads. Fixed 3 findings, all consequences of `DONE` now preceding the merge: `/review-loop`'s cold-start unconditionally demoted any stage to `REVIEW` (which would destroy a gate's terminal `DONE` write while `pr:`/`shipped:`/the `completed/` move stayed behind) and globbed only `active/` for the plan; `/feature-loop` Phase 0 treated `DONE` as terminal, stranding a gate-passed PR whose merge had not happened; and §4a omitted the label write it claimed to mirror.
 - **2026-08-30** — review-loop iter 2: COMMENT, 0 threads. Fixed 3 more findings, all reader-side gaps from the rename: Gate 6 read only `## Gate verdict` while `/merge-gate` falls back to `## QA verdict` for the five in-flight plans; `/review-loop` §4a wrote `stage: GATE` without committing, which `/merge-gate`'s clean-tree guard would refuse on the standalone handoff; and `hs-validator`'s command-vetting whitelist still named only build/lint/test after that dimension was dropped.
 - **2026-08-30** — review-loop iter 1: COMMENT, 0 unresolved threads. Fixed 3 confirmed findings — stale `QA` in both spec-template stage enums (missed because the success-criteria grep `stage: QA` cannot match `stage: TRIAGE  # … | QA | …`), the nonexistent `gate-*`/`done` labels, and Gate 6 reading the plan at its pre-move path.
@@ -172,7 +173,8 @@ Two invariants held before this PR and no longer do. Every *reader* of stage or 
 
 - **2026-08-30 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 66044f33; threads_open: 0; action: fixed 3 findings + push; head_sha: 01c914c.
 - **2026-08-30 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: e7f40d71; threads_open: 0; action: fixed 3 findings + push; head_sha: 6315d1d.
-- **2026-08-30 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 5a909c25; threads_open: 0; action: fixed 3 findings + push; head_sha: pending.
+- **2026-08-30 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 5a909c25; threads_open: 0; action: fixed 3 findings + push; head_sha: a3b056a.
+- **2026-08-30 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0f418bc9; threads_open: 0; action: fixed 8 findings + push; head_sha: pending.
 
 ## Gate verdict
 
