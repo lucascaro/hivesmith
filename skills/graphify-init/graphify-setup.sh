@@ -42,7 +42,7 @@ while [ $# -gt 0 ]; do
         --uninstall) MODE="uninstall"; shift ;;
         --quiet)     QUIET=1; shift ;;
         --no-nudges) NUDGES=0; shift ;;
-        -h|--help)   sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)   sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)          echo "Unknown arg: $1" >&2; exit 2 ;;
         *)           PROJECT_DIR="$1"; shift ;;
     esac
@@ -60,7 +60,12 @@ OUT="${GRAPHIFY_OUT:-graphify-out}"
 # is stable no matter which symlinked route a given worktree was reached by.
 COMMON="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
 SHARED="$COMMON/graphify-cache"
-HOOKS_DIR="$COMMON/hooks"
+# `git rev-parse --git-path hooks` resolves core.hooksPath (Husky, lefthook, a
+# global ~/.githooks), which graphify itself honors. Hardcoding $COMMON/hooks
+# meant patch_worktree_guard silently found no file and we still claimed the
+# guard was lifted — the exact silent-staleness the loud drift check exists to
+# prevent.
+HOOKS_DIR="$(cd "$(dirname "$(git rev-parse --git-path hooks)")" && pwd)/$(basename "$(git rev-parse --git-path hooks)")"
 CACHE_LINK="$OUT/cache"
 
 # Where this script lives, so we can copy its sibling refresh script.
@@ -145,9 +150,18 @@ GUARD_IF='if [ -n "$_GFY_COMMONDIR" ] && [ "$_GFY_GITDIR" != "$_GFY_COMMONDIR" ]
 # shellcheck disable=SC2016
 GUARD_REPLACEMENT='    [ "${HIVESMITH_GRAPHIFY_WORKTREE:-1}" = "1" ] || exit 0'
 
+# require=1 means "this hook must exist" — used after `graphify hook install`
+# reported success, where a missing file means we are patching the wrong dir.
 patch_worktree_guard() {
     hook="$1"
-    [ -f "$hook" ] || return 0
+    require="${2:-0}"
+    if [ ! -f "$hook" ]; then
+        [ "$require" = "1" ] && die "$hook does not exist after 'graphify hook install' succeeded.
+  Looked in: $HOOKS_DIR
+  If this repo sets core.hooksPath, graphify and this script disagree about where
+  hooks live. Refusing to report a lifted guard that was never applied."
+        return 0
+    fi
 
     if grep -q 'HIVESMITH_GRAPHIFY_WORKTREE' "$hook"; then
         return 0   # already patched (e.g. hook install left it in place)
@@ -190,16 +204,24 @@ install_hooks() {
         graphify hook install >/dev/null 2>&1 \
             || die "graphify hook install failed. Run it by hand to see why."
     fi
-    patch_worktree_guard "$HOOKS_DIR/post-commit"
-    patch_worktree_guard "$HOOKS_DIR/post-checkout"
+    # require=1 unless the install was skipped for the test seam.
+    _req=1
+    [ "${HIVESMITH_GRAPHIFY_SKIP_HOOK_INSTALL:-0}" = "1" ] && _req=0
+    patch_worktree_guard "$HOOKS_DIR/post-commit" "$_req"
+    patch_worktree_guard "$HOOKS_DIR/post-checkout" "$_req"
     say "  git hooks    post-commit + post-checkout installed, worktree guard lifted"
 }
 
 uninstall_hooks() {
-    if command -v graphify >/dev/null 2>&1; then
-        graphify hook uninstall >/dev/null 2>&1 || true
+    if ! command -v graphify >/dev/null 2>&1; then
+        echo "graphify-setup: graphify is not on PATH; hooks in $HOOKS_DIR were left in place." >&2
+        return 0
     fi
-    say "  git hooks    removed"
+    if graphify hook uninstall >/dev/null 2>&1; then
+        say "  git hooks    removed"
+    else
+        echo "graphify-setup: 'graphify hook uninstall' failed; post-commit and post-checkout may remain in $HOOKS_DIR." >&2
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -236,17 +258,34 @@ copy_refresh_script() {
 # Best-effort: it reaches into a private function, so a future graphify that
 # renames it degrades to a warning rather than failing the whole setup. The
 # nudges are an enhancement; the cache and hooks are the load-bearing parts.
+# Find a python that can `import graphify`. Deliberately tries several
+# candidates: the package may live in a pipx/uv-tool venv that no ambient
+# python can see, and the launcher's shebang may be a bare `#!/usr/bin/env
+# python` rather than an absolute interpreter path — in which case the last
+# field is the word "python", not something executable. Mirrors the probe
+# chain graphify uses in its own git hooks.
 graphify_python() {
-    if python3 -c 'import graphify' 2>/dev/null; then echo "python3"; return 0; fi
-    launcher="$(command -v graphify 2>/dev/null)" || return 1
-    [ -n "$launcher" ] || return 1
-    shebang="$(head -n 1 "$launcher" 2>/dev/null | sed 's|^#!||' | awk '{print $NF}')"
-    case "$shebang" in
-        *[!a-zA-Z0-9/_.@:-]*|"") return 1 ;;
-    esac
-    [ -x "$shebang" ] || return 1
-    "$shebang" -c 'import graphify' 2>/dev/null || return 1
-    echo "$shebang"
+    _cands="python3 python"
+    launcher="$(command -v graphify 2>/dev/null || true)"
+    if [ -n "$launcher" ]; then
+        _shebang="$(head -n 1 "$launcher" 2>/dev/null | sed 's|^#!||')"
+        case "$_shebang" in
+            */env\ *) _cands="${_shebang#*/env } $_cands" ;;
+            /*)        _cands="$(printf '%s' "$_shebang" | awk '{print $1}') $_cands" ;;
+        esac
+        _bindir="$(dirname "$launcher")"
+        _cands="$_cands $_bindir/python3 $_bindir/python $_bindir/../bin/python3"
+    fi
+    for _c in $_cands; do
+        case "$_c" in
+            *[!a-zA-Z0-9/_.@:-]*) continue ;;   # path allowlist
+        esac
+        if command -v "$_c" >/dev/null 2>&1 && "$_c" -c 'import graphify' 2>/dev/null; then
+            command -v "$_c"
+            return 0
+        fi
+    done
+    return 1
 }
 
 claude_nudges() {
@@ -267,13 +306,18 @@ claude_nudges() {
     }
     fn="_install_claude_hook"
     [ "$action" = "install" ] || fn="_uninstall_claude_hook"
-    # >/dev/null: graphify prints its own multi-line banner; we report one line.
-    if "$py" - "$fn" >/dev/null 2>&1 <<'PYEOF' 
+    # Keep stderr: a swallowed failure here let setup exit 0 reporting success
+    # while the default-on hooks were never registered — and under --quiet
+    # (the documented invocation) `say` printed nothing at all. stdout is still
+    # dropped because graphify prints its own multi-line banner.
+    nudge_err="$(mktemp)"
+    if "$py" - "$fn" >/dev/null 2>"$nudge_err" <<'PYEOF'
 import sys
 from pathlib import Path
 import graphify.install as gi
 fn = getattr(gi, sys.argv[1], None)
 if fn is None:
+    print(f"graphify.install.{sys.argv[1]} does not exist in this graphify", file=sys.stderr)
     raise SystemExit(1)
 if sys.argv[1] == "_install_claude_hook":
     fn(Path("."), project=True)
@@ -281,10 +325,25 @@ else:
     fn(Path("."))
 PYEOF
     then
+        rm -f "$nudge_err"
         say "  nudges       graphify PreToolUse orientation hooks ${action}ed"
-    else
-        say "  nudges       skipped (graphify.install.$fn unavailable in $( "$py" --version 2>&1 ))"
+        return 0
     fi
+
+    # Always on stderr, bypassing say(), so --quiet cannot hide it.
+    {
+        echo "graphify-setup: could not $action graphify's PreToolUse orientation hooks."
+        echo "  interpreter: $py"
+        sed 's/^/  /' "$nudge_err"
+    } >&2
+    rm -f "$nudge_err"
+
+    # An uninstall that cannot reach graphify is a warning: settings_merge
+    # still runs and the user can drop the entry by hand. A default-on INSTALL
+    # that fails is an error — the caller asked for these hooks, and
+    # --no-nudges exists for anyone who does not want them.
+    [ "$action" = "install" ] && die "refusing to report a successful setup with the nudges missing. Re-run with --no-nudges to proceed without them."
+    return 0
 }
 
 # Merge semantics mirror graphify's own installer (graphify/install.py):

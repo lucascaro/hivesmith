@@ -16,6 +16,12 @@
 # shellcheck disable=SC2329
 set -uo pipefail
 
+# Isolate every `git init` below from the developer's ambient config. A global
+# core.hooksPath would make `graphify hook install` write OUTSIDE the mktemp
+# sandbox, and commit.gpgsign=true would break the fixture commits.
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_CONFIG_SYSTEM=/dev/null
+
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 SETUP="$REPO/skills/graphify-init/graphify-setup.sh"
 REFRESH="$REPO/skills/graphify-init/graphify-refresh.sh"
@@ -77,7 +83,8 @@ setup_repo() {
     printf '# AGENTS\n' > "$dir/main-repo/AGENTS.md"
     printf 'x = 1\n' > "$dir/main-repo/a.py"
     git -C "$dir/main-repo" add -A
-    git -C "$dir/main-repo" commit -qm init
+    git -C "$dir/main-repo" commit -qm init \
+        || { printf '  SETUP FAIL: fixture commit failed\n' >&2; return 1; }
     if [ "$want_wt" = "--worktree" ]; then
         git -C "$dir/main-repo" worktree add -q "$dir/wt" -b feat
     fi
@@ -86,6 +93,10 @@ setup_repo() {
 # pwd -P: on macOS `mktemp -d` hands back a /var path that is a symlink to
 # /private/var, and the setup script records the resolved form. Comparing the
 # logical path against the recorded one fails on the prefix alone.
+stamp_mtime() {
+    stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0
+}
+
 common_dir() {
     (cd "$1" && cd "$(git rev-parse --git-common-dir)" && pwd -P)
 }
@@ -182,12 +193,20 @@ fi
 HOOK
     chmod +x "$hooks/post-commit"
 
-    local rc=0 out
+    local rc=0 out setup_rc before
+    before="$(cat "$hooks/post-commit")"
     out="$(cd "$t/main-repo" && HIVESMITH_GRAPHIFY_SKIP_HOOK_INSTALL=1 "$SETUP" --quiet 2>&1)"
+    setup_rc=$?
+    [ "$setup_rc" -eq 0 ] && { printf '  ASSERT FAIL: setup exited 0 on an unpatchable guard\n' >&2; rc=1; }
     case "$out" in
         *"worktree guard"*) ;;
         *) printf '  ASSERT FAIL: no loud failure about the guard; got: %s\n' "$out" >&2; rc=1 ;;
     esac
+    [ "$(cat "$hooks/post-commit")" = "$before" ] \
+        || { printf '  ASSERT FAIL: hook was modified despite the refusal\n' >&2; rc=1; }
+    if ls "$hooks"/*.hivesmith.* >/dev/null 2>&1; then
+        printf '  ASSERT FAIL: temp files left behind in the hooks dir\n' >&2; rc=1
+    fi
     rm -rf "$t"; return "$rc"
 }
 
@@ -282,28 +301,58 @@ test_refresh_never_fails() {
 }
 
 test_refresh_debounces() {
+    need_graphify || return $?
     local t; t="$(mktemp -d)"
     mkdir -p "$t/graphify-out"
     printf '{}\n' > "$t/graphify-out/graph.json"
     local stamp="$t/graphify-out/.graphify_refresh_stamp" rc=0 first second
 
-    HIVESMITH_GRAPHIFY_DEBOUNCE=3600 "$REFRESH" "$t"
+    # Assert the script's own exit status every time: it promises never to
+    # exit non-zero, and a crash that skips the stamp used to read as a pass.
+    HIVESMITH_GRAPHIFY_DEBOUNCE=3600 "$REFRESH" "$t" || { printf '  ASSERT FAIL: refresh exited non-zero\n' >&2; rc=1; }
     [ -f "$stamp" ] || { printf '  ASSERT FAIL: first call did not stamp\n' >&2; rm -rf "$t"; return 1; }
-    first="$(stat -f %m "$stamp" 2>/dev/null || stat -c %Y "$stamp")"
+    first="$(stamp_mtime "$stamp")"
 
-    # Backdate so the second call is provably inside the window regardless of
-    # clock granularity, then confirm the stamp is untouched.
-    HIVESMITH_GRAPHIFY_DEBOUNCE=3600 "$REFRESH" "$t"
-    second="$(stat -f %m "$stamp" 2>/dev/null || stat -c %Y "$stamp")"
+    HIVESMITH_GRAPHIFY_DEBOUNCE=3600 "$REFRESH" "$t" || { printf '  ASSERT FAIL: refresh exited non-zero\n' >&2; rc=1; }
+    second="$(stamp_mtime "$stamp")"
     assert_eq "$second" "$first" || rc=1
 
-    # Zero debounce: the window is always expired, so it must re-stamp.
+    # Zero debounce: window is always expired, so it must re-stamp.
     sleep 1
-    HIVESMITH_GRAPHIFY_DEBOUNCE=0 "$REFRESH" "$t"
-    second="$(stat -f %m "$stamp" 2>/dev/null || stat -c %Y "$stamp")"
-    [ "$second" = "$first" ] && { printf '  ASSERT FAIL: zero debounce did not re-stamp\n' >&2; rc=1; }
+    HIVESMITH_GRAPHIFY_DEBOUNCE=0 "$REFRESH" "$t" || { printf '  ASSERT FAIL: refresh exited non-zero\n' >&2; rc=1; }
+    second="$(stamp_mtime "$stamp")"
+    [ "$second" -gt "$first" ] || { printf '  ASSERT FAIL: zero debounce did not re-stamp (%s -> %s)\n' "$first" "$second" >&2; rc=1; }
 
     rm -rf "$t"; return "$rc"
+}
+
+test_refresh_survives_gnu_stat() {
+    # Regression guard for the BSD-first `stat` probe that died on every Linux
+    # host: GNU's `-f` is --file-system, so it printed a filesystem block to
+    # stdout AND exited 1, the `||` fallback appended the real mtime to that
+    # garbage, and the arithmetic then killed the script under `set -u` —
+    # before it could stamp or launch. Shims a GNU-like stat to prove the
+    # probe order handles it, since CI is the only place it reproduces.
+    local t shim rc=0
+    t="$(mktemp -d)"; shim="$(mktemp -d)"
+    mkdir -p "$t/graphify-out"
+    printf '{}\n' > "$t/graphify-out/graph.json"
+    cat > "$shim/stat" <<'SHIM'
+#!/bin/sh
+case "$1" in
+  -c) shift; case "$1" in %Y) shift; echo 1700000000; exit 0;; esac; exit 1 ;;
+  -f) shift; echo "  File: \"$2\""; echo "    ID: 0 Namelen: 255"; exit 1 ;;
+esac
+exit 1
+SHIM
+    chmod +x "$shim/stat"
+
+    PATH="$shim:$PATH" HIVESMITH_GRAPHIFY_DEBOUNCE=3600 "$REFRESH" "$t" \
+        || { printf '  ASSERT FAIL: refresh exited non-zero under a GNU-like stat\n' >&2; rc=1; }
+    [ -f "$t/graphify-out/.graphify_refresh_stamp" ] \
+        || { printf '  ASSERT FAIL: no stamp written under a GNU-like stat\n' >&2; rc=1; }
+
+    rm -rf "$t" "$shim"; return "$rc"
 }
 
 test_refresh_disabled_by_env() {
@@ -354,7 +403,13 @@ test_nudges_on_by_default() {
 test_refresh_copy_in_sync() {
     # graphify-setup.sh copies the refresh script into <project>/scripts/. This
     # repo dogfoods the setup, so the committed copy must not drift.
-    [ -f "$REPO/scripts/graphify-refresh.sh" ] || return 0
+    # Absence is a FAILURE, not a skip: the committed .claude/settings.json
+    # hardcodes this path as a PostToolUse hook, so deleting it breaks the
+    # wiring while a "return 0" would keep the suite green.
+    [ -f "$REPO/scripts/graphify-refresh.sh" ] || {
+        printf '  ASSERT FAIL: scripts/graphify-refresh.sh is missing; settings.json points at it.\n' >&2
+        return 1
+    }
     cmp -s "$REFRESH" "$REPO/scripts/graphify-refresh.sh" && return 0
     printf '  ASSERT FAIL: scripts/graphify-refresh.sh has drifted from the skill copy.\n' >&2
     printf '  Re-run skills/graphify-init/graphify-setup.sh to refresh it.\n' >&2
@@ -444,6 +499,7 @@ run_test "settings merge preserves other hooks"  test_settings_merge_preserves_o
 run_test "refresh no-ops without graph.json"     test_refresh_noop_without_graph
 run_test "refresh never exits non-zero"          test_refresh_never_fails
 run_test "refresh debounces"                     test_refresh_debounces
+run_test "refresh survives a GNU-style stat"     test_refresh_survives_gnu_stat
 run_test "refresh honors disable env"            test_refresh_disabled_by_env
 run_test "setup fails clearly without graphify"  test_setup_without_graphify_fails_clearly
 run_test "failed migrate preserves the cache"    test_migrate_failure_preserves_cache

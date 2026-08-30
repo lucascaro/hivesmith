@@ -111,7 +111,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    Tip: run /hs-graphify-init to wire graphify into this project — shared
         extraction cache across worktrees, auto-refreshing code map, and
         [[wikilink]]-able nodes for brain entries.
-        Needs graphify installed: https://github.com/lucascaro/graphify
+        Needs graphify installed: https://github.com/Graphify-Labs/graphify
    ```
    (Print only the text — do not run an install command without confirmation.)
 

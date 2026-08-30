@@ -36,9 +36,20 @@ out="${GRAPHIFY_OUT:-graphify-out}"
 stamp="$out/.graphify_refresh_stamp"
 debounce="${HIVESMITH_GRAPHIFY_DEBOUNCE:-90}"
 
-# BSD (macOS) and GNU stat disagree on flags; try both, treat failure as "old".
+# BSD (macOS) and GNU stat disagree on flags, and the probe order matters:
+# on GNU coreutils `-f` means --file-system, so `stat -f %m` PRINTS a
+# filesystem block to stdout and exits 1 — a BSD-first probe therefore emits
+# garbage that the `||` fallback appends its real answer to, and the caller's
+# arithmetic then dies under `set -u`. GNU's `-c` is rejected outright by BSD
+# stat with no stdout, so probing GNU first is the order that fails cleanly on
+# both. The numeric guard is the backstop: anything not a plain integer
+# becomes 0, which reads as "old" and simply allows a refresh.
 mtime_of() {
-    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+    m="$(stat -c %Y "$1" 2>/dev/null)" || m="$(stat -f %m "$1" 2>/dev/null)" || m=0
+    case "$m" in
+        ''|*[!0-9]*) m=0 ;;
+    esac
+    printf '%s\n' "$m"
 }
 
 # This is a check-then-touch, not a lock: two hooks firing in the same instant

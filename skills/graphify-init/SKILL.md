@@ -7,7 +7,7 @@ allowed-tools: Bash Read
 
 # Wire graphify into this project
 
-Sets up [graphify](https://github.com/lucascaro/graphify) so a project's code knowledge graph maintains itself — including inside git worktrees, which graphify's own hooks deliberately skip.
+Sets up [graphify](https://github.com/Graphify-Labs/graphify) so a project's code knowledge graph maintains itself — including inside git worktrees, which graphify's own hooks deliberately skip.
 
 Backed by `graphify-setup.sh` in this skill directory. **The script is the source of truth — do not re-implement its logic, and do not hand-edit what it writes.**
 
@@ -31,10 +31,10 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 
 3. **Confirm the project is a git repository.** The whole design keys off `git rev-parse --git-common-dir`. If it is not a repo, stop and say so.
 
-4. **Run the setup**, from the project root:
+4. **Run the setup** with the working directory set to the project root. Invoke `graphify-setup.sh` **from this skill's own directory** (or by its absolute path) — an installed skill lives under `~/.claude/skills/<prefix>graphify-init/`, so a repo-relative `skills/graphify-init/...` path only resolves inside a hivesmith checkout, which is the one project that least needs this skill.
 
    ```bash
-   skills/graphify-init/graphify-setup.sh
+   "$(dirname "$0")/graphify-setup.sh"   # or: ~/.claude/skills/hs-graphify-init/graphify-setup.sh
    ```
 
    Pass through the user's arguments:

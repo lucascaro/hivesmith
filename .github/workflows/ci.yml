@@ -9,6 +9,11 @@ on:
     # this file reads a label, so re-running it on every label edit is pure
     # duplicate work.
 
+# Least privilege by default: no job here needs to write to the repo, and one
+# installs an unpinned package from PyPI.
+permissions:
+  contents: read
+
 jobs:
   shellcheck:
     runs-on: ubuntu-latest
