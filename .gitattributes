@@ -1,0 +1,6 @@
+# Written by `graphify hook install` (via /graphify-init), which registers a
+# union merge driver for the knowledge graph. Inert in THIS repo — graphify-out/
+# is gitignored, so graph.json is never merged — but it is committed anyway so a
+# setup re-run leaves a clean worktree instead of recreating an untracked file
+# every time. Projects that DO track graph.json get the real benefit.
+graphify-out/graph.json merge=graphify
