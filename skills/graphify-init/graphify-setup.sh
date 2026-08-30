@@ -88,13 +88,14 @@ link_cache() {
   Re-run with --migrate to move them into $SHARED, or remove it yourself first.
   Refusing to delete it: semantic cache entries cost real money to rebuild."
         fi
-        # -n: never overwrite a newer shared entry with an older local one.
-        # Entries are content-hash keyed, so same name means same bytes anyway.
-        (cd "$CACHE_LINK" && find . -type f -print0 2>/dev/null || true) \
-            | while IFS= read -r -d '' rel; do
-                mkdir -p "$SHARED/$(dirname "$rel")"
-                cp -n "$CACHE_LINK/$rel" "$SHARED/$rel" 2>/dev/null || true
-            done
+        # A single cp that fails loudly, NOT a find|while pipeline: the loop
+        # body runs in a subshell on the right of a pipe, so a failure flag set
+        # inside it never reaches the `rm` below — and an unconditional rm after
+        # a swallowed copy error destroys exactly the cache the die above
+        # exists to protect. Entries are content-hash keyed, so overwriting a
+        # same-named entry writes identical bytes.
+        cp -R "$CACHE_LINK/." "$SHARED/" \
+            || die "failed to copy $CACHE_LINK into $SHARED. Nothing was deleted; your cache is intact."
         rm -rf "$CACHE_LINK"
         say "  cache        migrated existing entries into $SHARED"
     elif [ -e "$CACHE_LINK" ]; then
@@ -109,12 +110,12 @@ unlink_cache() {
     [ -L "$CACHE_LINK" ] || { say "  cache        not linked, nothing to do"; return 0; }
     rm "$CACHE_LINK"
     mkdir -p "$CACHE_LINK"
+    # Same reasoning as link_cache: fail loudly rather than report a successful
+    # restore over a copy that silently did nothing. The shared copy is left in
+    # place either way, so a failure here is recoverable.
     if [ -d "$SHARED" ]; then
-        (cd "$SHARED" && find . -type f -print0 2>/dev/null || true) \
-            | while IFS= read -r -d '' rel; do
-                mkdir -p "$CACHE_LINK/$(dirname "$rel")"
-                cp -n "$SHARED/$rel" "$CACHE_LINK/$rel" 2>/dev/null || true
-            done
+        cp -R "$SHARED/." "$CACHE_LINK/" \
+            || die "failed to restore $CACHE_LINK from $SHARED. The shared copy is still intact at $SHARED."
     fi
     say "  cache        restored as a real directory (shared copy left intact)"
 }
@@ -212,6 +213,58 @@ copy_refresh_script() {
     fi
     chmod +x "$REFRESH_REL"
     say "  refresh      $REFRESH_REL"
+}
+
+# graphify's own PreToolUse orientation nudges — the "consult the graph before
+# reading files" half of the setup, and part of the approved plan.
+#
+# We call install.py's function directly instead of `graphify claude install`
+# because the CLI also writes a graphify section into CLAUDE.md, which would
+# duplicate the AGENTS.md block this script already maintains. `project=True`
+# emits a bare command rather than an installing-machine-specific absolute path
+# (graphify #3129) — correct for a committed settings.json.
+#
+# Best-effort: it reaches into a private function, so a future graphify that
+# renames it degrades to a warning rather than failing the whole setup. The
+# nudges are an enhancement; the cache and hooks are the load-bearing parts.
+graphify_python() {
+    if python3 -c 'import graphify' 2>/dev/null; then echo "python3"; return 0; fi
+    launcher="$(command -v graphify 2>/dev/null)" || return 1
+    [ -n "$launcher" ] || return 1
+    shebang="$(head -n 1 "$launcher" 2>/dev/null | sed 's|^#!||' | awk '{print $NF}')"
+    case "$shebang" in
+        *[!a-zA-Z0-9/_.@:-]*|"") return 1 ;;
+    esac
+    [ -x "$shebang" ] || return 1
+    "$shebang" -c 'import graphify' 2>/dev/null || return 1
+    echo "$shebang"
+}
+
+claude_nudges() {
+    action="$1"   # install | uninstall
+    py="$(graphify_python)" || {
+        say "  nudges       skipped (no python with graphify importable)"
+        return 0
+    }
+    fn="_install_claude_hook"
+    [ "$action" = "install" ] || fn="_uninstall_claude_hook"
+    if "$py" - "$fn" <<'PYEOF' 2>/dev/null
+import sys
+from pathlib import Path
+import graphify.install as gi
+fn = getattr(gi, sys.argv[1], None)
+if fn is None:
+    raise SystemExit(1)
+if sys.argv[1] == "_install_claude_hook":
+    fn(Path("."), project=True)
+else:
+    fn(Path("."))
+PYEOF
+    then
+        say "  nudges       graphify PreToolUse orientation hooks ${action}ed"
+    else
+        say "  nudges       skipped (graphify.install.$fn unavailable in $( "$py" --version 2>&1 ))"
+    fi
 }
 
 # Merge semantics mirror graphify's own installer (graphify/install.py):
@@ -324,6 +377,7 @@ if [ "$MODE" = "uninstall" ]; then
     say "graphify-setup: removing (graphify $GRAPHIFY_VERSION)"
     unlink_cache
     uninstall_hooks
+    claude_nudges uninstall
     settings_merge uninstall
     say "  settings     PostToolUse entry removed"
     write_agents_block uninstall
@@ -336,6 +390,7 @@ link_cache
 install_hooks
 copy_refresh_script
 settings_merge install
+claude_nudges install
 say "  settings     .claude/settings.json PostToolUse -> $REFRESH_REL"
 write_agents_block install "$(agents_block)"
 say "  AGENTS.md    knowledge-graph block written"

@@ -327,6 +327,66 @@ test_refresh_copy_in_sync() {
     return 1
 }
 
+
+test_setup_without_graphify_fails_clearly() {
+    # setup NEEDS graphify (unlike refresh, which must degrade silently). It
+    # must say so rather than dying somewhere confusing downstream.
+    local t; t="$(mktemp -d)"
+    setup_repo "$t"
+    local rc=0 out
+    out="$(cd "$t/main-repo" && env PATH=/usr/bin:/bin "$SETUP" --quiet 2>&1)"
+    # shellcheck disable=SC2181  # want the subshell's status
+    if [ $? -eq 0 ]; then
+        printf '  ASSERT FAIL: setup succeeded with no graphify on PATH\n' >&2
+        rc=1
+    fi
+    case "$out" in
+        *"not on PATH"*) ;;
+        *) printf '  ASSERT FAIL: message does not name the missing dependency: %s\n' "$out" >&2; rc=1 ;;
+    esac
+    rm -rf "$t"; return "$rc"
+}
+
+test_migrate_failure_preserves_cache() {
+    # The load-bearing safety property: if the copy into the shared dir fails,
+    # the source cache must survive. Made to fail by pointing the shared path
+    # at a location that cannot be written.
+    need_graphify || return $?
+    local t; t="$(mktemp -d)"
+    setup_repo "$t"
+    mkdir -p "$t/main-repo/graphify-out/cache/semantic"
+    printf '{"cached":true}\n' > "$t/main-repo/graphify-out/cache/semantic/deadbeef.json"
+
+    # Make the git common dir read-only so `mkdir -p $SHARED` / the copy fails.
+    local common; common="$(common_dir "$t/main-repo")"
+    chmod a-w "$common"
+
+    local rc=0
+    (cd "$t/main-repo" && "$SETUP" --migrate --quiet >/dev/null 2>&1)
+    # Whether it failed at mkdir or at cp, the invariant is the same:
+    [ -f "$t/main-repo/graphify-out/cache/semantic/deadbeef.json" ] \
+        || { printf '  ASSERT FAIL: cache entry destroyed after a failed migrate\n' >&2; rc=1; }
+
+    chmod u+w "$common"
+    rm -rf "$t"; return "$rc"
+}
+
+test_refresh_caps_log() {
+    need_graphify || return $?
+    local t; t="$(mktemp -d)"
+    mkdir -p "$t/graphify-out"
+    printf '{}\n' > "$t/graphify-out/graph.json"
+    local log="$t/graphify-out/.refresh.log" rc=0 size
+    # ~4 KiB of junk against a 1 KiB cap.
+    for _ in $(seq 1 64); do printf '%064d\n' 0; done > "$log"
+    HIVESMITH_GRAPHIFY_LOG_CAP=1024 HIVESMITH_GRAPHIFY_DEBOUNCE=0 "$REFRESH" "$t"
+    size="$(wc -c <"$log" | tr -d ' ')"
+    # The rebuild appends asynchronously, so assert it shrank well below the
+    # pre-truncate size rather than pinning an exact byte count.
+    [ "$size" -ge 4160 ] && { printf '  ASSERT FAIL: log not truncated (%s bytes)\n' "$size" >&2; rc=1; }
+    rm -rf "$t"; return "$rc"
+}
+
 # ---------------------------------------------------------------------------
 
 run_test "shared cache symlink across worktrees" test_shared_cache_symlink
@@ -341,6 +401,9 @@ run_test "refresh no-ops without graph.json"     test_refresh_noop_without_graph
 run_test "refresh never exits non-zero"          test_refresh_never_fails
 run_test "refresh debounces"                     test_refresh_debounces
 run_test "refresh honors disable env"            test_refresh_disabled_by_env
+run_test "setup fails clearly without graphify"  test_setup_without_graphify_fails_clearly
+run_test "failed migrate preserves the cache"    test_migrate_failure_preserves_cache
+run_test "refresh caps its log"                  test_refresh_caps_log
 run_test "committed refresh copy is in sync"     test_refresh_copy_in_sync
 
 printf '\n%d passed, %d failed, %d skipped.\n' "$PASS" "$FAIL" "$SKIP"

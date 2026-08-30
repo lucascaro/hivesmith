@@ -98,7 +98,7 @@ Three invariants: it **never blocks** the agent, it **never exits non-zero** (a 
 - `skills/graphify-init/SKILL.md` — the skill body: preflight, version-drift warning, invoke setup, report.
 - `skills/graphify-init/graphify-setup.sh` — shared-cache symlink, hook install + guard patch, settings merge, AGENTS.md block, `--migrate` / `--uninstall`.
 - `skills/graphify-init/graphify-refresh.sh` — debounced AST-only refresh, called by `PostToolUse`.
-- `skills/graphify-init/test/run-all.sh` — assert-style suite, bash 3.2 compatible, mirroring `scripts/brain/test/run-all.sh`.
+- `skills/graphify-init/test/run-all.sh` — assert-style suite, bash 3.2 compatible, mirroring `scripts/brain/test/run-all.sh`. 16 tests after review iteration 1.
 - `scripts/graphify-refresh.sh` — the copy `graphify-setup.sh` places in a wired project; committed here because this repo dogfoods the setup. Kept in sync with the skill copy by `test_refresh_copy_in_sync`.
 - `.gitattributes` — written by `graphify hook install` (union merge driver for `graph.json`). Committed so a setup re-run leaves a clean worktree.
 - `.changesets/<n>-graphify-init.md` — per repo convention.
@@ -152,11 +152,18 @@ grep -c 'HIVESMITH_GRAPHIFY_WORKTREE' "$(git rev-parse --git-common-dir)/hooks/p
 - **2026-08-30** — No `install.sh` change needed. Why: it already auto-discovers `skills/*/` and renders with `cp -R`, which preserves the executable bit; the list near line 1046 is the brain-specific PATH-symlink list, not a general chmod list. The scripts are invoked by path, not from `PATH`.
 - **2026-08-30** — `.gitignore` uses `.claude/*` + `!.claude/settings.json`, not `.claude/` + a negation. Why: git cannot re-include a file whose parent directory is excluded, so the negation is silently inert against a directory pattern. Verified with `git check-ignore -v`.
 - **2026-08-30** — `graphify-setup.sh` resolves the shared-cache path with `pwd -P`. Why: on macOS a repo reached via a symlinked path (`/var` -> `/private/var`) would otherwise record a logical target that differs per route; the symlink must point at a physical path.
+- **2026-08-30** (review iter 1) — `--migrate` / `--uninstall` copy with a single `cp -R … || die` instead of a `find | while` pipeline. Why: the loop body ran in a subshell on the right of a pipe, so a failure flag set inside it could never reach the following `rm -rf` — a swallowed copy error destroyed the very cache the `die` above it exists to protect. Review finding, BLOCKING.
+- **2026-08-30** (review iter 1) — Wired graphify's `PreToolUse` orientation nudges by calling `graphify.install._install_claude_hook(Path('.'), project=True)` directly rather than `graphify claude install`. Why: the CLI also writes a graphify section into `CLAUDE.md`, duplicating the `AGENTS.md` block this script maintains. `project=True` emits a bare command rather than an installing-machine-specific path (graphify #3129), which is correct for a committed `settings.json`. Best-effort with a graceful skip, since it reaches into a private function. Closes the plan/code gap the review flagged.
+- **2026-08-30** (review iter 1) — Documented rather than "fixed" the refresh debounce race. Why: `graphify.watch._rebuild_code` already takes a non-blocking per-repo flock (`watch.py:1327`), so a second concurrent `graphify update` exits instead of racing. The debounce avoids process-spawn cost; mutual exclusion lives downstream. A second lock would be redundant machinery guarding an already-guarded section.
+- **2026-08-30** (review iter 1) — Kept `graphifyy` unpinned in CI. Why: the `graphify-init-tests` job exists to catch upstream reshaping its generated hook text. Pinning would test a version nobody runs and let the drift reach users undetected. Operator decision.
+- **2026-08-30** (review iter 1) — Kept `.gitattributes` committed despite `merge=graphify` being inert here (graph.json is gitignored). Why: `graphify hook install` recreates it on every setup run, so deleting it makes each run dirty the worktree. Documented in the file itself.
+- **2026-08-30** (review iter 1) — Capped `.refresh.log` at 1 MiB (`HIVESMITH_GRAPHIFY_LOG_CAP`) and left `scripts/graphify-refresh.sh` a copy rather than a symlink. Why: a symlink's survival through `install.sh`'s `cp -R` rendering is an unverified risk, and `test_refresh_copy_in_sync` already fails the build on drift.
 - **2026-08-30** — `/hs-graphify-init` stays an explicit offer in `/hs-hivesmith-init`, not an automatic step. Why: installing git hooks and editor hooks unprompted is the wrong default. Raised at plan review; approved at the stated default.
 
 ## Progress
 
 - **2026-08-30** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
+- **2026-08-30** — Review iteration 1: REQUEST_CHANGES, escalated (autofix found zero SAFE fixes — all 10 findings were design decisions). Fixed the BLOCKING `--migrate` data-loss defect and its `--uninstall` twin, closed the `graphify claude install` plan gap, added 3 tests (16 total), capped the refresh log. Documented the debounce/flock relationship, `.gitattributes`, and the CI-pinning decision rather than changing them.
 - **2026-08-30** — Implemented on `feature/58-wire-graphify-into-hivesmith-with-shared-cache`. Skill + two scripts + 13-test suite written; repo wired (AGENTS.md, ci.yml, .gitignore, hivesmith-init, changeset); setup dogfooded in this worktree. All AGENTS.md checks pass: shellcheck (28 scripts), graphify-init suite 13/13, brain suite 13/13, install smoke (both prefixes), render correctness, changelog gate.
 
 ## Open questions
@@ -168,5 +175,7 @@ None blocking. Deferred, not blocking:
 - Worth filing upstream regardless: ask graphify for a `GRAPHIFY_ALLOW_WORKTREE=1` escape hatch so the guard patch can be deleted.
 
 ## PR convergence ledger
+
+- **2026-08-30 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 40a4c2f4c53fadd11a3b6ac81f9d0dc8f0d5f0f2b3fb4e00cf7b0e0e6a89c47f; threads_open: 0; action: escalated:risky fix needs human decision; head_sha: e94a5e4.
 
 ## QA verdict

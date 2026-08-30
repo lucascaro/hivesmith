@@ -41,6 +41,12 @@ mtime_of() {
     stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
 }
 
+# This is a check-then-touch, not a lock: two hooks firing in the same instant
+# can both pass. That is deliberate and safe — graphify.watch._rebuild_code
+# takes a NON-BLOCKING per-repo flock (watch.py:1327), so the loser exits
+# immediately rather than running a second concurrent rebuild. The debounce
+# exists to avoid the cost of spawning that process, not to provide mutual
+# exclusion, which already lives downstream. Do not add a second lock here.
 if [ -f "$stamp" ]; then
     age=$(( $(date +%s) - $(mtime_of "$stamp") ))
     [ "$age" -lt "$debounce" ] && exit 0
@@ -52,11 +58,20 @@ command -v graphify >/dev/null 2>&1 || exit 0
 # rebuild even if the rebuild itself is slow to start.
 touch "$stamp" 2>/dev/null || exit 0
 
+# Truncate a log that has grown past the cap before appending. A hook running
+# after every edit burst would otherwise grow this file without bound, and
+# nothing ever reads more than its tail.
+log="$out/.refresh.log"
+cap="${HIVESMITH_GRAPHIFY_LOG_CAP:-1048576}"
+if [ -f "$log" ]; then
+    size=$(wc -c <"$log" 2>/dev/null || echo 0)
+    [ "$size" -gt "$cap" ] && : >"$log"
+fi
+
 # --no-cluster: clustering is for human-facing reports, not for keeping the
 # structural map current, and it is the slow half of the rebuild.
 # Subshell + background rather than `nohup`: Git for Windows' bundled shell
-# ships no nohup, and the hook must not depend on it (graphify hit the same
-# thing in its own hooks, #1161).
-( graphify update . --no-cluster >>"$out/.refresh.log" 2>&1 & ) &
+# ships no nohup, and the hook must not depend on it (graphify #1161).
+( graphify update . --no-cluster >>"$log" 2>&1 & ) &
 
 exit 0
