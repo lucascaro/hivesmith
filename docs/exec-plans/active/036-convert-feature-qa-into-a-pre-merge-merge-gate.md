@@ -178,7 +178,7 @@ Two invariants held before this PR and no longer do. Every *reader* of stage or 
 - **2026-08-30 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: e7f40d71; threads_open: 0; action: fixed 3 findings + push; head_sha: 6315d1d.
 - **2026-08-30 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 5a909c25; threads_open: 0; action: fixed 3 findings + push; head_sha: a3b056a.
 - **2026-08-30 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0f418bc9; threads_open: 0; action: fixed 8 findings + push; head_sha: ce5ea3b.
-- **2026-08-30 iter 5** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ea3d056b; threads_open: 0; blocks_merge: false; action: fixed 2 findings + push; head_sha: pending.
+- **2026-08-30 iter 5** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ea3d056b; threads_open: 0; action: stop; head_sha: 3b97161.
 
 ## Gate verdict
 
