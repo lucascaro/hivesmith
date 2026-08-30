@@ -160,6 +160,8 @@ None.
 
 <Append-only. One entry per `/review-loop` iteration.>
 
+- **2026-08-30 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 66044f33; threads_open: 0; action: fixed 3 findings + push; head_sha: 01c914c.
+
 ## Gate verdict
 
 <Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
