@@ -28,7 +28,7 @@ Broad regression review is `/review-pr`'s job, driven to convergence by `/review
 This skill owns Stage = `GATE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
-2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: GATE` and locate its exec plan. Do not scan the generated `index.md`.
+2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: GATE` and locate its exec plan under `docs/exec-plans/{active,completed}/`. Do not scan the generated `index.md`.
 3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: GATE`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 4. **Resolve the PR state** from the plan's `PR:` header field: `gh pr view <pr-number> --json state -q .state`.
 
@@ -42,14 +42,14 @@ This skill owns Stage = `GATE`. Before doing any work:
 
 ## Layout resolution
 
-- **Current:** plan at `docs/exec-plans/active/<NNN>-*.md`, spec at `docs/product-specs/<NNN>-*.md`, index at `docs/product-specs/index.md`. Plan's completed location: `docs/exec-plans/completed/`.
+- **Current:** plan at `docs/exec-plans/{active,completed}/<NNN>-*.md` — glob **both**, because a re-run after a crash mid-PASS may find the plan already moved — spec at `docs/product-specs/<NNN>-*.md`, index at `docs/product-specs/index.md`. Plan's completed location: `docs/exec-plans/completed/`.
 - **Legacy fallback:** file at `features/active/<NNN>-*.md`, index at `features/BACKLOG.md`. Completed location: `features/completed/`. Only when `docs/exec-plans/` does not exist.
 
 ## Steps
 
 1. **Build the gate checklist** by reading these sources in order:
    - **Spec** (`docs/product-specs/<NNN>-*.md`): every entry under `## Success criteria` is a required check. Every entry under `## Non-goals` is a required *negative* check (verify the change did not implement these).
-   - **Plan** (`docs/exec-plans/active/<NNN>-*.md`): read the `## Approach` section so you understand the design under test, and the `### Tests` section so you know what the plan promised.
+   - **Plan** (`docs/exec-plans/{active,completed}/<NNN>-*.md` — glob both, per Layout resolution): read the `## Approach` section so you understand the design under test, and the `### Tests` section so you know what the plan promised.
    - **Spec's user flows** (if the spec lists explicit user flows under Desired behavior): each flow is a required end-to-end check.
 
 2. **Establish the diff range.** Everything below reads the change under test through this range:
@@ -96,7 +96,7 @@ This skill owns Stage = `GATE`. Before doing any work:
 
    **On PASS** — write order matters: do all non-stage writes first, then the spec frontmatter `stage:` transition as the **last** write (idempotent on re-run after a partial-state crash):
    - Set `Status:` to `completed` in the plan header. Do **not** write a `Stage:` line back into the plan — the plan no longer carries one; the spec's frontmatter `stage:` is the sole SoR.
-   - Move the plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/` with `git mv` (legacy: `features/active/` → `features/completed/`).
+   - Move the plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/` with `git mv` (legacy: `features/active/` → `features/completed/`). **Skip this when the plan is already in `completed/`** — a re-run after a crash mid-PASS re-enters here with the move already done, and that must be a no-op, not an error.
    - Update the spec's `Exec plan:` link to point at the `completed/` path.
    - Set the spec's frontmatter `pr: <pr-number>` and `shipped: <today's date>` (ISO `YYYY-MM-DD`). The merge follows this gate within minutes, so today's date is the ship date. Do **not** read `gh pr view --json mergedAt` — it is `null` on an open PR. On the degraded `MERGED` path, use `mergedAt` instead, since the real merge date is known and may not be today.
    - Last write — set the spec's frontmatter `stage:` to `DONE`. **Do not edit `docs/product-specs/index.md`** — it's generated; the `block-generated-edits` CI job rejects PRs that touch it directly. It is rebuilt and direct-pushed by the `regenerate-generated` job after the merge lands on `main`.
