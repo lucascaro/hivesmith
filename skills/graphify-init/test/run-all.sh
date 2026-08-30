@@ -317,6 +317,40 @@ test_refresh_disabled_by_env() {
     rm -rf "$t"; return "$rc"
 }
 
+test_nudges_opt_out() {
+    need_graphify || return $?
+    local t; t="$(mktemp -d)"
+    setup_repo "$t"
+    local rc=0 s="$t/main-repo/.claude/settings.json"
+
+    (cd "$t/main-repo" && "$SETUP" --no-nudges --quiet) || { rm -rf "$t"; return 1; }
+    assert_file_contains "$s" 'graphify-refresh.sh' || rc=1
+    assert_file_lacks "$s" 'hook-guard' || rc=1
+
+    # And the env form, on a second repo so the first is not already wired.
+    local t2; t2="$(mktemp -d)"
+    setup_repo "$t2"
+    (cd "$t2/main-repo" && HIVESMITH_GRAPHIFY_NUDGES=0 "$SETUP" --quiet) || rc=1
+    assert_file_lacks "$t2/main-repo/.claude/settings.json" 'hook-guard' || rc=1
+    rm -rf "$t2"
+
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudges_on_by_default() {
+    need_graphify || return $?
+    local t; t="$(mktemp -d)"
+    setup_repo "$t"
+    local rc=0
+    (cd "$t/main-repo" && "$SETUP" --quiet) || { rm -rf "$t"; return 1; }
+    assert_file_contains "$t/main-repo/.claude/settings.json" 'hook-guard' || rc=1
+    # The CLI would also write a CLAUDE.md section duplicating our AGENTS.md
+    # block; calling install.py directly must not.
+    [ -f "$t/main-repo/CLAUDE.md" ] \
+        && { printf '  ASSERT FAIL: a CLAUDE.md was written\n' >&2; rc=1; }
+    rm -rf "$t"; return "$rc"
+}
+
 test_refresh_copy_in_sync() {
     # graphify-setup.sh copies the refresh script into <project>/scripts/. This
     # repo dogfoods the setup, so the committed copy must not drift.
@@ -363,7 +397,17 @@ test_migrate_failure_preserves_cache() {
 
     local rc=0
     (cd "$t/main-repo" && "$SETUP" --migrate --quiet >/dev/null 2>&1)
-    # Whether it failed at mkdir or at cp, the invariant is the same:
+    local setup_rc=$?
+
+    # Assert the setup ACTUALLY failed first. Without this the test passes
+    # vacuously the day chmod stops blocking the write (running as root, an
+    # ACL, or a refactor that copies before it checks) — it would silently
+    # stop covering the data-loss path it exists for.
+    if [ "$setup_rc" -eq 0 ]; then
+        printf '  ASSERT FAIL: setup succeeded; the failure this test needs did not occur\n' >&2
+        rc=1
+    fi
+    # The invariant, whether it failed at mkdir or at cp:
     [ -f "$t/main-repo/graphify-out/cache/semantic/deadbeef.json" ] \
         || { printf '  ASSERT FAIL: cache entry destroyed after a failed migrate\n' >&2; rc=1; }
 
@@ -404,6 +448,8 @@ run_test "refresh honors disable env"            test_refresh_disabled_by_env
 run_test "setup fails clearly without graphify"  test_setup_without_graphify_fails_clearly
 run_test "failed migrate preserves the cache"    test_migrate_failure_preserves_cache
 run_test "refresh caps its log"                  test_refresh_caps_log
+run_test "nudges can be opted out"               test_nudges_opt_out
+run_test "nudges on by default, no CLAUDE.md"    test_nudges_on_by_default
 run_test "committed refresh copy is in sync"     test_refresh_copy_in_sync
 
 printf '\n%d passed, %d failed, %d skipped.\n' "$PASS" "$FAIL" "$SKIP"

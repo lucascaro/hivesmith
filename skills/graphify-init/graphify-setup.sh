@@ -16,20 +16,24 @@
 # Idempotent. Reversible with --uninstall. Never destroys a populated cache.
 #
 # Usage:
-#   graphify-setup.sh [--migrate] [--uninstall] [--quiet] [project-dir]
+#   graphify-setup.sh [--migrate] [--uninstall] [--no-nudges] [--quiet] [project-dir]
 #
 #   --migrate    move an existing real <out>/cache into the shared dir instead
 #                of refusing. Required whenever a real cache dir is in the way.
 #   --uninstall  reverse everything: restore a real cache dir, strip hook
 #                blocks, remove the settings entry.
+#   --no-nudges  skip graphify's PreToolUse orientation hooks. They print
+#                agent-directing text on Read/Glob/Grep/Bash; useful, but
+#                invasive. Also settable as HIVESMITH_GRAPHIFY_NUDGES=0.
 #
-# Env: GRAPHIFY_OUT (default graphify-out).
+# Env: GRAPHIFY_OUT (default graphify-out), HIVESMITH_GRAPHIFY_NUDGES (default 1).
 
 set -euo pipefail
 
 MODE="install"
 MIGRATE=0
 QUIET=0
+NUDGES="${HIVESMITH_GRAPHIFY_NUDGES:-1}"
 PROJECT_DIR=""
 
 while [ $# -gt 0 ]; do
@@ -37,7 +41,8 @@ while [ $# -gt 0 ]; do
         --migrate)   MIGRATE=1; shift ;;
         --uninstall) MODE="uninstall"; shift ;;
         --quiet)     QUIET=1; shift ;;
-        -h|--help)   sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --no-nudges) NUDGES=0; shift ;;
+        -h|--help)   sed -n '2,34p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)          echo "Unknown arg: $1" >&2; exit 2 ;;
         *)           PROJECT_DIR="$1"; shift ;;
     esac
@@ -148,8 +153,12 @@ patch_worktree_guard() {
         return 0   # already patched (e.g. hook install left it in place)
     fi
 
-    tmp="$hook.hivesmith.tmp"
-    countfile="$hook.hivesmith.count"
+    # mktemp, not fixed names: $hook lives in the git COMMON hooks dir, so every
+    # worktree derives the identical path. Two concurrent graphify-init runs —
+    # the exact scenario this script exists for — would otherwise interleave on
+    # one temp file and cat a corrupted hook into place.
+    tmp="$(mktemp "$hook.hivesmith.XXXXXX")" || die "could not create a temp file beside $hook"
+    countfile="$(mktemp "$hook.hivesmith.XXXXXX")" || { rm -f "$tmp"; die "could not create a temp file beside $hook"; }
     awk -v guard="$GUARD_IF" -v repl="$GUARD_REPLACEMENT" -v cf="$countfile" '
         seen && $0 == "    exit 0" { print repl; n++; seen=0; next }
         { seen = ($0 == guard); print }
@@ -242,13 +251,24 @@ graphify_python() {
 
 claude_nudges() {
     action="$1"   # install | uninstall
+    # Opt-out. Unlike the PostToolUse refresh hook — which runs a script and
+    # says nothing — these PreToolUse hooks print agent-directing text that is
+    # fed back as context on Read/Glob/Grep/Bash, i.e. on an agent's most
+    # frequent tool calls. That is the point of them, but it is invasive enough
+    # that a project (or a contributor who merely cloned a repo where they are
+    # committed) must be able to turn them off without hand-editing JSON.
+    if [ "$NUDGES" != "1" ] && [ "$action" = "install" ]; then
+        say "  nudges       skipped (--no-nudges / HIVESMITH_GRAPHIFY_NUDGES=0)"
+        return 0
+    fi
     py="$(graphify_python)" || {
         say "  nudges       skipped (no python with graphify importable)"
         return 0
     }
     fn="_install_claude_hook"
     [ "$action" = "install" ] || fn="_uninstall_claude_hook"
-    if "$py" - "$fn" <<'PYEOF' 2>/dev/null
+    # >/dev/null: graphify prints its own multi-line banner; we report one line.
+    if "$py" - "$fn" >/dev/null 2>&1 <<'PYEOF' 
 import sys
 from pathlib import Path
 import graphify.install as gi
@@ -342,6 +362,11 @@ worktree. Do not run a rebuild by hand as part of ordinary work.
 
 Automatic refreshes are AST-only and never spend tokens. Set
 \`HIVESMITH_GRAPHIFY_REFRESH=0\` to silence them for a session.
+
+This project also registers graphify's \`PreToolUse\` orientation hooks, which
+print a reminder to consult the graph before \`Read\`/\`Glob\`/\`Grep\`/\`Bash\`.
+Re-run the setup with \`--no-nudges\` (or \`HIVESMITH_GRAPHIFY_NUDGES=0\`) to drop
+them while keeping everything else.
 $AGENTS_END
 EOF
 }

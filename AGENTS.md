@@ -13,6 +13,11 @@ worktree. Do not run a rebuild by hand as part of ordinary work.
 
 Automatic refreshes are AST-only and never spend tokens. Set
 `HIVESMITH_GRAPHIFY_REFRESH=0` to silence them for a session.
+
+This project also registers graphify's `PreToolUse` orientation hooks, which
+print a reminder to consult the graph before `Read`/`Glob`/`Grep`/`Bash`.
+Re-run the setup with `--no-nudges` (or `HIVESMITH_GRAPHIFY_NUDGES=0`) to drop
+them while keeping everything else.
 <!-- END HIVESMITH GRAPHIFY -->
 
 <!-- BEGIN HIVESMITH -->

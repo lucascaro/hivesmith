@@ -1,7 +1,7 @@
 ---
 name: graphify-init
 description: Wire graphify into this project so its knowledge graph stays fresh across git worktrees — shared extraction cache, worktree-aware git hooks, debounced auto-refresh after edits
-argument-hint: "[--migrate] [--uninstall]"
+argument-hint: "[--migrate] [--no-nudges] [--uninstall]"
 allowed-tools: Bash Read
 ---
 
@@ -19,7 +19,9 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 
 3. **A debounced auto-refresh.** A Claude Code `PostToolUse` hook on `Edit|Write|MultiEdit` runs `graphify-refresh.sh`, which triggers an AST-only incremental rebuild at most once per debounce window. It never blocks, never fails a tool call, and never spends LLM tokens.
 
-4. **An `AGENTS.md` block** telling agents how to orient (`GRAPH_REPORT.md`), trace (`graphify query`), and check blast radius (`graphify affected`) — and that they no longer need to rebuild by hand.
+4. **graphify's own `PreToolUse` orientation hooks** (`graphify hook-guard search` / `read`). Unlike the refresh hook, these *print agent-directing text* that is fed back as context on `Read`/`Glob`/`Grep`/`Bash` — an agent's most frequent tool calls. That is the point of them: they nudge the agent to consult the graph before grepping. It is also invasive, and because `.claude/settings.json` is committed they reach everyone who clones the repo, not just whoever ran this skill. Disable with `--no-nudges` or `HIVESMITH_GRAPHIFY_NUDGES=0`; the rest of the setup is unaffected.
+
+5. **An `AGENTS.md` block** telling agents how to orient (`GRAPH_REPORT.md`), trace (`graphify query`), and check blast radius (`graphify affected`) — and that they no longer need to rebuild by hand.
 
 ## Steps
 
@@ -37,6 +39,7 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 
    Pass through the user's arguments:
    - `--migrate` — required when `graphify-out/cache` already exists as a real directory. Without it the script **refuses**, on purpose: those entries cost real money to rebuild, so it will not delete them behind the user's back. Relay the refusal and ask before re-running with `--migrate`.
+   - `--no-nudges` — skip the `PreToolUse` orientation hooks described above, keeping the cache, git hooks, and refresh hook.
    - `--uninstall` — reverses everything: restores a real cache directory (contents preserved), strips the hook blocks, removes the settings entry and the `AGENTS.md` block.
 
 5. **Report what changed** — the script prints one line per component. If it exited non-zero, relay the message verbatim rather than paraphrasing; the failure modes are deliberately specific.
@@ -55,6 +58,8 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 | `HIVESMITH_GRAPHIFY_REFRESH` | `1` | `0` disables the post-edit refresh for a session. |
 | `HIVESMITH_GRAPHIFY_DEBOUNCE` | `90` | Seconds between refreshes. |
 | `HIVESMITH_GRAPHIFY_WORKTREE` | `1` | `0` restores graphify's upstream behavior (skip rebuilds in linked worktrees). |
+| `HIVESMITH_GRAPHIFY_NUDGES` | `1` | `0` skips graphify's `PreToolUse` orientation hooks at setup time. |
+| `HIVESMITH_GRAPHIFY_LOG_CAP` | `1048576` | Bytes; `.refresh.log` is truncated past this. |
 | `GRAPHIFY_OUT` | `graphify-out` | Output directory name; honored by graphify and by both scripts. |
 
 ## Tests
