@@ -400,20 +400,29 @@ test_nudges_on_by_default() {
     rm -rf "$t"; return "$rc"
 }
 
-test_refresh_copy_in_sync() {
-    # graphify-setup.sh copies the refresh script into <project>/scripts/. This
-    # repo dogfoods the setup, so the committed copy must not drift.
-    # Absence is a FAILURE, not a skip: the committed .claude/settings.json
-    # hardcodes this path as a PostToolUse hook, so deleting it breaks the
-    # wiring while a "return 0" would keep the suite green.
-    [ -f "$REPO/scripts/graphify-refresh.sh" ] || {
-        printf '  ASSERT FAIL: scripts/graphify-refresh.sh is missing; settings.json points at it.\n' >&2
-        return 1
-    }
-    cmp -s "$REFRESH" "$REPO/scripts/graphify-refresh.sh" && return 0
-    printf '  ASSERT FAIL: scripts/graphify-refresh.sh has drifted from the skill copy.\n' >&2
-    printf '  Re-run skills/graphify-init/graphify-setup.sh to refresh it.\n' >&2
-    return 1
+test_hook_target_is_untracked_and_guarded() {
+    # The committed settings.json must never point the PostToolUse hook at a
+    # TRACKED path: a contributor PR editing that file's body would then run on
+    # any maintainer who checks the branch out, while the reviewed command
+    # string stays identical. It must also degrade to a no-op when the script
+    # is absent, rather than 127 on every tool call.
+    need_graphify || return $?
+    local t; t="$(mktemp -d)"
+    setup_repo "$t"
+    local rc=0 s="$t/main-repo/.claude/settings.json"
+    (cd "$t/main-repo" && "$SETUP" --quiet) || { rm -rf "$t"; return 1; }
+
+    assert_file_contains "$s" 'graphify-out/graphify-refresh.sh' || rc=1
+    assert_file_lacks "$s" 'scripts/graphify-refresh.sh' || rc=1
+    # -x guard present, so a wiped output dir is a no-op not a failure.
+    assert_file_contains "$s" '|| exit 0' || rc=1
+    # The target must be ignored by git in the wired project.
+    if ! (cd "$t/main-repo" && git check-ignore -q graphify-out/graphify-refresh.sh); then
+        printf '  ASSERT FAIL: hook target is not gitignored\n' >&2; rc=1
+    fi
+    # graphify's own nudges must be guarded too.
+    assert_file_lacks "$s" '"command": "graphify hook-guard' || rc=1
+    rm -rf "$t"; return "$rc"
 }
 
 
@@ -506,7 +515,7 @@ run_test "failed migrate preserves the cache"    test_migrate_failure_preserves_
 run_test "refresh caps its log"                  test_refresh_caps_log
 run_test "nudges can be opted out"               test_nudges_opt_out
 run_test "nudges on by default, no CLAUDE.md"    test_nudges_on_by_default
-run_test "committed refresh copy is in sync"     test_refresh_copy_in_sync
+run_test "hook target untracked and guarded"      test_hook_target_is_untracked_and_guarded
 
 printf '\n%d passed, %d failed, %d skipped.\n' "$PASS" "$FAIL" "$SKIP"
 if [ "$FAIL" -gt 0 ]; then

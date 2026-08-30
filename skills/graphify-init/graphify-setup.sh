@@ -228,10 +228,29 @@ uninstall_hooks() {
 # 3. Claude Code PostToolUse hook
 # ---------------------------------------------------------------------------
 
-REFRESH_REL="scripts/graphify-refresh.sh"
-# $CLAUDE_PROJECT_DIR is expanded by Claude Code at hook time, not here.
+# The refresh script lives in the OUTPUT dir, which is gitignored — never in a
+# tracked path. A committed hook pointing at a tracked script is a
+# branch-controlled payload: a contributor PR editing that script's body gets
+# code execution on any maintainer who checks the branch out and makes one
+# edit, because what a reviewer sees is the unchanging command string, not the
+# file it points at. Gitignored means a PR cannot change what runs.
+REFRESH_REL="$OUT/graphify-refresh.sh"
+# $CLAUDE_PROJECT_DIR is expanded by Claude Code at hook time, not here. The
+# guard makes a missing script a no-op rather than a 127 on every tool call —
+# the output dir can be wiped (`graphify uninstall --purge`, a stray clean)
+# while the committed settings.json still names the hook.
 # shellcheck disable=SC2016
-HOOK_COMMAND='"$CLAUDE_PROJECT_DIR"/scripts/graphify-refresh.sh'
+HOOK_COMMAND='sh -c '"'"'[ -x "$CLAUDE_PROJECT_DIR/graphify-out/graphify-refresh.sh" ] || exit 0; exec "$CLAUDE_PROJECT_DIR/graphify-out/graphify-refresh.sh"'"'"''
+
+# The committed hook's safety rests on its target being untracked, so ensure
+# the output dir is actually ignored rather than assuming it. Without this, a
+# project that has not ignored graphify-out/ could commit the refresh script
+# and reopen the branch-controlled-payload path the hook was moved to avoid.
+ensure_out_ignored() {
+    git check-ignore -q "$OUT" 2>/dev/null && return 0
+    printf '\n# graphify build artifacts (added by /graphify-init). The PostToolUse hook\n# in .claude/settings.json executes %s/graphify-refresh.sh, so this\n# directory MUST stay untracked — a tracked hook target is a payload any PR\n# could change.\n%s/\n' "$OUT" "$OUT" >> .gitignore
+    say "  gitignore    added $OUT/ (the hook target must stay untracked)"
+}
 
 copy_refresh_script() {
     src="$SELF_DIR/graphify-refresh.sh"
@@ -326,6 +345,7 @@ else:
 PYEOF
     then
         rm -f "$nudge_err"
+        [ "$action" = "install" ] && guard_nudge_commands
         say "  nudges       graphify PreToolUse orientation hooks ${action}ed"
         return 0
     fi
@@ -344,6 +364,31 @@ PYEOF
     # --no-nudges exists for anyone who does not want them.
     [ "$action" = "install" ] && die "refusing to report a successful setup with the nudges missing. Re-run with --no-nudges to proceed without them."
     return 0
+}
+
+# graphify registers its nudges as a bare `graphify hook-guard ...`. Since this
+# settings.json is COMMITTED, anyone who clones without graphify installed would
+# get exit 127 on every Bash/Grep/Read/Glob call. Wrap each command so a missing
+# graphify is a silent no-op — the same degradation the refresh hook already has.
+guard_nudge_commands() {
+    python3 - <<'PYEOF'
+import json
+from pathlib import Path
+
+path = Path(".claude/settings.json")
+if not path.exists():
+    raise SystemExit(0)
+settings = json.loads(path.read_text(encoding="utf-8"))
+changed = False
+for entry in settings.get("hooks", {}).get("PreToolUse", []):
+    for hook in entry.get("hooks", []):
+        cmd = hook.get("command", "")
+        if cmd.startswith("graphify ") and "command -v graphify" not in cmd:
+            hook["command"] = f"command -v graphify >/dev/null 2>&1 && {cmd} || exit 0"
+            changed = True
+if changed:
+    path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+PYEOF
 }
 
 # Merge semantics mirror graphify's own installer (graphify/install.py):
@@ -472,6 +517,7 @@ fi
 say "graphify-setup: wiring $(pwd) (graphify $GRAPHIFY_VERSION)"
 link_cache
 install_hooks
+ensure_out_ignored
 copy_refresh_script
 settings_merge install
 claude_nudges install

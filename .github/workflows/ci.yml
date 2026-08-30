@@ -50,7 +50,7 @@ jobs:
             skills/graphify-init/graphify-setup.sh
             skills/graphify-init/graphify-refresh.sh
             skills/graphify-init/test/run-all.sh
-            scripts/graphify-refresh.sh
+           
 
   install-smoke:
     runs-on: ubuntu-latest
