@@ -37,7 +37,7 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
    | Reviewed | standalone: `status:` · spec-driven: `## Review log` | standalone plan is still `status: DRAFT`; spec-driven plan has no `## Review log` entry |
    | Non-goals | standalone: the plan's `## Non-goals` · spec-driven: the **spec's** `## Non-goals` | the section is missing or empty — an executor with no boundary will invent one |
 
-   The `Reads` column matters: exec plans carry no frontmatter and no `## Non-goals` — non-goals live in `docs/product-specs/<NNN>-*.md`, which is where `/feature-qa` reads them from too. Asserting on the plan file in both lanes would refuse every spec-driven plan.
+   The `Reads` column matters: exec plans carry no frontmatter and no `## Non-goals` — non-goals live in `docs/product-specs/<NNN>-*.md`, which is where `/merge-gate` reads them from too. Asserting on the plan file in both lanes would refuse every spec-driven plan.
 
    `## Verification` was added to `docs/exec-plans/_template.md` alongside this skill. A plan scaffolded from an older template will not have it; that is a real gate failure. This skill never backfills it — refuse and send the user to `/feature-plan-review`, which fixes it where the added commands get reviewed. `/feature-plan` backfills too, if it reaches the plan first.
 

@@ -22,10 +22,10 @@ Completeness is cheap when AI does the work. Keep iterating until findings actua
 
 ## Cold-start: read the convergence ledger
 
-Before iterating, locate the matching exec plan (current: `docs/exec-plans/active/<NNN>-*.md` where `<NNN>` is derived from `gh pr view <PR> --json body,title` — look for `Fixes #<n>` / `Closes #<n>` in the PR body, or match the branch name `feature/<n>-*`). If a plan is found:
+Before iterating, locate the matching exec plan (current: `docs/exec-plans/{active,completed}/<NNN>-*.md` — check **both**, since `/merge-gate` moves the plan to `completed/` while the PR is still open — where `<NNN>` is derived from `gh pr view <PR> --json body,title` — look for `Fixes #<n>` / `Closes #<n>` in the PR body, or match the branch name `feature/<n>-*`). If a plan is found:
 
 1. Read its `## PR convergence ledger` section. The last line gives `prev_findings_hash` (the hex value) — seed the loop-detection guard with it instead of starting empty.
-2. Read `stage:` from the matching spec's YAML frontmatter (`docs/product-specs/<NNN>-*.md`) — the exec plan no longer carries a `Stage:` line, and the generated `index.md` is a derived view. If `stage` is not `REVIEW`, set it to `REVIEW` in the spec's frontmatter (no-op if already correct). **Legacy fallback:** when no spec frontmatter exists, read `Stage:` from the exec plan if present.
+2. Read `stage:` from the matching spec's YAML frontmatter (`docs/product-specs/<NNN>-*.md`) — the exec plan no longer carries a `Stage:` line, and the generated `index.md` is a derived view. Set it to `REVIEW` **only when the current stage is earlier than `REVIEW`** (`IMPLEMENT`, or unset) — that is the resume case this write exists for. **Never demote `GATE` or `DONE` back to `REVIEW`.** Under the pre-merge gate both are reachable on a still-open PR: a `/merge-gate` FAIL leaves `GATE` while the fix happens on the branch, and a gate PASS leaves `DONE` before Gate 6 merges. Overwriting either would strand the feature — demoting `DONE` in particular destroys the gate's terminal write while `pr:`, `shipped:` and the `completed/` plan move stay behind, and no later step rewrites them. When the stage is already `GATE` or `DONE`, leave it untouched and say so in the run output: the loop is re-running on an already-gated PR. **Legacy fallback:** when no spec frontmatter exists, read `Stage:` from the exec plan if present.
 3. Throughout iteration, **append** one line per iteration to the ledger. Never rewrite or delete prior entries.
 
 If no matching plan is found (PR was hand-authored, not from the feature pipeline), skip the ledger entirely and run the loop with an empty `prev_findings_hash`. This is fine — the ledger is an optimization, not a requirement.
@@ -170,9 +170,11 @@ Final verdict: APPROVE | ESCALATED
 <bullet list>
 ```
 
-## 4a. On merge (best-effort post-loop hook)
+## 4a. On convergence (pre-merge post-loop hook)
 
-If, after the loop converges with `APPROVE`, the orchestrator detects the PR has been merged (e.g. user merges in a separate window before this skill exits, or `/feature-loop` Phase 6 calls back into review-loop after merging): if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `QA` in the spec's frontmatter — that's the sole stage write. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/feature-qa <issue-number>` next. Do not move the plan file or touch the Completed table — that is `/feature-qa`'s job after QA PASS.
+Once the loop converges with `APPROVE`, and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop` step 46 is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
+
+If the PR turns out to have been merged already (e.g. the user merged in a separate window before this skill exits), still set `GATE` and point at `/merge-gate` — it has a degraded post-merge path for exactly this case.
 
 ## 5. Rules
 

@@ -77,7 +77,7 @@ Boiling the lake is about *coverage of the stated scope*, not about inventing sc
    - **New files:** path and purpose.
    - **Tests:** concrete, named test functions for every behavioral change — unit and integration/functional per `AGENTS.md`. File path, function name, what it verifies. Do not leave this section vague.
    - **Verification:** exact runnable commands. Not "run the tests".
-   - **Non-goals:** what this deliberately does not do. Standalone mode writes these into the plan's `## Non-goals`; spec mode writes them into the **spec's** `## Non-goals`, which is where `/feature-qa` reads them from.
+   - **Non-goals:** what this deliberately does not do. Standalone mode writes these into the plan's `## Non-goals`; spec mode writes them into the **spec's** `## Non-goals`, which is where `/merge-gate` reads them from.
    - **Open questions / risks:** what could go wrong, edge cases, alternatives ruled out.
 
 8. **Review format.** Pick how the draft is presented:
@@ -93,7 +93,7 @@ Boiling the lake is about *coverage of the stated scope*, not about inventing sc
 
     - **Spec mode** — write the Approach, Files to change, New files, Tests, and **Verification** sections into the exec plan (legacy: the feature file's Plan section). Write order matters: do all non-stage writes first, then the stage transition as the **last** write, so a mid-sequence crash leaves the spec resumable. Idempotent on resume — detect partial state, finish the remaining writes, proceed.
       - **Backfill `## Verification` if the exec plan predates it.** **Backfill rule (shared).** A plan scaffolded from an older `docs/exec-plans/_template.md` has no `## Verification`. Both `/feature-plan` and `/feature-plan-review` backfill it — whichever reaches the plan first — by inserting the heading after `### Tests` with real runnable commands. Neither defers to the other; an old plan may legitimately be picked up by either. `/feature-plan-handoff` never backfills: it refuses, so the omission is fixed where it can be reviewed.
-      - Non-goals stay in the **spec** (`docs/product-specs/<NNN>-*.md` `## Non-goals`) — that is the spec lane's boundary and what `/feature-qa` validates against. Do not duplicate them into the exec plan. If the spec's `## Non-goals` is empty and the planning conversation established a real boundary, write it there.
+      - Non-goals stay in the **spec** (`docs/product-specs/<NNN>-*.md` `## Non-goals`) — that is the spec lane's boundary and what `/merge-gate` validates against. Do not duplicate them into the exec plan. If the spec's `## Non-goals` is empty and the planning conversation established a real boundary, write it there.
       - Update GitHub labels: `gh issue edit <number> --remove-label researching --add-label planned`.
       - Last write — set the authoritative stage to `IMPLEMENT`: the spec's frontmatter `stage:` under the current layout, or — under the **legacy** layout, where no spec frontmatter exists — the same source the cold-start guard read it from (the feature file's `Stage:` line, else the BACKLOG row). Write it wherever you read it; never leave the read and write paths pointing at different files.
       - **Do not edit `docs/product-specs/index.md`.** It's generated. The `block-generated-edits` CI job rejects PRs that touch it directly.

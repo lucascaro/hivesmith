@@ -88,4 +88,4 @@ PRs opened: <K>
 - Mechanical fixes only. Anything that requires judgment (rewriting prose, restructuring sections) is annotated, not edited.
 - Never delete a doc, even if every reference in it is dead. Empty docs are humans' call.
 - `--dry-run` skips PR creation; prints what would be done.
-- Skip `docs/exec-plans/active/` — those are WIP and the owners haven't shipped yet.
+- Skip `docs/exec-plans/active/` — those are WIP and the owners haven't shipped yet. Also skip any plan in `docs/exec-plans/completed/` whose spec is not yet `stage: DONE` *and merged*: `/merge-gate` moves a plan to `completed/` on the feature branch before the merge, so `completed/` can briefly hold WIP behind an open PR.

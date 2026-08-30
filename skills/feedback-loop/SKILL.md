@@ -35,7 +35,7 @@ Score the existing feedback loop on the six dimensions above, 0–10 each, with 
    - **Worker A — instrumentation**: search the repo for analytics/telemetry SDKs (`segment`, `posthog`, `mixpanel`, `amplitude`, `datadog`, `opentelemetry`, `prometheus`, `statsd`, `sentry`, `bugsnag`, `rollbar`, `honeycomb`, `newrelic`, `logflare`, `axiom`), structured logging (`winston`, `pino`, `zap`, `slog`, `structlog`), and dashboard references in docs. Report: which are present, where they're configured, what events are fired (sample 10 random instrumented call sites with file:line).
    - **Worker B — error visibility**: locate error-handling middleware, panic recovery, global handlers, error reporting calls. Locate any docs describing where errors land (oncall runbook, README "Operations" section, `docs/runbooks/`). Report: end-to-end path of an unhandled exception in production, with evidence.
    - **Worker C — user voice**: search for in-app feedback widgets, support email links, GitHub issue templates (`.github/ISSUE_TEMPLATE/`), Discord/Slack invite links in user-facing copy, public roadmap references. Report: every user-facing channel by which a problem report can reach the team.
-   - **Worker D — closure / triage**: read `docs/product-specs/`, `docs/exec-plans/completed/`, `CHANGELOG.md`, and the last 30 commits on the default branch. Look for evidence that shipped specs cite the metric they moved, or that QA verdicts (`## QA verdict` sections) reference real production data. Report: of the last N completed specs, how many cite a measurable signal post-merge.
+   - **Worker D — closure / triage**: read `docs/product-specs/`, `docs/exec-plans/completed/`, `CHANGELOG.md`, and the last 30 commits on the default branch. Look for evidence that shipped specs cite the metric they moved, or that gate verdicts (`## Gate verdict` sections, or `## QA verdict` in older plans) reference real production data. Report: of the last N completed specs, how many cite a measurable signal post-merge.
 
    Each worker returns:
    ```json
@@ -126,7 +126,7 @@ Propose a concrete feedback loop for this app. Walks the six dimensions, asking 
 
    ## Closure-of-loop proposal
 
-   <How a shipped spec confirms it moved the metric. Tied to /feature-qa's `## QA verdict` section: success criteria should be measurable post-merge, and QA should cite the metric.>
+   <How a shipped spec confirms it moved the metric. Tied to /merge-gate's `## Gate verdict` section: success criteria should be measurable, and the gate should cite the metric.>
    ```
 
 4. **Auto-create follow-up specs** for each dimension's proposed fix. For each, run a script-equivalent of `/feature-new` (write directly — do not invoke another skill from inside this one):

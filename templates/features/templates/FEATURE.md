@@ -1,7 +1,7 @@
 # Feature: <title>
 
 - **GitHub Issue:** #<number>
-- **Stage:** TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | QA | DONE
+- **Stage:** TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE
 - **Type:** bug | enhancement
 - **Complexity:** S | M | L
 - **Priority:** —
@@ -45,8 +45,8 @@
 
 - **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; mergeable: <MERGEABLE|CONFLICTING|UNKNOWN>; findings_hash: <hex|empty>; action: <stop|autofix+push|autofix+push (conflict)|escalated:<reason>>; head_sha: <short-sha>.
 
-## QA verdict
+## Gate verdict
 
-<Filled by `/feature-qa` after PR merges. Append-only.>
+<Filled by `/merge-gate` before the PR merges. Append-only.>
 
 - **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.

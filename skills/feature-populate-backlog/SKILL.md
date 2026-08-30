@@ -8,7 +8,7 @@ allowed-tools: Read Glob Grep Edit Write Bash AskUserQuestion
 
 # Populate Backlog From a Plan
 
-Take a multi-feature plan, roadmap, or design doc and seed the backlog with one TRIAGE-stage spec per feature. The output of this skill is ordinary specs that the rest of the pipeline (`/feature-triage → /feature-research → /feature-plan → /feature-implement → /review-loop → /feature-qa`) handles unchanged.
+Take a multi-feature plan, roadmap, or design doc and seed the backlog with one TRIAGE-stage spec per feature. The output of this skill is ordinary specs that the rest of the pipeline (`/feature-triage → /feature-research → /feature-plan → /feature-implement → /review-loop → /merge-gate`) handles unchanged.
 
 This skill operates **above** the boil-the-lake line: it splits a plan into independent features, but it never splits a single feature into sub-task specs. One feature with five implementation steps is still one spec.
 
