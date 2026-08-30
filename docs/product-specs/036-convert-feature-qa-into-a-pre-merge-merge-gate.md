@@ -3,14 +3,14 @@ title: Convert feature-qa into a pre-merge merge-gate
 type: enhancement
 complexity: M
 priority: P2
-stage: GATE
+stage: DONE
 pr: 57
-# shipped: 2026-MM-DD  # uncomment on DONE
+shipped: 2026-08-30
 ---
 
 # Convert feature-qa into a pre-merge merge-gate
 
-- **Exec plan:** [docs/exec-plans/active/036-convert-feature-qa-into-a-pre-merge-merge-gate.md](../exec-plans/active/036-convert-feature-qa-into-a-pre-merge-merge-gate.md)
+- **Exec plan:** [docs/exec-plans/completed/036-convert-feature-qa-into-a-pre-merge-merge-gate.md](../exec-plans/completed/036-convert-feature-qa-into-a-pre-merge-merge-gate.md)
 
 ## Problem
 
@@ -37,9 +37,9 @@ pipeline stage is named `GATE` to match.
 - The gate runs exactly three dimensions — acceptance, non-goals, doc accuracy. `build/lint/test` and `regression` appear nowhere in its dimension list.
 - The gate's cold-start guard accepts a PR in state `OPEN` whose plan ledger's latest entry is `verdict: APPROVE`, and refuses when the spec's `stage:` is not `GATE`.
 - On PASS the gate writes the verdict, sets `Status: completed`, moves the plan to `docs/exec-plans/completed/`, repoints the spec's `Exec plan:` link, sets `pr:` and `shipped:` (today's date), sets `stage: DONE` as the last write, commits, and pushes to the feature branch.
-- On FAIL the gate leaves `stage: GATE`, does not merge, and files no follow-up issue.
+- On FAIL the gate leaves `stage: DONE`, does not merge, and files no follow-up issue.
 - `scripts/regen-generated.py` and `templates/scripts/regen-generated.py` list `GATE` (not `QA`) in both `STAGES` and `ACTIVE_STAGES`; `scripts/regen-generated.sh` exits 0 against the repo, and a spec set to `stage: QA` fails with `invalid stage 'QA'`.
-- `feature-loop` merges only after the gate returns PASS: Phase 6 sets `stage: GATE` and pushes without merging, Phase 7 runs the gate, and Gate 6 runs `gh pr merge` afterwards.
+- `feature-loop` merges only after the gate returns PASS: Phase 6 sets `stage: DONE` and pushes without merging, Phase 7 runs the gate, and Gate 6 runs `gh pr merge` afterwards.
 - `grep -rnE "feature-qa|/hs-feature-qa|\bQA\b" skills/ templates/ scripts/ agents/ docs/product-specs/_template.md AGENTS.md README.md` returns nothing outside deliberate legacy-fallback mentions of the older `## QA verdict` heading. (The narrower `stage: QA` pattern is insufficient — it cannot match an inline enum comment such as `stage: TRIAGE  # … | QA | …`.)
 - Driving one feature end to end through `/hs-feature-loop` produces exactly one PR, whose diff contains the `completed/` plan rename plus `stage: DONE` and `shipped:` but does **not** contain `docs/product-specs/index.md`, and which passes `block-generated-edits` and `verify-generated`.
 

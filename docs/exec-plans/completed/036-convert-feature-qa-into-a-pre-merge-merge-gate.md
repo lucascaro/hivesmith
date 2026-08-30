@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/036-convert-feature-qa-into-a-pre-merge-merge-gate.md](../../product-specs/036-convert-feature-qa-into-a-pre-merge-merge-gate.md)
 - **Issue:** —
-- **Status:** active
+- **Status:** completed
 - **PR:** #57
 - **Branch:** `feature/036-convert-feature-qa-into-a-pre-merge-merge-gate`
 
@@ -183,3 +183,10 @@ Two invariants held before this PR and no longer do. Every *reader* of stage or 
 ## Gate verdict
 
 <Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
+
+- **2026-08-30** — verdict: PASS; checks: 3 dimensions / 0 failed / 0 followups; followups: none; one-line: gate run pre-merge on the open PR #57 — this change validating itself, all nine success criteria met and every non-goal held.
+  - 2026-08-30 dimensions:
+    - acceptance — PASS — SC1: `skills/merge-gate/SKILL.md` carries `name: merge-gate`, `skills/feature-qa/` gone. SC2: exactly three dimensions listed; `build/lint/test` and `regression` absent from the dimension list. SC3-SC5: cold-start guard, PASS write order, and the no-follow-up-issues FAIL path verified clause-by-clause against the spec text (SKILL.md is an agent prompt, so text correspondence is the observable). SC6: both `regen-generated.py` copies list `GATE`; `regen-generated.sh` exits 0 on the repo and exits 1 with `invalid stage 'QA'` on a scratch spec. SC7: Phase 6 pushes without merging, Phase 7 gates, Gate 6 merges only after PASS. SC8: sweep returns only the four documented legacy `## QA verdict` mentions. SC9: PR diff carries no generated file and `block-generated-edits` + `verify-generated` pass; the terminal `stage: DONE` write is this very commit, so it was necessarily unobservable from inside the run.
+    - non-goals — PASS — `regen-generated.py:251` (`stage=DONE requires shipped`) and the `_shipped_key` sort are outside the diff; no `subprocess`/`git` call exists in the regenerator, so it was not made git-aware; no `QA` → `GATE` alias; `docs/exec-plans/completed/` and active plans `016`/`020` show 0 changed lines; `changesets.yml` untouched and `ci.yml` not in the PR at all; the `review-loop` diff is stage/handoff plumbing only and leaves the review criteria and convergence mechanics untouched.
+    - doc accuracy — PASS — changeset `046` is schema-valid and its prose matches the shipped diff; `CHANGELOG.md` unmodified (generated); README cites `/merge-gate`; `AGENTS.md`, `templates/AGENTS.hivesmith.md` and `templates/PLANS.md` all state that `DONE` does not imply merged; both exec-plan templates use `## Gate verdict` and both spec templates list `GATE`; no stale `feature-qa` reference outside the documented fallback.
+  - Note: both validators independently flagged that this worktree's local `main` ref was stale at `2c83bfc` (origin/main is `df4aaf8`), so a `main...HEAD` range over-reported the diff. Re-checked against `origin/main...HEAD`: the real PR is 27 files and contains no `ci.yml` and no generated file.
