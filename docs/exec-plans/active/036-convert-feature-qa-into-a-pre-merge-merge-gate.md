@@ -144,12 +144,14 @@ own. Then break one spec success criterion and confirm the gate returns FAIL, le
 - **2026-08-30** — `shipped:` = the date the gate runs, rather than teaching the regenerator to derive it from git. Why: the merge follows the gate within minutes, so drift is ~0 and never exceeds a day; the alternative makes `regen-generated.py` git-aware for no practical gain.
 - **2026-08-30** — No `QA` → `GATE` compatibility alias. Why: zero specs are at `stage: QA`, and `regen-generated.py:247` already emits an error that names the fix.
 - **2026-08-30** — Renamed the GitHub labels in place (`qa` → `gate`, `qa-passed` → `gate-passed`, `qa-followup` → `gate-followup`) and created the missing `gate-failed`. Why: renaming keeps the label attached to issues that already carry it; `qa-failed` never existed, so the old skill's FAIL label step was already broken and this closes that gap. Labels are not code in this repo, so this is a live-repo op recorded here rather than a diff.
+- **2026-08-30** — Kept the `## QA verdict` legacy fallback rather than migrating the five in-flight plans' headings. Why: those sections are append-only historical record, and rewriting headings on active plans would churn files owned by other in-flight PRs. The cost is that every *reader* of the verdict must mirror the fallback — which is exactly the gap review iteration 2 caught in Gate 6.
 - **2026-08-30** — Dropped the `done` GitHub label step invented for Gate 6. Why: no such label existed, `/merge-gate` step 6 already moves `gate` → `gate-passed`, so the step was both broken and redundant.
 
 ## Progress
 
 - **2026-08-30** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
 - **2026-08-30** — Implemented; PR #57 opened; stage = REVIEW. All AGENTS.md gates green locally and all 12 CI checks green.
+- **2026-08-30** — review-loop iter 2: COMMENT, 0 threads. Fixed 3 more findings, all reader-side gaps from the rename: Gate 6 read only `## Gate verdict` while `/merge-gate` falls back to `## QA verdict` for the five in-flight plans; `/review-loop` §4a wrote `stage: GATE` without committing, which `/merge-gate`'s clean-tree guard would refuse on the standalone handoff; and `hs-validator`'s command-vetting whitelist still named only build/lint/test after that dimension was dropped.
 - **2026-08-30** — review-loop iter 1: COMMENT, 0 unresolved threads. Fixed 3 confirmed findings — stale `QA` in both spec-template stage enums (missed because the success-criteria grep `stage: QA` cannot match `stage: TRIAGE  # … | QA | …`), the nonexistent `gate-*`/`done` labels, and Gate 6 reading the plan at its pre-move path.
 
 ## Open questions
@@ -161,6 +163,7 @@ None.
 <Append-only. One entry per `/review-loop` iteration.>
 
 - **2026-08-30 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 66044f33; threads_open: 0; action: fixed 3 findings + push; head_sha: 01c914c.
+- **2026-08-30 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: e7f40d71; threads_open: 0; action: fixed 3 findings + push; head_sha: pending.
 
 ## Gate verdict
 
