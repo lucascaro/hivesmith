@@ -93,7 +93,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
    - `IMPLEMENT` → Phase 5
    - `REVIEW` → Phase 6
    - `GATE` → Phase 7
-   - `DONE` → report completed and stop.
+   - `DONE` → check the spec's `pr:`. If it names a PR still in state `OPEN`, the gate passed but the merge has not happened yet (Gate 6 was declined, or the run was interrupted between steps 49 and 53) — resume at Phase 7 step 52 (Gate 6) to finish the merge. Only report completed and stop when the PR is `MERGED`, or when there is no `pr:` at all.
 
 ## Phase 1: New Issue (description input only)
 
