@@ -175,6 +175,7 @@ grep -c 'HIVESMITH_GRAPHIFY_WORKTREE' "$(git rev-parse --git-common-dir)/hooks/p
 ## Progress
 
 - **2026-08-30** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
+- **2026-08-30** — Loop stopped at iteration 3/5 by operator decision after CI went green and the trust-boundary findings were resolved. 14 findings raised in iteration 3, all addressed.
 - **2026-08-30** — Review iteration 3: REQUEST_CHANGES, escalated on red CI. Two BLOCKING, both confirmed in the PR's own CI log: `mtime_of` died on every Linux host (BSD-first `stat` probe), and a swallowed nudge-install failure let setup exit 0 having registered nothing. Ten of the twelve remaining findings fixed. Outstanding for operator decision: the committed `.claude/settings.json` trust boundary (bare `graphify hook-guard` 127s without graphify; the PostToolUse hook targets a repo-tracked, branch-controlled script).
 - **2026-08-30** — Review iteration 2: COMMENT (no BLOCKING), 3 IMPORTANT, zero threads. Technically convergence under the loop rules, but two findings were real defects introduced by the iter-1 fix commit, so continued rather than stopping: fixed-name temp files racing across worktrees, and a vacuously-passing safety test. Also gave the PreToolUse nudges an opt-out plus documentation. 18 tests.
 - **2026-08-30** — Review iteration 1: REQUEST_CHANGES, escalated (autofix found zero SAFE fixes — all 10 findings were design decisions). Fixed the BLOCKING `--migrate` data-loss defect and its `--uninstall` twin, closed the `graphify claude install` plan gap, added 3 tests (16 total), capped the refresh log. Documented the debounce/flock relationship, `.gitattributes`, and the CI-pinning decision rather than changing them.
@@ -190,6 +191,7 @@ Deferred, not blocking:
 
 ## PR convergence ledger
 
+- **2026-08-30 iter 3c** — verdict: n/a (operator decision, loop stopped at 3/5); mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop — trust-boundary findings #9/#10 resolved by moving the hook target to the gitignored output dir; CI fully green; head_sha: 5c68385.
 - **2026-08-30 iter 3b** — verdict: pending re-review; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: fixes applied, CI now fully green (was red on graphify-init-tests); head_sha: 5642034.
 - **2026-08-30 iter 3** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b8660241a7c7aa2fb35fbf0840731962b0a08aed81b1c6d1196a71a389042e6f; threads_open: 0; action: escalated:required CI check failed + risky fixes; head_sha: 692d2c7.
 - **2026-08-30 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 92f097ccff3c8bb5121a1e85dc75931e988f54e5b157d7a7ce8f37ec9349e5c8; threads_open: 0; action: fixes applied by operator decision (continued past technical convergence per boil-the-lake); head_sha: d43453c.
