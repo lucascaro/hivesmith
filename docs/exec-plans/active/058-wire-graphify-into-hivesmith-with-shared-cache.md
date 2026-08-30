@@ -180,6 +180,7 @@ None blocking. Deferred, not blocking:
 
 ## PR convergence ledger
 
+- **2026-08-30 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 92f097ccff3c8bb5121a1e85dc75931e988f54e5b157d7a7ce8f37ec9349e5c8; threads_open: 0; action: fixes applied by operator decision (continued past technical convergence per boil-the-lake); head_sha: d43453c.
 - **2026-08-30 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 40a4c2f4c53fadd11a3b6ac81f9d0dc8f0d5f0f2b3fb4e00cf7b0e0e6a89c47f; threads_open: 0; action: escalated:risky fix needs human decision; head_sha: e94a5e4.
 
 ## QA verdict
