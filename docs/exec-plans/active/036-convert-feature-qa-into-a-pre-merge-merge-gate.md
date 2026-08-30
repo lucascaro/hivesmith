@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/036-convert-feature-qa-into-a-pre-merge-merge-gate.md](../../product-specs/036-convert-feature-qa-into-a-pre-merge-merge-gate.md)
 - **Issue:** —
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #57
+- **Branch:** `feature/036-convert-feature-qa-into-a-pre-merge-merge-gate`
 
 <!--
 Stage is **not** carried here. The spec's YAML frontmatter `stage:` is the

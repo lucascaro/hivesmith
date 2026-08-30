@@ -3,8 +3,8 @@ title: Convert feature-qa into a pre-merge merge-gate
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
-# pr: <number>         # uncomment when PR opens
+stage: REVIEW
+pr: 57
 # shipped: 2026-MM-DD  # uncomment on DONE
 ---
 
