@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Stamp the producing tool onto a commit, instead of hoping each CLI volunteers it.
+#
+# The problem this solves, measured on hive: 101 of 444 commits carry no
+# Co-Authored-By trailer, and 65 of those touch source files. Claude Code writes
+# one; other agents may not. Relying on each tool to self-report means the gap is
+# shaped like "whichever tool is quiet", which is the worst possible bias for a
+# comparison between tools.
+#
+# This infers from telemetry rather than from the tool's goodwill: if an agent
+# event for THIS project landed within the window, the trailer records that,
+# along with how long before the commit it was, so a reader can judge the
+# inference rather than trust it. It is evidence, not proof, and it says so.
+#
+# Deliberately conservative:
+#   - never overwrites an existing attribution (Co-Authored-By or Agent-Tool)
+#   - never stamps when the newest event is older than the window
+#   - never fails a commit; every path exits 0
+#
+# Install: scripts/telemetry/install-hooks.sh --commit-trailer [repo...]
+set -uo pipefail
+
+MSG_FILE="${1:-}"
+[ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ] || exit 0
+
+# Amend, merge, squash and template commits already have their attribution
+# settled; re-stamping them rewrites history's record of who did what.
+case "${2:-}" in merge|squash|commit) exit 0 ;; esac
+
+LOG="${HIVESMITH_TELEMETRY_LOG:-${HIVESMITH_HOME:-$HOME/.hivesmith}/telemetry/agent-events.jsonl}"
+WINDOW_S="${HIVESMITH_ATTRIBUTION_WINDOW_S:-1200}"   # 20 minutes
+[ -r "$LOG" ] || exit 0
+
+# Already attributed by the tool itself — leave it alone.
+grep -qiE '^(Co-authored-by|Agent-Tool):' "$MSG_FILE" && exit 0
+
+PROJECT="$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo unknown)")"
+
+read -r TOOL MODEL SESSION AGE <<<"$(
+  LOG="$LOG" PROJECT="$PROJECT" python3 - <<'PY' 2>/dev/null
+import json, os, datetime as dt
+log, proj = os.environ["LOG"], os.environ["PROJECT"]
+best = None
+try:
+    with open(log, encoding="utf-8", errors="replace") as fh:
+        # Newest-last; scan the tail rather than the whole file.
+        lines = fh.readlines()[-4000:]
+except OSError:
+    raise SystemExit
+for ln in lines:
+    try:
+        r = json.loads(ln)
+    except Exception:
+        continue
+    if r.get("project") != proj or not r.get("ts"):
+        continue
+    best = r
+if not best:
+    raise SystemExit
+try:
+    t = dt.datetime.fromisoformat(best["ts"].replace("Z", "+00:00"))
+except Exception:
+    raise SystemExit
+age = int((dt.datetime.now(dt.timezone.utc) - t).total_seconds())
+print(best.get("tool") or "unknown", best.get("model") or "unknown",
+      (best.get("session_id") or "unknown"), age)
+PY
+)"
+
+[ -n "${TOOL:-}" ] || exit 0
+[ "${AGE:-999999}" -le "$WINDOW_S" ] 2>/dev/null || exit 0
+
+# Trailers go after the body, separated by a blank line, so `git interpret-trailers`
+# and `git log --format=%(trailers)` can read them.
+printf '\nAgent-Tool: %s\nAgent-Model: %s\nAgent-Session: %s\nAgent-Attribution: inferred from telemetry %ss before commit\n' \
+  "$TOOL" "$MODEL" "$SESSION" "$AGE" >> "$MSG_FILE"
+exit 0
