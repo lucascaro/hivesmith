@@ -16,7 +16,7 @@ check(){ if printf '%s' "$3" | grep -qF -- "$2"; then ok "$1"; else bad "$1" "wa
 nocheck(){ if printf '%s' "$3" | grep -qF -- "$2"; then bad "$1" "did not want '$2'"; else ok "$1"; fi; }
 
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
-REPO="$W/proj"; mkdir -p "$REPO"; cd "$REPO"
+REPO="$W/proj"; mkdir -p "$REPO"; cd "$REPO" || exit 1
 git init -q .; git config user.email t@t; git config user.name t
 LOG="$W/events.jsonl"
 export HIVESMITH_TELEMETRY_LOG="$LOG"
@@ -55,7 +55,6 @@ nocheck "leaves an already-stamped commit alone" "Agent-Tool: pi" "$OUT"
 rm -f "$LOG"; event 7200 proj pi "m"
 OUT="$(run 'feat: something')"
 nocheck "ignores an event outside the window" "Agent-Tool" "$OUT"
-HIVESMITH_ATTRIBUTION_WINDOW_S=99999 
 OUT="$(HIVESMITH_ATTRIBUTION_WINDOW_S=99999 run 'feat: something')"
 check "honours a widened window"             "Agent-Tool: pi" "$OUT"
 
@@ -91,7 +90,7 @@ check "exits 0 with no arguments at all"     "exit=0" "$(cat "$W/r")"
 #    readable by git's own trailer parser, not just by grep.
 rm -f "$LOG"; event 10 proj pi "claude-opus-4.7"
 mkdir -p "$REPO/.git/hooks"; cp "$HOOK" "$REPO/.git/hooks/prepare-commit-msg"
-cd "$REPO"; echo hi > f.txt; git add -A
+cd "$REPO" || exit 1; echo hi > f.txt; git add -A
 HIVESMITH_TELEMETRY_LOG="$LOG" git commit -q -m "feat: real commit"
 TRAILERS="$(git log -1 --format='%(trailers:key=Agent-Tool,valueonly=true)')"
 check "git parses the trailer it wrote"      "pi" "$TRAILERS"

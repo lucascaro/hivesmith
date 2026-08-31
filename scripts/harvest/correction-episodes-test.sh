@@ -60,6 +60,7 @@ sed -i.bak '2s|.*|v2 shipped|' docs/CHANGELOG.md && rm -f docs/CHANGELOG.md.bak
 git add -A; D 2026-01-18 "fix: changelog wording"
 
 OUT="$(python3 "$TOOL" "$R" --window 90 2>&1)"; RES="$(printf '%s' "$OUT" | grep '^RESULT:')"
+# shellcheck disable=SC2001  # multi-line prefix; ${//} cannot do it
 echo "$OUT" | sed 's/^/    | /'; echo
 
 check "counts every correction-typed commit"        "fixes=5" "$RES"

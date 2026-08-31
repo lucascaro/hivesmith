@@ -57,6 +57,7 @@ commit_pr 150 "feat: spec number is the pr" a.go
 commit_pr 900 "chore: bump" a.go "dependabot[bot]"
 
 OUT="$(python3 "$TOOL" "$REPO" 2>&1)"; R="$(printf '%s' "$OUT" | grep '^RESULT:')"
+# shellcheck disable=SC2001  # multi-line prefix; ${//} cannot do it
 echo "$OUT" | sed 's/^/    | /'; echo
 
 check "joins every plan in the corpus"            "plans=6" "$R"

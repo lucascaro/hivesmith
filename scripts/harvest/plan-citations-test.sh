@@ -56,6 +56,7 @@ git commit -qm "docs: complete plan A"
 OUT="$(python3 "$CHECKER" "$REPO" --verbose 2>&1)"
 RESULT="$(printf '%s' "$OUT" | grep '^RESULT:')"
 
+# shellcheck disable=SC2001  # multi-line prefix; ${//} cannot do it
 echo "$OUT" | sed 's/^/    | /'
 echo
 
