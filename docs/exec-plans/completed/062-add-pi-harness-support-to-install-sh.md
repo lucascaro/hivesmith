@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/062-add-pi-harness-support-to-install-sh.md](../../product-specs/062-add-pi-harness-support-to-install-sh.md)
 - **Issue:** #62
-- **Status:** active
+- **Status:** completed
 - **PR:** #63
 - **Branch:** `feature/62-add-pi-harness-support-to-install-sh`
 
@@ -98,6 +98,7 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 
 - **2026-09-01** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
 - **2026-09-01** — PR #63 opened; review loop converged in 2 iterations (one safe fix: test sandbox isolation). Stage = GATE.
+- **2026-09-01** — Gate PASS (3/3 dimensions). Stage = DONE; plan moved to completed/.
 
 ## Open questions
 
@@ -109,3 +110,9 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 - **2026-09-01 iter 2** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 815b30b.
 
 ## Gate verdict
+
+- **2026-09-01** — verdict: PASS; checks: 7 criteria passed / 0 failed / 0 followups; followups: none; one-line: pi registers and installs into the directory pi actually reads in both scopes, non-goals held, docs accurate.
+  - 2026-09-01 dimensions:
+    - acceptance — PASS — all 7 success criteria verified by direct command execution (suite 4/4, plus manual `--status` / `--doctor` against a sandboxed pi install)
+    - non-goals — PASS — all 4 non-goals confirmed unimplemented; the worker's scope-creep FAIL was a false positive from a stale local `main` ref (merge-base 9c9850c is already on origin/main; `git diff origin/main...HEAD` is 10 files / 343 insertions, all this feature)
+    - doc accuracy — PASS — README fan-out list + pi caveat block, changeset schema and body, AGENTS.md test/shellcheck lists (identical to ci.yml's), and installer-smoke steps 11-12 all verified against real install behavior

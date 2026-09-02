@@ -4,14 +4,14 @@ title: Add pi harness support to install.sh
 type: enhancement
 complexity: S
 priority: P2
-stage: GATE
+stage: DONE
 pr: 63
-# shipped: 2026-MM-DD  # uncomment on DONE
+shipped: 2026-09-01
 ---
 
 # Add pi harness support to install.sh
 
-- **Exec plan:** [docs/exec-plans/active/062-add-pi-harness-support-to-install-sh.md](../exec-plans/active/062-add-pi-harness-support-to-install-sh.md)
+- **Exec plan:** [docs/exec-plans/completed/062-add-pi-harness-support-to-install-sh.md](../exec-plans/completed/062-add-pi-harness-support-to-install-sh.md)
 
 ## Problem
 
