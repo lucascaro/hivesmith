@@ -25,6 +25,12 @@
       "name": "copilot",
       "skills_dir": "~/.copilot/skills",
       "detect_dir": "~/.copilot"
+    },
+    {
+      "name": "pi",
+      "skills_dir": "~/.pi/agent/skills",
+      "local_skills_dir": "~/.pi/skills",
+      "detect_dir": "~/.pi"
     }
   ]
 }
