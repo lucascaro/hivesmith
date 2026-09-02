@@ -7,8 +7,13 @@
 # without the `local_skills_dir` override a --local install would link into
 # `./.pi/agent/skills` — a directory pi never reads, with no visible error.
 #
-# Runs real (non-dry-run) installs inside a scratch HOME and a scratch project;
-# the real global install and crontab are never touched.
+# Runs real (non-dry-run) installs inside a scratch HOME and a scratch project.
+# HOME alone does not sandbox a --global install: it rm -rf's
+# $HIVESMITH_DIR/.rendered (derived from the script's own location) and rewrites
+# the invoking user's crontab (per-user, not HOME-scoped). The global case
+# therefore runs against a scratch copy of the repo with a stub `crontab` on
+# PATH, so the real checkout, its rendered tree, and the real crontab are never
+# touched.
 #
 # Usage: bash tests/install-agent-scopes-test.sh
 set -uo pipefail
@@ -27,11 +32,25 @@ new_sandbox() {
     mkdir -p "$FAKE_HOME" "$PROJ"
     export HIVESMITH_DIR_CONFIG="$FAKE_HOME/.hivesmith.toml"
     export HIVESMITH_LOCAL_CONFIG="$PROJ/.hivesmith.toml"
+    HS_RUN="$HS"        # which checkout install.sh is invoked from
+    SB_PATH="$PATH"     # PATH the install runs with
+}
+
+# Global installs reach outside HOME. Point install.sh at a scratch copy of the
+# repo (so $HIVESMITH_DIR/.rendered is disposable) and shadow `crontab` with a
+# no-op (so the auto-upgrade branch cannot read or rewrite the real one).
+isolate_global_side_effects() {
+    mkdir -p "$SB/hs" "$SB/bin"
+    cp -R "$HS/install.sh" "$HS/agents.json" "$HS/skills" "$HS/agents" "$HS/scripts" "$SB/hs/"
+    printf '#!/bin/sh\nexit 0\n' > "$SB/bin/crontab"
+    chmod +x "$SB/bin/crontab"
+    HS_RUN="$SB/hs"
+    SB_PATH="$SB/bin:$PATH"
 }
 
 # Non-interactive by construction: </dev/null so the local-selection prompt
 # takes its default instead of hanging.
-hs_install() { (cd "$PROJ" && HOME="$FAKE_HOME" bash "$HS/install.sh" "$@" </dev/null >/dev/null 2>&1); }
+hs_install() { (cd "$PROJ" && HOME="$FAKE_HOME" PATH="$SB_PATH" bash "$HS_RUN/install.sh" "$@" </dev/null >/dev/null 2>&1); }
 
 count_links() {  # $1 = dir; counts symlinks, 0 when the dir is absent
     [ -d "$1" ] || { echo 0; return; }
@@ -57,6 +76,7 @@ local_target_uses_override() {
 global_target_uses_skills_dir() {
     local t=global_target_uses_skills_dir
     new_sandbox
+    isolate_global_side_effects
     mkdir -p "$FAKE_HOME/.pi"          # detect_dir must exist for global detection
     hs_install --global --agents pi --no-auto-upgrade
     local n; n="$(count_links "$FAKE_HOME/.pi/agent/skills")"
