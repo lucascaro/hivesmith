@@ -97,11 +97,15 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 ## Progress
 
 - **2026-09-01** — Plan-first scaffold; stage = IMPLEMENT (set in spec frontmatter).
+- **2026-09-01** — PR #63 opened; review loop converged in 2 iterations (one safe fix: test sandbox isolation). Stage = GATE.
 
 ## Open questions
 
 - pi's dedup behavior across skill roots is undocumented: users who already point pi's `settings.json` `skills` array at `~/.claude/skills` will have hivesmith skills discovered twice after this ships. Mitigated with a README note, not code.
 
 ## PR convergence ledger
+
+- **2026-09-01 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 88be3bbd; threads_open: 0; action: autofix+push; head_sha: 815b30b.
+- **2026-09-01 iter 2** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 815b30b.
 
 ## Gate verdict
