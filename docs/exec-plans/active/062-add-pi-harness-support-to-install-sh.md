@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/062-add-pi-harness-support-to-install-sh.md](../../product-specs/062-add-pi-harness-support-to-install-sh.md)
 - **Issue:** #62
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #63
+- **Branch:** `feature/62-add-pi-harness-support-to-install-sh`
 
 <!--
 Stage is **not** carried here. The spec's YAML frontmatter `stage:` is the

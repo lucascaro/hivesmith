@@ -4,8 +4,8 @@ title: Add pi harness support to install.sh
 type: enhancement
 complexity: S
 priority: P2
-stage: IMPLEMENT
-# pr: <number>         # uncomment when PR opens
+stage: REVIEW
+pr: 63
 # shipped: 2026-MM-DD  # uncomment on DONE
 ---
 
