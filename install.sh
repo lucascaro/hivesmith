@@ -7,7 +7,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 # install.sh — fan-out symlinks from hivesmith/skills/* (and agents/*) into each
-# detected AI agent's config dir (Claude, Codex, Factory, Gemini, Copilot).
+# detected AI agent's config dir (Claude, Codex, Factory, Gemini, Copilot, pi).
 # Run with --help for the full flag list; usage() below is the canonical doc.
 
 HIVESMITH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -65,7 +65,7 @@ force_or_skip() {
 usage() {
     cat <<'EOF'
 install.sh — fan-out symlinks from hivesmith/skills/* (and agents/*) into each
-detected AI agent's config dir (Claude, Codex, Factory, Gemini, Copilot).
+detected AI agent's config dir (Claude, Codex, Factory, Gemini, Copilot, pi).
 
 Modes (default: install):
   ./install.sh                   install / reconcile symlinks (idempotent)
@@ -326,21 +326,27 @@ done
 # ---- Agent registry + scope resolution -----------------------------------
 # Read agents.json once into a raw registry (unexpanded ~ paths). Target dirs
 # are then resolved per scope: global -> $HOME/.<agent>, local -> $PWD/.<agent>.
+# A harness whose project layout is not just the home layout re-rooted at $PWD
+# (pi: ~/.pi/agent/skills globally, .pi/skills in a project) declares the
+# optional `local_skills_dir`, which wins for the local scope only.
 
 AGENTS_JSON="$HIVESMITH_DIR/agents.json"
 # Fields are joined with US (\x1f), NOT tab: tab is IFS-whitespace, so an empty
-# agents_dir (every harness but claude) would collapse two tabs into one and
-# shift detect_dir into agents_dir, leaving detect_dir empty. US is non-
-# whitespace, so `read` preserves empty fields.
+# agents_dir (every harness but claude) or local_skills_dir (every harness but
+# pi) would collapse two tabs into one and shift the following field left,
+# leaving the last one empty. US is non-whitespace, so `read` preserves empty
+# fields.
 US=$'\x1f'
-AGENT_REGISTRY=()   # entries: name<US>skills_raw<US>agents_raw<US>detect_raw
+# entries: name<US>skills_raw<US>agents_raw<US>detect_raw<US>local_skills_raw
+AGENT_REGISTRY=()
 while IFS= read -r rec; do
     [[ -n "$rec" ]] && AGENT_REGISTRY+=("$rec")
 done < <(python3 -c "
 import json, sys
 with open(sys.argv[1]) as f:
     for a in json.load(f)['agents']:
-        print('\x1f'.join([a['name'], a['skills_dir'], a.get('agents_dir', ''), a['detect_dir']]))
+        print('\x1f'.join([a['name'], a['skills_dir'], a.get('agents_dir', ''),
+                           a['detect_dir'], a.get('local_skills_dir', '')]))
 " "$AGENTS_JSON")
 
 # An empty registry means the load itself failed (unreadable/malformed
@@ -380,7 +386,7 @@ validate_agents() {  # $1 = comma/space list; echoes normalized space list
 detected_local_agents() {
     local rec name detect out=""
     for rec in "${AGENT_REGISTRY[@]}"; do
-        IFS="$US" read -r name _s _a detect <<< "$rec"
+        IFS="$US" read -r name _s _a detect _l <<< "$rec"
         [[ -d "$(scope_path "$detect" local)" ]] && out="$out $name"
     done
     printf '%s' "${out# }"
@@ -427,10 +433,11 @@ resolve_local_selection() {
 #   global: detection-based (dir must exist), SELECT_AGENTS is an optional filter.
 #   local:  SELECT_AGENTS is authoritative (dirs are created as needed).
 build_targets() {  # $1 = scope
-    local scope="$1" rec name skills_raw agents_raw detect_raw skills_dir agents_dir detect_dir
+    local scope="$1" rec name skills_raw agents_raw detect_raw local_skills_raw
+    local skills_dir agents_dir detect_dir
     TARGETS=(); AGENT_TARGETS=()
     for rec in "${AGENT_REGISTRY[@]}"; do
-        IFS="$US" read -r name skills_raw agents_raw detect_raw <<< "$rec"
+        IFS="$US" read -r name skills_raw agents_raw detect_raw local_skills_raw <<< "$rec"
         if [[ "$scope" == "local" ]]; then
             # shellcheck disable=SC2086  # intentional word-split of space-separated lists
             in_list "$name" $SELECT_AGENTS || continue
@@ -440,7 +447,13 @@ build_targets() {  # $1 = scope
             # shellcheck disable=SC2086  # intentional word-split of space-separated lists
             [[ -n "$SELECT_AGENTS" ]] && { in_list "$name" $SELECT_AGENTS || continue; }
         fi
-        skills_dir="$(scope_path "$skills_raw" "$scope")"
+        # A local-only override exists because some harnesses do not put their
+        # project config where re-rooting the home path would predict.
+        if [[ "$scope" == "local" && -n "$local_skills_raw" ]]; then
+            skills_dir="$(scope_path "$local_skills_raw" "$scope")"
+        else
+            skills_dir="$(scope_path "$skills_raw" "$scope")"
+        fi
         agents_dir="$(scope_path "$agents_raw" "$scope")"
         TARGETS+=("$name"$'\t'"$skills_dir")
         [[ -n "$agents_dir" ]] && AGENT_TARGETS+=("$name"$'\t'"$agents_dir")

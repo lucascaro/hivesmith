@@ -50,7 +50,15 @@ jobs:
             skills/graphify-init/graphify-setup.sh
             skills/graphify-init/graphify-refresh.sh
             skills/graphify-init/test/run-all.sh
-           
+            tests/install-agent-scopes-test.sh
+
+
+  agent-scopes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run agent scope-resolution suite
+        run: bash tests/install-agent-scopes-test.sh
 
   install-smoke:
     runs-on: ubuntu-latest

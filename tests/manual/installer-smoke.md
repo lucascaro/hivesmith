@@ -52,8 +52,12 @@ Each step lists the command and what to confirm.
     - Piped output (as above) has no ANSI. In a real terminal, headings/tags are colored; `--no-color` or `NO_COLOR=1` disables it.
     - `bash "$HS/install.sh" --help` lists `--local`, `--global`, `--force`, `--status`, `--doctor`, `--agents`, `--no-color`.
 
-11. **Multi-harness detection** — `mkdir -p "$FAKE_HOME/.gemini" "$FAKE_HOME/.copilot"` then `run --global`
-    - claude/gemini/copilot each get the **same non-zero** skill count (matching `ls "$HS/skills" | wc -l`); only claude gets subagents. (Regression guard: these harnesses have an empty `agents_dir`, which a tab-delimited registry would mis-parse — the fix uses a non-whitespace separator.)
+11. **Multi-harness detection** — `mkdir -p "$FAKE_HOME/.gemini" "$FAKE_HOME/.copilot" "$FAKE_HOME/.pi"` then `run --global`
+    - claude/gemini/copilot/pi each get the **same non-zero** skill count (matching `ls "$HS/skills" | wc -l`); only claude gets subagents. (Regression guard: these harnesses have an empty `agents_dir`, which a tab-delimited registry would mis-parse — the fix uses a non-whitespace separator.)
+    - pi's links land in `$FAKE_HOME/.pi/agent/skills` (its global `skills_dir`), **not** `$FAKE_HOME/.pi/skills`.
+
+12. **Divergent local path (pi)** — `run --local --agents pi`
+    - Links land in `./.pi/skills` and `./.pi/agent` is **not** created. pi is the only harness whose project layout is not its home layout re-rooted at `$PWD`; it declares `local_skills_dir` in `agents.json` for exactly this. Covered automatically by `tests/install-agent-scopes-test.sh`.
 
 ## Known limitation
 

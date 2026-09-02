@@ -96,7 +96,9 @@ git clone https://github.com/lucascaro/hivesmith ~/.hivesmith
 ~/.hivesmith/install.sh
 ```
 
-This symlinks each skill into every detected agent's skills directory (`~/.claude/skills/`, `~/.codex/skills/`, `~/.factory/skills/`, `~/.gemini/skills/`, `~/.copilot/skills/`). Agents whose parent directory does not exist are skipped automatically.
+This symlinks each skill into every detected agent's skills directory (`~/.claude/skills/`, `~/.codex/skills/`, `~/.factory/skills/`, `~/.gemini/skills/`, `~/.copilot/skills/`, `~/.pi/agent/skills/`). Agents whose parent directory does not exist are skipped automatically.
+
+> **pi note.** pi's project skill directory is `./.pi/skills` — not `./.pi/agent/skills` — so a `--local` install targets that path (declared as `local_skills_dir` in `agents.json`). pi only loads **project** skills once you have trusted the project. If you already point pi's `settings.json` `skills` array at another harness's directory (e.g. `~/.claude/skills`), drop that entry after installing, or the same hivesmith skills will be discovered from two roots.
 
 It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/merge-gate` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` for its two fan-out paths — splitting the diff review on a large PR, and escalating a single oversized out-of-diff investigation — and reviews everything else inline. Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
 
