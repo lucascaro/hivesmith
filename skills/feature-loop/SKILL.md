@@ -240,7 +240,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     At most **one** entry per run, and only after a PASS gate verdict — never on an escalated or failed run:
 
     ```bash
-    HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/brain-append \
+    echo "<lesson body>" | HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/brain-append \
       --slug "<kebab-case-lesson-slug>" \
       --scope project \
       --tags "<comma,separated>" \
@@ -248,7 +248,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
       --confidence 0.6
     ```
 
-    The body follows `templates/brain/SCHEMA.md`: a `# Title`, then `**Lesson:**`, `**Why:**`, `**How to apply:**`. No code dumps — the redactor rejects code fences over 25 lines. Set `--valid-until` when the lesson is tied to a version or a deadline. Scope is always `project`; broadening it is gated behind `/brain-promote`.
+    The body is read from **stdin** — pipe it in, as above; every other brain-append call site does the same. It follows `templates/brain/SCHEMA.md`: a `# Title`, then `**Lesson:**`, `**Why:**`, `**How to apply:**`. No code dumps — the redactor rejects code fences over 25 lines. Set `--valid-until` when the lesson is tied to a version or a deadline. Scope is always `project`; broadening it is gated behind `/brain-promote`.
 
 50. **[The merge stop]** Use AskUserQuestion, showing the PR link, the latest `## Gate verdict` entry, and the last `## PR convergence ledger` line:
     > "Review converged and the gate passed. Merge the PR now?"
