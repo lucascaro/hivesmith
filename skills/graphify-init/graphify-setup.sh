@@ -12,6 +12,10 @@
 #      the common hooks dir (so one install covers every worktree), then we lift
 #      its unconditional worktree guard — see patch_worktree_guard.
 #   3. A Claude Code PostToolUse hook running graphify-refresh.sh after edits.
+#   4. A PreToolUse hook running graphify-nudge.sh, which wraps graphify's own
+#      orientation nudge: same gating and the same strict-mode denials, but
+#      advisory wording, at most one per session per kind, and no graphify fork
+#      once there is nothing left for it to say.
 #
 # Idempotent. Reversible with --uninstall. Never destroys a populated cache.
 #
@@ -22,9 +26,9 @@
 #                of refusing. Required whenever a real cache dir is in the way.
 #   --uninstall  reverse everything: restore a real cache dir, strip hook
 #                blocks, remove the settings entry.
-#   --no-nudges  skip graphify's PreToolUse orientation hooks. They print
-#                agent-directing text on Read/Glob/Grep/Bash; useful, but
-#                invasive. Also settable as HIVESMITH_GRAPHIFY_NUDGES=0.
+#   --no-nudges  skip the PreToolUse orientation hook. It mentions the graph
+#                once per session before Read/Glob/Grep/Bash; useful, but it
+#                does inject text. Also settable as HIVESMITH_GRAPHIFY_NUDGES=0.
 #
 # Env: GRAPHIFY_OUT (default graphify-out), HIVESMITH_GRAPHIFY_NUDGES (default 1).
 
@@ -235,6 +239,9 @@ uninstall_hooks() {
 # edit, because what a reviewer sees is the unchanging command string, not the
 # file it points at. Gitignored means a PR cannot change what runs.
 REFRESH_REL="$OUT/graphify-refresh.sh"
+# Same reasoning for the PreToolUse wrapper: gitignored target, referenced
+# through $CLAUDE_PROJECT_DIR, never from its tracked path under skills/.
+NUDGE_REL="$OUT/graphify-nudge.sh"
 # $CLAUDE_PROJECT_DIR is expanded by Claude Code at hook time, not here. The
 # guard makes a missing script a no-op rather than a 127 on every tool call —
 # the output dir can be wiped (`graphify uninstall --purge`, a stray clean)
@@ -263,6 +270,20 @@ copy_refresh_script() {
     fi
     chmod +x "$REFRESH_REL"
     say "  refresh      $REFRESH_REL"
+}
+
+# The PreToolUse wrapper. Copied unconditionally: it is inert without a settings
+# entry pointing at it, and copying it even under --no-nudges keeps a later
+# re-run without the flag from finding a settings entry whose target is missing.
+copy_nudge_script() {
+    src="$SELF_DIR/graphify-nudge.sh"
+    [ -f "$src" ] || die "missing $src"
+    mkdir -p "$(dirname "$NUDGE_REL")"
+    if [ ! -e "$NUDGE_REL" ] || ! cmp -s "$src" "$NUDGE_REL"; then
+        cp "$src" "$NUDGE_REL"
+    fi
+    chmod +x "$NUDGE_REL"
+    say "  nudge wrap   $NUDGE_REL"
 }
 
 # graphify's own PreToolUse orientation nudges — the "consult the graph before
@@ -345,7 +366,10 @@ else:
 PYEOF
     then
         rm -f "$nudge_err"
-        [ "$action" = "install" ] && guard_nudge_commands
+        if [ "$action" = "install" ]; then
+            guard_nudge_commands
+            verify_nudge_commands || die "the PreToolUse entries are not pointing at $NUDGE_REL after setup. Re-run with --no-nudges to proceed without them."
+        fi
         say "  nudges       graphify PreToolUse orientation hooks ${action}ed"
         return 0
     fi
@@ -366,29 +390,72 @@ PYEOF
     return 0
 }
 
-# graphify registers its nudges as a bare `graphify hook-guard ...`. Since this
-# settings.json is COMMITTED, anyone who clones without graphify installed would
-# get exit 127 on every Bash/Grep/Read/Glob call. Wrap each command so a missing
-# graphify is a silent no-op — the same degradation the refresh hook already has.
+# graphify registers its nudges as a bare `graphify hook-guard <kind>`, whose
+# output is an imperative "MANDATORY: ... You MUST ..." string re-emitted on
+# every matching tool call. Point the entries at our wrapper instead: it keeps
+# graphify's gating and its strict-mode denials, but emits advisory wording at
+# most once per (session, kind) and skips the fork entirely once satisfied.
+#
+# Two properties this must preserve:
+#   * A missing target degrades to a no-op, not exit 127 on every tool call —
+#     this settings.json is COMMITTED and the out dir can be wiped.
+#   * graphify's own uninstaller (install.py _strip_graphify_hook) filters
+#     PreToolUse by matcher plus the substring "graphify". Both survive, since
+#     the matchers are untouched and the path contains "graphify".
+#
+# Matching is on `hook-guard`, NOT on a `graphify ` prefix: repos wired before
+# this wrapper existed carry the already-guarded
+# `command -v graphify ... && graphify hook-guard search || exit 0` form, which a
+# prefix test would skip — leaving them unmigrated and then failing the
+# verification below.
 guard_nudge_commands() {
     python3 - <<'PYEOF'
 import json
+import re
 from pathlib import Path
 
 path = Path(".claude/settings.json")
 if not path.exists():
     raise SystemExit(0)
 settings = json.loads(path.read_text(encoding="utf-8"))
+
+TARGET = "$CLAUDE_PROJECT_DIR/graphify-out/graphify-nudge.sh"
+
+
+def wrapped(kind):
+    return (
+        "sh -c '[ -x \"%s\" ] || exit 0; exec \"%s\" %s'" % (TARGET, TARGET, kind)
+    )
+
+
 changed = False
 for entry in settings.get("hooks", {}).get("PreToolUse", []):
     for hook in entry.get("hooks", []):
         cmd = hook.get("command", "")
-        if cmd.startswith("graphify ") and "command -v graphify" not in cmd:
-            hook["command"] = f"command -v graphify >/dev/null 2>&1 && {cmd} || exit 0"
-            changed = True
+        if "graphify-nudge.sh" in cmd:
+            continue  # already migrated
+        m = re.search(r"hook-guard\s+(search|read)\b", cmd)
+        if not m:
+            continue
+        hook["command"] = wrapped(m.group(1))
+        changed = True
+
 if changed:
     path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 PYEOF
+}
+
+# claude_nudges() infers success from python's exit status and never checks that
+# the commands actually landed. Now that the entries are rewritten afterwards,
+# verify the end state instead of trusting the middle of the pipeline.
+verify_nudge_commands() {
+    for kind in search read; do
+        # The command is a JSON string, so the closing quote before the kind
+        # argument is escaped on disk: ...graphify-nudge.sh\" search'
+        grep -qF "graphify-nudge.sh\\\" $kind" .claude/settings.json 2>/dev/null \
+            || return 1
+    done
+    ! grep -q '"command": "[^"]*graphify hook-guard' .claude/settings.json 2>/dev/null
 }
 
 # Merge semantics mirror graphify's own installer (graphify/install.py):
@@ -467,10 +534,14 @@ worktree. Do not run a rebuild by hand as part of ordinary work.
 Automatic refreshes are AST-only and never spend tokens. Set
 \`HIVESMITH_GRAPHIFY_REFRESH=0\` to silence them for a session.
 
-This project also registers graphify's \`PreToolUse\` orientation hooks, which
-print a reminder to consult the graph before \`Read\`/\`Glob\`/\`Grep\`/\`Bash\`.
-Re-run the setup with \`--no-nudges\` (or \`HIVESMITH_GRAPHIFY_NUDGES=0\`) to drop
-them while keeping everything else.
+This project also registers a \`PreToolUse\` orientation hook
+(\`$OUT/graphify-nudge.sh\`), which mentions the graph once per session before
+\`Read\`/\`Glob\`/\`Grep\`/\`Bash\`. It wraps graphify's own hook: gating and
+strict-mode denials stay graphify's, while the wrapper keeps the reminder
+advisory, emits it at most once per session per kind, stays quiet once
+\`graphify query\` has run, and skips invoking graphify at all once there is
+nothing left for it to say. Re-run the setup with \`--no-nudges\` (or
+\`HIVESMITH_GRAPHIFY_NUDGES=0\`) to drop it while keeping everything else.
 $AGENTS_END
 EOF
 }
@@ -507,6 +578,7 @@ if [ "$MODE" = "uninstall" ]; then
     unlink_cache
     uninstall_hooks
     claude_nudges uninstall
+    rm -f "$NUDGE_REL"
     settings_merge uninstall
     say "  settings     PostToolUse entry removed"
     write_agents_block uninstall
@@ -519,6 +591,7 @@ link_cache
 install_hooks
 ensure_out_ignored
 copy_refresh_script
+copy_nudge_script
 settings_merge install
 claude_nudges install
 say "  settings     .claude/settings.json PostToolUse -> $REFRESH_REL"

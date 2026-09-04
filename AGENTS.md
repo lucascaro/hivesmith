@@ -14,10 +14,14 @@ worktree. Do not run a rebuild by hand as part of ordinary work.
 Automatic refreshes are AST-only and never spend tokens. Set
 `HIVESMITH_GRAPHIFY_REFRESH=0` to silence them for a session.
 
-This project also registers graphify's `PreToolUse` orientation hooks, which
-print a reminder to consult the graph before `Read`/`Glob`/`Grep`/`Bash`.
-Re-run the setup with `--no-nudges` (or `HIVESMITH_GRAPHIFY_NUDGES=0`) to drop
-them while keeping everything else.
+This project also registers a `PreToolUse` orientation hook
+(`graphify-out/graphify-nudge.sh`), which mentions the graph once per session
+before `Read`/`Glob`/`Grep`/`Bash`. It wraps graphify's own hook: gating and
+strict-mode denials stay graphify's, while the wrapper keeps the reminder
+advisory, emits it at most once per session per kind, stays quiet once
+`graphify query` has run, and skips invoking graphify at all once there is
+nothing left for it to say. Re-run the setup with `--no-nudges` (or
+`HIVESMITH_GRAPHIFY_NUDGES=0`) to drop it while keeping everything else.
 <!-- END HIVESMITH GRAPHIFY -->
 
 <!-- BEGIN HIVESMITH -->
@@ -62,7 +66,7 @@ This repo dogfoods hivesmith on itself. Project-local skill symlinks live under 
 
 **Build / test / lint commands** — `/feature-implement` expects all of these to pass before opening a PR:
 
-- **Lint:** `shellcheck install.sh scripts/brain/append.sh scripts/brain/index.sh scripts/brain/lib.sh scripts/brain/list.sh scripts/brain/read.sh scripts/brain/redact.sh scripts/brain/search.sh scripts/brain/test/run-all.sh scripts/dev-link-local.sh scripts/harvest/correction-episodes-test.sh scripts/harvest/harvest-plans-test.sh scripts/harvest/plan-citations-test.sh scripts/hooks/pre-push scripts/migrate-to-changesets.sh scripts/regen-generated.sh scripts/release.sh scripts/telemetry/attribution-test.sh scripts/telemetry/install-hooks-test.sh scripts/telemetry/install-hooks.sh scripts/telemetry/install-pi.sh scripts/telemetry/log-agent-stop.sh scripts/telemetry/log-agent.sh scripts/telemetry/prepare-commit-msg skills/brain-garden/garden.sh skills/brain-promote/promote.sh skills/feature-ingest/ingest.sh skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/namecheck/namecheck.sh skills/plan-html/start.sh skills/plan-html/stop.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh tests/install-agent-scopes-test.sh` (mirrors `.github/workflows/ci.yml` shellcheck job).
+- **Lint:** `shellcheck install.sh scripts/brain/append.sh scripts/brain/index.sh scripts/brain/lib.sh scripts/brain/list.sh scripts/brain/read.sh scripts/brain/redact.sh scripts/brain/search.sh scripts/brain/test/run-all.sh scripts/dev-link-local.sh scripts/harvest/correction-episodes-test.sh scripts/harvest/harvest-plans-test.sh scripts/harvest/plan-citations-test.sh scripts/hooks/pre-push scripts/migrate-to-changesets.sh scripts/regen-generated.sh scripts/release.sh scripts/telemetry/attribution-test.sh scripts/telemetry/install-hooks-test.sh scripts/telemetry/install-hooks.sh scripts/telemetry/install-pi.sh scripts/telemetry/log-agent-stop.sh scripts/telemetry/log-agent.sh scripts/telemetry/prepare-commit-msg skills/brain-garden/garden.sh skills/brain-promote/promote.sh skills/feature-ingest/ingest.sh skills/graphify-init/graphify-nudge.sh skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/namecheck/namecheck.sh skills/plan-html/start.sh skills/plan-html/stop.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh tests/install-agent-scopes-test.sh` (mirrors `.github/workflows/ci.yml` shellcheck job).
 - **Brain tests:** `scripts/brain/test/run-all.sh` (covers redaction, cross-project isolation, promote/garden, lazy-init, index regen). Uses bash 3.2-compatible features.
 - **graphify-init tests:** `GRAPHIFY_REQUIRED=1 skills/graphify-init/test/run-all.sh` (shared cache symlink, worktree guard patch, refresh debounce, idempotence, uninstall). Needs `graphify` on `PATH`.
 - **Agent scope resolution:** `tests/install-agent-scopes-test.sh` (per-scope target dirs, including the `local_skills_dir` override that pi needs). Runs real installs in a scratch `HOME`.
