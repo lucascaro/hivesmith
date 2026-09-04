@@ -26,7 +26,7 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 
    It also skips invoking graphify at all once nothing it could return would be used — with strict mode off, that saves a process spawn on every tool call for the rest of the session. It never blocks a tool call: missing graphify, malformed input, or an unwritable cache all exit 0 silently. Honours `GRAPHIFY_HOOK_STRICT` and `GRAPHIFY_HOOK_STRICT_TTL` (the stamp freshness window, default 1800s) rather than inventing its own knobs. Disable the hook entirely with `--no-nudges` or `HIVESMITH_GRAPHIFY_NUDGES=0`; the rest of the setup is unaffected.
 
-   Upstream tracking: [#2202](https://github.com/Graphify-Labs/graphify/issues/2202) (reads as prompt injection), [#2984](https://github.com/Graphify-Labs/graphify/issues/2984) (no rate limit — 1.2% conversion over 1,739 firings), [#2985](https://github.com/Graphify-Labs/graphify/pull/2985) and [#3323](https://github.com/Graphify-Labs/graphify/pull/3323) (both unmerged).
+   Upstream tracking: [#2202](https://github.com/Graphify-Labs/graphify/issues/2202) (reads as prompt injection), [#2984](https://github.com/Graphify-Labs/graphify/issues/2984) (no rate limit — 1.2% conversion over 1,739 firings), [#2985](https://github.com/Graphify-Labs/graphify/pull/2985) (open) and [#3323](https://github.com/Graphify-Labs/graphify/pull/3323) (closed without merging).
 
 5. **An `AGENTS.md` block** telling agents how to orient (`GRAPH_REPORT.md`), trace (`graphify query`), and check blast radius (`graphify affected`) — and that they no longer need to rebuild by hand.
 

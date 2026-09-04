@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/067-wrap-graphify-pretooluse-nudge.md](../../product-specs/067-wrap-graphify-pretooluse-nudge.md)
 - **Issue:** #67
-- **Status:** active
+- **Status:** completed
 - **PR:** #68
 - **Branch:** feature/67-graphify-nudge-wrapper
 
@@ -200,3 +200,10 @@ None.
 - **2026-09-04 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 36d5954e878682cb147aab2e123046c676ca967a8adfc16b2d584e5308b22e49; threads_open: 0; action: stop; head_sha: d8d0379.
 
 ## Gate verdict
+
+- **2026-09-04** — verdict: PASS; checks: 3 dimensions passed / 0 failed / 0 followups; followups: none; one-line: every criterion verified by execution with negative controls, no non-goal bleed, docs consistent with what shipped.
+  - 2026-09-04 dimensions:
+    - acceptance — PASS — 29/29 with a real graphify (no silently skipped cases). Three required negative controls all reproduced: replacing the O_EXCL claim with an unconditional write fails the throttle and fork-skip cases; breaking the `permissionDecision` match fails the pass-through case; removing both fail-open guards fails the fail-open case. The fork-avoidance claim was measured with a marker-writing graphify shim rather than read from comments — no marker with strict off and the slot claimed, marker present under `GRAPHIFY_HOOK_STRICT=1`.
+    - non-goals — PASS — the wrapper owns only frequency, tone and whether to fork; `install_hooks` / `link_cache` / `settings_merge` are absent from the diff; one hardcoded advisory string and no new env knob; nothing upstream touched. Reading `GRAPHIFY_HOOK_STRICT` judged as honouring strict mode (a read-only precondition for skipping its own fork) rather than changing it.
+    - doc accuracy — PASS — changeset frontmatter matches siblings, both AGENTS.md sites and both CI lists updated, header comments kept in sync with the post-approval implementation changes, upstream issue subjects and states spot-checked against the GitHub API. Its one note (#3323 described as "unmerged" when it was closed without merging) is tightened in this commit.
+

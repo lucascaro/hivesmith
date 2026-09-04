@@ -4,13 +4,14 @@ title: Wrap graphify's PreToolUse nudge
 type: enhancement
 complexity: S
 priority: P2
-stage: GATE
+stage: DONE
 pr: 68
+shipped: 2026-09-04
 ---
 
 # Wrap graphify's PreToolUse nudge
 
-- **Exec plan:** [docs/exec-plans/active/067-wrap-graphify-pretooluse-nudge.md](../exec-plans/active/067-wrap-graphify-pretooluse-nudge.md)
+- **Exec plan:** [docs/exec-plans/completed/067-wrap-graphify-pretooluse-nudge.md](../exec-plans/active/067-wrap-graphify-pretooluse-nudge.md)
 
 ## Problem
 
