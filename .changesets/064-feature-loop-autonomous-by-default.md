@@ -1,5 +1,6 @@
 ---
 issue: 64
+pr: 65
 type: changed
 bump: minor
 ---

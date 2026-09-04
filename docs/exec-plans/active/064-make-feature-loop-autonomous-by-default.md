@@ -3,7 +3,7 @@
 - **Spec:** [docs/product-specs/064-make-feature-loop-autonomous-by-default.md](../../product-specs/064-make-feature-loop-autonomous-by-default.md)
 - **Issue:** #64
 - **Status:** active
-- **PR:** —
+- **PR:** #65
 - **Branch:** feature/64-autonomous-feature-loop
 
 ## Summary

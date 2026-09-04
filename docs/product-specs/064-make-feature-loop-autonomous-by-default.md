@@ -4,7 +4,8 @@ title: Make feature-loop autonomous by default
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
+stage: REVIEW
+pr: 65
 ---
 
 # Make feature-loop autonomous by default
