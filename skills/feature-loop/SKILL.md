@@ -92,7 +92,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 7. **Creating:** run `gh issue create --title "..." --body "..."` and capture the new issue number. **Skipping GitHub:** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Record whether a GitHub issue exists.
 8. Check for duplicates by zero-padded prefix: any `<NNN>-*.md` in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (current) or `features/{active,completed}/` (legacy). If found, warn and stop.
 9. Generate the filename: zero-pad the number to 3 digits, slugify the title (lowercase, hyphens, max 50 chars). Example: `042-add-dark-mode-toggle.md`.
-10. **Current layout:** Read `docs/product-specs/_template.md`. Create `docs/product-specs/<filename>` with YAML frontmatter — `issue: <number>` (omit when no GitHub issue exists), `title: <title>`, `stage: RESEARCH`. Body: title H1, Problem section from the issue body. `type`, `complexity` and `priority` are filled by Phase 2.
+10. **Current layout:** Read `docs/product-specs/_template.md`. Create `docs/product-specs/<filename>` with YAML frontmatter — `issue: <number>` (omit when no GitHub issue exists), `title: <title>`, `stage: TRIAGE`. Body: title H1, Problem section from the issue body. `type`, `complexity` and `priority` are filled by Phase 2, which advances the stage. Writing `TRIAGE` here rather than `RESEARCH` is what makes an interrupted run resumable: a run that dies between this write and Phase 2 resumes *into* triage instead of skipping it and leaving the frontmatter incomplete forever. Triage still never prompts, so the operator sees no extra step.
     **Legacy layout:** Read `features/templates/FEATURE.md`. Create `features/active/<filename>` with the bullet-line format (`- **Issue:** #<n>` or `- **Issue:** —`).
 11. **Do not edit `docs/product-specs/index.md`.** It's generated from spec frontmatter by `scripts/regen-generated.sh` on push to `main`. **Legacy layout only:** append a row to `features/BACKLOG.md`'s Active table.
 
@@ -113,7 +113,7 @@ Skipped entirely when resuming an existing feature.
     - **Priority:** where this sits relative to existing specs' frontmatter `priority:` in `docs/product-specs/*.md` (current) or `features/BACKLOG.md` (legacy). Read frontmatter directly — the generated `index.md` is a derived view.
 17. Write `type`, `complexity` and `priority` into the spec frontmatter. These exist so the generated index is useful; they are not a decision that needs a human. If the operator disagrees they can edit the spec at the plan stop, which is right after this.
 18. Apply the GitHub label (only when a GitHub issue exists): `gh issue edit <number> --add-label triaged`.
-19. Continue to Phase 3. The spec's `stage:` is already `RESEARCH` from Phase 1; when resuming a spec that was left at `TRIAGE`, set it to `RESEARCH` as the last write of this phase.
+19. Set the spec frontmatter `stage: RESEARCH` as the **last** write of this phase — after `type`, `complexity` and `priority` are on disk, so a crash between the two leaves the spec resumable at `TRIAGE`. Continue to Phase 3.
 
 ## Phase 3: Research
 

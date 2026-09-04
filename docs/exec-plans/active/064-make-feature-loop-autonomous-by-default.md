@@ -89,7 +89,9 @@ Four sibling skills cite feature-loop by step number. Replace the step numbers w
 **Superseding #20**
 
 - `docs/product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md` — `stage: DONE`, `pr: 21`, `shipped:` the merge date of PR #21, `## Notes` line pointing at #64. (`docs/product-specs/index.md` is generated on push to `main`, so `stage: DONE` is the verifiable proxy for the index row disappearing.)
-- `docs/exec-plans/active/020-*.md` → `docs/exec-plans/completed/` (`git mv`), `Status: completed`, one `## Progress` supersession line.
+- `docs/exec-plans/active/020-*.md` → `docs/exec-plans/completed/` (`git mv`), `Status: completed`, one `## Progress
+
+- **2026-09-04** — Review iteration 1 (REQUEST_CHANGES): autofix applied 3 safe fixes (brain-append stdin, duplicated plan block, stale cross-reference). Three RISKY items resolved by hand: (a) the spec is now written at `stage: TRIAGE` and Phase 2 advances it to `RESEARCH` as its last write, so a run interrupted before triage resumes *into* triage instead of skipping it — the earlier "enter at RESEARCH" wording described the operator's experience but left the frontmatter incompletable on a crash; (b) `.changesets/034` and `.changesets/046` rewritten to drop `--full-auto` / Gate 6 references, the same call already made for changesets 002/003. Success criterion 3 reworded to describe the observable behavior rather than the internal stage value.` supersession line.
 
 ### New files
 

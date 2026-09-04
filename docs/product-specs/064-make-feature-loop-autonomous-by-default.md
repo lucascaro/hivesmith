@@ -28,7 +28,7 @@ The default run is: quick clarifying questions from the description (assumptions
 
 - Invoking `/feature-loop <description>` with no flags asks clarifying questions, then runs to a merge-ready PR, prompting the user only at plan approval and at the merge.
 - The skill file contains no `--full-auto` token and no `plan`-keyword input branch; `argument-hint` is `"[issue-number | description]"`.
-- New-feature runs enter at RESEARCH (triage is auto-classified into spec frontmatter without a gate) and advance to PLAN when research completes.
+- Triage never prompts: `type`/`complexity`/`priority` are auto-classified into spec frontmatter and the run advances through RESEARCH to PLAN with no operator interaction. A run interrupted before triage resumes into it rather than skipping it.
 - The plan presented for approval carries a reviewer-subagent verdict (`approve | revise | block`, confidence, rationale) inline; a `revise` verdict is applied once before the plan is shown.
 - Before drafting the plan the skill queries `~/.hivesmith/bin/brain-search`; after a PASS gate verdict and before the merge prompt it appends one entry via `~/.hivesmith/bin/brain-append` with `scope=project` and `provenance.source=feature-loop`.
 - Gate 1 (issue creation) follows the `[github] create_issues` policy silently; Gate 5 (push/PR) auto-selects the convergence path when checks are green; the merge is never automatic.
