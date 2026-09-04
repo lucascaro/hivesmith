@@ -4,7 +4,7 @@ title: Make feature-loop autonomous by default
 type: enhancement
 complexity: M
 priority: P2
-stage: REVIEW
+stage: GATE
 pr: 65
 ---
 

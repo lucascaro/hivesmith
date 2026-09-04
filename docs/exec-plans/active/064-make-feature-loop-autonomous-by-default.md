@@ -196,6 +196,8 @@ None — resolved in the two clarifying rounds.
 
 ## PR convergence ledger
 
+- **2026-09-04 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop (converged; both IMPORTANT findings from iter 2 fixed); head_sha: post-hardening.
+
 - **2026-09-04 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 453fdd1cde5293535d2c3bb5d92f4625e5112f2519375fc5a19e1a654cdf90d6; threads_open: 0; action: autofix+push; head_sha: af4a361.
 - **2026-09-04 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 76c045937f3a1f01e508e208eccfbb483acddf96448557eee844295613a4c825; threads_open: 0; action: stop; head_sha: ebcd8c3.
 
