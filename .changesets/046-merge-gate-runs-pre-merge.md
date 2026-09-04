@@ -7,7 +7,7 @@ bump: minor
 
   The gate now runs on the still-open PR branch once `/review-loop` converges, and commits its bookkeeping to that same branch. A feature ships in **one PR**. More importantly, a failing check is now a fix inside the PR rather than a follow-up issue filed against code that already shipped.
 
-  The lifecycle stage `QA` is renamed **`GATE`**: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → GATE → DONE`. `/feature-loop`'s Gate 6 merge confirmation moved to the end of Phase 7 and now requires *both* a converged review ledger and a PASS gate verdict before `--full-auto` will merge. The exec-plan template's `## QA verdict` section is now `## Gate verdict`; older plans keep their existing heading and the gate appends to it.
+  The lifecycle stage `QA` is renamed **`GATE`**: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → GATE → DONE`. `/feature-loop`'s merge confirmation moved to the end of the pipeline, after the gate: the loop asks to merge only once the review ledger has converged and the gate verdict is PASS. The exec-plan template's `## QA verdict` section is now `## Gate verdict`; older plans keep their existing heading and the gate appends to it.
 
   The gate dropped two of its five dimensions. `build/lint/test` was run three times per feature (pre-commit, CI, then again in QA) and `regression` substantially duplicated `/review-pr`; both are gone. What remains is what nothing else does: per-criterion traceability against the spec's `## Success criteria`, the `## Non-goals` negative check, and a doc-accuracy sweep.
 

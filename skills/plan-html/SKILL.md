@@ -13,7 +13,7 @@ Rich HTML review UX for plan-producing skills. The skill takes structured plan c
 ## When to invoke
 
 - Directly: `/plan-html <task description>` — generates a plan + launches review UX.
-- Indirectly: `/feature-loop plan <description>` uses this skill by default (set `HIVESMITH_PLAN_HTML=0` or pass `--no-html` to fall back to the inline text-plan draft).
+- Indirectly: `/feature-loop` uses this skill by default at its plan stop (set `HIVESMITH_PLAN_HTML=0` or pass `--no-html` to fall back to the inline text-plan draft).
 - Any other plan-producing skill that wants the same review UX can call into the assets here directly: build a manifest, call `render_plan.py`, then `start.sh`.
 
 ## Procedural instructions (for the agent)

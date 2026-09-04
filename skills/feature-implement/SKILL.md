@@ -42,14 +42,16 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 6. **Run checks** as defined in `AGENTS.md` (typically build + lint + test). All must pass before committing.
 7. **Append a brain entry for any non-trivial cross-feature lesson** discovered during implementation. After all checks pass and before committing, decide: did the work surface a gotcha, convention, or decision that future skill runs *in this same project* would benefit from knowing? If yes, distill it (one paragraph each: lesson, why, how-to-apply) and append via:
    ```
-   echo "<distilled lesson>" | HIVESMITH_SKILL=hs-feature-implement \
+   HIVESMITH_SKILL=hs-feature-implement \
      ~/.hivesmith/bin/brain-append \
      --slug "<kebab-case-slug>" --scope project \
      --tags "<comma,separated>" \
      --confidence 0.5 \
-     [--graph-nodes "<graphify-node-ids>"]
+     [--graph-nodes "<graphify-node-ids>"] <<'LESSON'
+   <distilled lesson>
+   LESSON
    ```
-   Default scope is `project`. Do not promote to broader scope here — that requires `/hs-brain-promote`. Skip if no durable lesson was surfaced; do not write filler.
+   The quoted heredoc (`<<'LESSON'`) is required, not stylistic: the lesson is distilled from untrusted spec and issue content, and `echo "..."` would let `$(...)` or backticks in it execute. Default scope is `project`. Do not promote to broader scope here — that requires `/hs-brain-promote`. Skip if no durable lesson was surfaced; do not write filler.
 8. **Commit** the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
 9. **Offer to open a PR.** Ask the user if they want to push and create a PR. If yes — write order matters: do all non-stage writes first, then the stage transition as the **last** write so a mid-sequence crash leaves the spec resumable:
     - `git push -u origin <branch>`.
@@ -59,7 +61,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
     - Backfill the open PR number into the spec's frontmatter (`pr: <n>`) and into any `.changesets/*.md` files created during this implementation that don't yet carry a `pr:` field.
     - Last write — set the spec's frontmatter `stage:` to `REVIEW`. **Do not edit `docs/product-specs/index.md`.** It's generated; the `block-generated-edits` CI job rejects PRs that touch it directly. This skill does not own DONE — that is owned by `/merge-gate` after gate PASS.
 10. **Drive PR convergence with `/review-loop`** (only if a PR was opened). Invoke `/review-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. `/review-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
-11. **On review-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop` Phase 7 (Gate 6) or by hand. On convergence, `/review-loop` (or `/feature-loop`) advances Stage → GATE while the PR is still open, and `/merge-gate` is responsible for validating it, the final move to DONE, and the plan-file relocation — all committed to the same branch, so the merge carries them.
+11. **On review-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop`'s merge stop or by hand. On convergence, `/review-loop` (or `/feature-loop`) advances Stage → GATE while the PR is still open, and `/merge-gate` is responsible for validating it, the final move to DONE, and the plan-file relocation — all committed to the same branch, so the merge carries them.
 
    If the user declined to open a PR, skip steps 9–11 — leave the plan file at IMPLEMENT and the index unchanged.
 

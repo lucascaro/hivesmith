@@ -4,7 +4,9 @@ title: Add --full-auto flag to hs-feature-loop skill
 type: enhancement
 complexity: M
 priority: P3
-stage: IMPLEMENT
+stage: DONE
+pr: 21
+shipped: 2026-05-12
 ---
 
 # Add `--full-auto` flag to hs-feature-loop skill
@@ -33,5 +35,8 @@ When the user passes `--full-auto`, the skill runs the pipeline without promptin
 - Implementing auto-confidence scoring for `/hs-review-loop` itself.
 
 ## Notes
+
+Superseded by #64 — `--full-auto` is removed and its behavior is the default. PR #21 shipped this spec; the stage bookkeeping was never recorded at the time and is backfilled here.
+
 
 Related skills: `/hs-review-loop` already drives convergence non-interactively, so REVIEW phase already has a non-interactive path.

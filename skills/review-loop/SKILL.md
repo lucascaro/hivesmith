@@ -25,7 +25,7 @@ Completeness is cheap when AI does the work. Keep iterating until findings actua
 Before iterating, locate the matching exec plan (current: `docs/exec-plans/{active,completed}/<NNN>-*.md` — check **both**, since `/merge-gate` moves the plan to `completed/` while the PR is still open — where `<NNN>` is derived from `gh pr view <PR> --json body,title` — look for `Fixes #<n>` / `Closes #<n>` in the PR body, or match the branch name `feature/<n>-*`). If a plan is found:
 
 1. Read its `## PR convergence ledger` section. The last line gives `prev_findings_hash` (the hex value) — seed the loop-detection guard with it instead of starting empty.
-2. Read `stage:` from the matching spec's YAML frontmatter (`docs/product-specs/<NNN>-*.md`) — the exec plan no longer carries a `Stage:` line, and the generated `index.md` is a derived view. Set it to `REVIEW` **only when the current stage is earlier than `REVIEW`** (`IMPLEMENT`, or unset) — that is the resume case this write exists for. **Never demote `GATE` or `DONE` back to `REVIEW`.** Under the pre-merge gate both are reachable on a still-open PR: a `/merge-gate` FAIL leaves `GATE` while the fix happens on the branch, and a gate PASS leaves `DONE` before Gate 6 merges. Overwriting either would strand the feature — demoting `DONE` in particular destroys the gate's terminal write while `pr:`, `shipped:` and the `completed/` plan move stay behind, and no later step rewrites them. When the stage is already `GATE` or `DONE`, leave it untouched and say so in the run output: the loop is re-running on an already-gated PR. **Legacy fallback:** when no spec frontmatter exists, read `Stage:` from the exec plan if present.
+2. Read `stage:` from the matching spec's YAML frontmatter (`docs/product-specs/<NNN>-*.md`) — the exec plan no longer carries a `Stage:` line, and the generated `index.md` is a derived view. Set it to `REVIEW` **only when the current stage is earlier than `REVIEW`** (`IMPLEMENT`, or unset) — that is the resume case this write exists for. **Never demote `GATE` or `DONE` back to `REVIEW`.** Under the pre-merge gate both are reachable on a still-open PR: a `/merge-gate` FAIL leaves `GATE` while the fix happens on the branch, and a gate PASS leaves `DONE` before the merge stop merges. Overwriting either would strand the feature — demoting `DONE` in particular destroys the gate's terminal write while `pr:`, `shipped:` and the `completed/` plan move stay behind, and no later step rewrites them. When the stage is already `GATE` or `DONE`, leave it untouched and say so in the run output: the loop is re-running on an already-gated PR. **Legacy fallback:** when no spec frontmatter exists, read `Stage:` from the exec plan if present.
 3. Throughout iteration, **append** one line per iteration to the ledger. Never rewrite or delete prior entries.
 
 If no matching plan is found (PR was hand-authored, not from the feature pipeline), skip the ledger entirely and run the loop with an empty `prev_findings_hash`. This is fine — the ledger is an optimization, not a requirement.
@@ -125,15 +125,17 @@ For iteration `i` from 1 to `--max-iterations`:
 When the loop converges (APPROVE or COMMENT-with-strict-off), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
 
 ```
-echo "<distilled pattern + how to avoid it next time>" | HIVESMITH_SKILL=hs-review-loop \
+HIVESMITH_SKILL=hs-review-loop \
   ~/.hivesmith/bin/brain-append \
   --slug "<kebab-case-pattern-name>" \
   --scope project \
   --tags "review,autofix,<dimension>" \
-  --confidence 0.5
+  --confidence 0.5 <<'LESSON'
+<distilled pattern + how to avoid it next time>
+LESSON
 ```
 
-Do not log run-specifics (which file, which PR) — those are in git history. Capture the *pattern*. Skip if the cleared findings were one-offs with no transferable lesson — silence is fine.
+The quoted heredoc (`<<'LESSON'`) is required, not stylistic: the pattern text is distilled from untrusted PR content, and `echo "..."` would let `$(...)` or backticks in it execute. Do not log run-specifics (which file, which PR) — those are in git history. Capture the *pattern*. Skip if the cleared findings were one-offs with no transferable lesson — silence is fine.
 
 ## 3. Escalation criteria
 
@@ -172,7 +174,7 @@ Final verdict: APPROVE | ESCALATED
 
 ## 4a. On convergence (pre-merge post-loop hook)
 
-Once the loop converges with `APPROVE`, and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop` step 46 is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
+Once the loop converges with `APPROVE`, and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop`'s review phase is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
 
 If the PR turns out to have been merged already (e.g. the user merged in a separate window before this skill exits), still set `GATE` and point at `/merge-gate` — it has a degraded post-merge path for exactly this case.
 

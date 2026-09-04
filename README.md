@@ -37,8 +37,8 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 | `/feature-plan-handoff [# \| slug]` | Gate a plan for readiness and print copy-pasteable pickup instructions for a fresh agent in any harness or worktree |
 | `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/review-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
-| `/feature-loop [# \| description]` | Drive one feature through TRIAGE → RESEARCH → PLAN → IMPLEMENT → DONE with confirmation gates |
-| `/plan-html <task>` | Render a plan as self-contained HTML with per-section feedback textareas + ✓ Approve button, backed by a localhost feedback server. Used by `feature-loop plan ...` by default; set `HIVESMITH_PLAN_HTML=0` to opt out. |
+| `/feature-loop [# \| description]` | Drive one feature autonomously to a merge-ready PR — clarifying questions, then one plan approval and one merge stop |
+| `/plan-html <task>` | Render a plan as self-contained HTML with per-section feedback textareas + ✓ Approve button, backed by a localhost feedback server. Used by `feature-loop` at its plan stop by default; set `HIVESMITH_PLAN_HTML=0` to opt out. |
 
 **Loop primitives**
 

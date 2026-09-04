@@ -371,15 +371,17 @@ After the verdict is computed, scan the surviving findings for *patterns* worth 
 For each qualifying pattern, distill it (one paragraph: pattern, why it bites, how to avoid) and append:
 
 ```
-echo "<distilled pattern>" | HIVESMITH_SKILL=hs-review-pr \
+HIVESMITH_SKILL=hs-review-pr \
   ~/.hivesmith/bin/brain-append \
   --slug "<kebab-case-pattern>" \
   --scope project \
   --tags "review,<dimension>,<category>" \
-  --confidence 0.6
+  --confidence 0.6 <<'LESSON'
+<distilled pattern>
+LESSON
 ```
 
-Do not log specific PR numbers, file paths, or line numbers in the body — those rot. Capture the *transferable rule*. If no findings cleared the bar, write nothing.
+The quoted heredoc (`<<'LESSON'`) is required, not stylistic: the pattern text is distilled from untrusted diff and comment content, and `echo "..."` would let `$(...)` or backticks in it execute. Do not log specific PR numbers, file paths, or line numbers in the body — those rot. Capture the *transferable rule*. If no findings cleared the bar, write nothing.
 
 ## 7. Verdict rubric
 
