@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/064-make-feature-loop-autonomous-by-default.md](../../product-specs/064-make-feature-loop-autonomous-by-default.md)
 - **Issue:** #64
-- **Status:** active
+- **Status:** completed
 - **PR:** #65
 - **Branch:** feature/64-autonomous-feature-loop
 
@@ -202,3 +202,10 @@ None — resolved in the two clarifying rounds.
 - **2026-09-04 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 76c045937f3a1f01e508e208eccfbb483acddf96448557eee844295613a4c825; threads_open: 0; action: stop; head_sha: ebcd8c3.
 
 ## Gate verdict
+
+- **2026-09-04** — verdict: PASS; checks: 3 dimensions passed / 0 failed / 0 followups; followups: none; one-line: every success criterion observable in the rewritten skill, no non-goal bleed, docs consistent with what shipped.
+  - 2026-09-04 dimensions:
+    - acceptance — PASS — all 8 criteria verified by running the plan's Verification block (greps, shellcheck, brain tests 13/13, agent-scope tests 4/4, install smoke, render correctness, changelog gate); 4 AskUserQuestion sites confirmed as the 2 clarifying rounds + merge stop + the conditional `ask`-policy prompt, with plan approval via plan-html.
+    - non-goals — PASS — sibling-skill edits are cross-reference wording plus brain-append heredoc hardening, no contract change; no delegated implementation; `gh pr merge` reachable only behind the human merge stop; scope hardcoded to `project`.
+    - doc accuracy — PASS — changesets 002/003 deleted and 034/046 scrubbed, README/plan-html/hivesmith-init/AGENTS template updated, no `--full-auto` in live docs, generated files untouched so both CI gates pass.
+

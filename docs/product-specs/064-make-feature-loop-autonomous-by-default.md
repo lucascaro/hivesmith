@@ -4,13 +4,14 @@ title: Make feature-loop autonomous by default
 type: enhancement
 complexity: M
 priority: P2
-stage: GATE
+stage: DONE
 pr: 65
+shipped: 2026-09-04
 ---
 
 # Make feature-loop autonomous by default
 
-- **Exec plan:** [docs/exec-plans/active/064-make-feature-loop-autonomous-by-default.md](../exec-plans/active/064-make-feature-loop-autonomous-by-default.md)
+- **Exec plan:** [docs/exec-plans/completed/064-make-feature-loop-autonomous-by-default.md](../exec-plans/active/064-make-feature-loop-autonomous-by-default.md)
 
 ## Problem
 
