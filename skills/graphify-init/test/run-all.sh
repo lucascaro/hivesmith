@@ -685,6 +685,28 @@ test_nudge_fails_open() {
     rm -rf "$t"; return "$rc"
 }
 
+test_nudge_survives_gnu_stat() {
+    # CI (Linux) caught what macOS could not: `stat -f` is --file-system on GNU
+    # coreutils, so a BSD-first probe succeeds with garbage instead of falling
+    # through, and the stamp check silently never fires. Shim a GNU-only stat so
+    # this fails on either platform.
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    cat > "$t/bin/stat" <<'SHIM'
+#!/bin/sh
+case "$1" in
+    -c) shift; f="$2"; [ -e "$f" ] || exit 1; /usr/bin/stat -f %m "$f" 2>/dev/null || exit 1; exit 0 ;;
+    -f) echo "  File: garbage"; exit 0 ;;
+esac
+exit 1
+SHIM
+    chmod +x "$t/bin/stat"
+    : > "$t/graphify-out/cache/last_query_stamp"
+    local out; out="$(run_nudge "$t" "$NUDGE_PAYLOAD")"
+    [ -z "$out" ] || { printf '  ASSERT FAIL: fresh stamp ignored under a GNU-style stat\n' >&2; rc=1; }
+    rm -rf "$t"; return "$rc"
+}
+
 test_setup_migrates_guarded_command() {
     # Repos wired before the wrapper existed carry the ALREADY-GUARDED form.
     # A `startswith("graphify ")` predicate skips it, which would leave them
@@ -740,6 +762,7 @@ run_test "nudge text is advisory"                test_nudge_text_is_advisory
 run_test "nudge throttles per session and kind"  test_nudge_throttles_per_session
 run_test "nudge passes a deny through verbatim"  test_nudge_passes_through_deny
 run_test "nudge respects the query stamp"        test_nudge_respects_query_stamp
+run_test "nudge survives a GNU-style stat"       test_nudge_survives_gnu_stat
 run_test "nudge has a stale-graph variant"       test_nudge_stale_variant
 run_test "nudge sanitizes the session id"        test_nudge_sanitizes_session_id
 run_test "nudge skips the fork when satisfied"   test_nudge_skips_fork_when_satisfied

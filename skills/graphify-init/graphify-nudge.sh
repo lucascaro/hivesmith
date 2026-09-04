@@ -69,14 +69,27 @@ sid="$(printf '%s' "$payload" \
 [ -n "$sid" ] || sid="unknown"
 claim="$CLAIMS/$sid.$kind"
 
+# BSD (macOS) and GNU stat disagree on flags, and the probe order matters: on
+# GNU coreutils `-f` means --file-system, so `stat -f %m` prints a filesystem
+# block rather than failing, and a BSD-first probe never reaches the fallback —
+# it just yields garbage. GNU's `-c` is rejected outright by BSD stat with no
+# stdout, so probing GNU first is the order that fails cleanly on both. Same
+# reasoning, and the same numeric backstop, as graphify-refresh.sh:47.
+mtime_of() {
+    m="$(stat -c %Y "$1" 2>/dev/null)" || m="$(stat -f %m "$1" 2>/dev/null)" || m=0
+    case "$m" in
+        ''|*[!0-9]*) m=0 ;;
+    esac
+    printf '%s\n' "$m"
+}
+
 # Fresh orientation stamp means the agent already did what the nudge asks.
 stamp_fresh() {
     [ -f "$CACHE/last_query_stamp" ] || return 1
     now="$(date +%s 2>/dev/null)" || return 1
-    # -f is BSD, -c is GNU; try both rather than depending on one.
-    mt="$(stat -f %m "$CACHE/last_query_stamp" 2>/dev/null \
-        || stat -c %Y "$CACHE/last_query_stamp" 2>/dev/null)" || return 1
-    case "$now$mt$TTL" in *[!0-9]*) return 1 ;; esac
+    mt="$(mtime_of "$CACHE/last_query_stamp")"
+    case "$now$TTL" in *[!0-9]*) return 1 ;; esac
+    [ "$mt" -gt 0 ] || return 1
     [ "$((now - mt))" -lt "$TTL" ]
 }
 
