@@ -25,6 +25,7 @@ export GIT_CONFIG_SYSTEM=/dev/null
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 SETUP="$REPO/skills/graphify-init/graphify-setup.sh"
 REFRESH="$REPO/skills/graphify-init/graphify-refresh.sh"
+NUDGE="$REPO/skills/graphify-init/graphify-nudge.sh"
 
 PASS=0
 FAIL=0
@@ -375,12 +376,14 @@ test_nudges_opt_out() {
     (cd "$t/main-repo" && "$SETUP" --no-nudges --quiet) || { rm -rf "$t"; return 1; }
     assert_file_contains "$s" 'graphify-refresh.sh' || rc=1
     assert_file_lacks "$s" 'hook-guard' || rc=1
+    assert_file_lacks "$s" 'graphify-nudge.sh' || rc=1
 
     # And the env form, on a second repo so the first is not already wired.
     local t2; t2="$(mktemp -d)"
     setup_repo "$t2"
     (cd "$t2/main-repo" && HIVESMITH_GRAPHIFY_NUDGES=0 "$SETUP" --quiet) || rc=1
     assert_file_lacks "$t2/main-repo/.claude/settings.json" 'hook-guard' || rc=1
+    assert_file_lacks "$t2/main-repo/.claude/settings.json" 'graphify-nudge.sh' || rc=1
     rm -rf "$t2"
 
     rm -rf "$t"; return "$rc"
@@ -392,7 +395,9 @@ test_nudges_on_by_default() {
     setup_repo "$t"
     local rc=0
     (cd "$t/main-repo" && "$SETUP" --quiet) || { rm -rf "$t"; return 1; }
-    assert_file_contains "$t/main-repo/.claude/settings.json" 'hook-guard' || rc=1
+    # The entries point at the wrapper, and graphify's bare command is gone.
+    assert_file_contains "$t/main-repo/.claude/settings.json" 'graphify-nudge.sh' || rc=1
+    assert_file_lacks "$t/main-repo/.claude/settings.json" 'hook-guard' || rc=1
     # The CLI would also write a CLAUDE.md section duplicating our AGENTS.md
     # block; calling install.py directly must not.
     [ -f "$t/main-repo/CLAUDE.md" ] \
@@ -420,8 +425,13 @@ test_hook_target_is_untracked_and_guarded() {
     if ! (cd "$t/main-repo" && git check-ignore -q graphify-out/graphify-refresh.sh); then
         printf '  ASSERT FAIL: hook target is not gitignored\n' >&2; rc=1
     fi
-    # graphify's own nudges must be guarded too.
+    # graphify's own nudges must be guarded too — and now replaced outright by
+    # the wrapper, whose target is subject to the same untracked invariant.
     assert_file_lacks "$s" '"command": "graphify hook-guard' || rc=1
+    assert_file_contains "$s" 'graphify-out/graphify-nudge.sh' || rc=1
+    if ! (cd "$t/main-repo" && git check-ignore -q graphify-out/graphify-nudge.sh); then
+        printf '  ASSERT FAIL: nudge wrapper target is not gitignored\n' >&2; rc=1
+    fi
     rm -rf "$t"; return "$rc"
 }
 
@@ -497,6 +507,216 @@ test_refresh_caps_log() {
 
 # ---------------------------------------------------------------------------
 
+
+# --- graphify-nudge.sh (the PreToolUse wrapper) ------------------------------
+#
+# Most cases drive the wrapper directly with a synthetic payload and a `graphify`
+# shim on PATH, so they need neither a real graphify nor a built graph. Only the
+# install-path cases call need_graphify.
+
+# Scratch project with an out dir and a shim graphify whose canned stdout is
+# whatever $2 contains. Echoes the project dir.
+nudge_fixture() {
+    local dir="$1" canned="$2"
+    mkdir -p "$dir/graphify-out/cache" "$dir/bin"
+    cat > "$dir/bin/graphify" <<SHIM
+#!/bin/sh
+echo "invoked" >> "$dir/graphify-out/shim-invocations"
+printf '%s' '$canned'
+SHIM
+    chmod +x "$dir/bin/graphify"
+}
+
+NUDGE_PAYLOAD='{"session_id":"sess-a","tool_input":{"pattern":"foo"}}'
+NUDGE_SOFT='{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"MANDATORY: you MUST run graphify"}}'
+NUDGE_DENY='{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"graphify strict mode"}}'
+
+# Run the wrapper inside $1 with the shim on PATH. Payload on stdin from $2.
+run_nudge() {
+    local dir="$1" payload="$2" kind="${3:-search}"
+    (cd "$dir" && PATH="$dir/bin:$PATH" CLAUDE_PROJECT_DIR="$dir" \
+        sh -c "printf '%s' '$payload' | '$NUDGE' $kind")
+}
+
+test_nudge_text_is_advisory() {
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    local out; out="$(run_nudge "$t" "$NUDGE_PAYLOAD")"
+    case "$out" in
+        *MANDATORY*|*"You MUST"*|*subagent*)
+            printf '  ASSERT FAIL: emitted text is not advisory: %s\n' "$out" >&2; rc=1 ;;
+    esac
+    case "$out" in
+        *"graphify query"*) ;;
+        *) printf '  ASSERT FAIL: advisory text missing the query hint\n' >&2; rc=1 ;;
+    esac
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_throttles_per_session() {
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    local first second other
+    first="$(run_nudge "$t" "$NUDGE_PAYLOAD")"
+    second="$(run_nudge "$t" "$NUDGE_PAYLOAD")"
+    other="$(run_nudge "$t" '{"session_id":"sess-b","tool_input":{"pattern":"foo"}}')"
+    [ -n "$first" ]  || { printf '  ASSERT FAIL: first call emitted nothing\n' >&2; rc=1; }
+    [ -z "$second" ] || { printf '  ASSERT FAIL: second call in same session emitted\n' >&2; rc=1; }
+    [ -n "$other" ]  || { printf '  ASSERT FAIL: a different session was suppressed\n' >&2; rc=1; }
+    # Kinds are throttled independently.
+    local readkind; readkind="$(run_nudge "$t" "$NUDGE_PAYLOAD" read)"
+    [ -n "$readkind" ] || { printf '  ASSERT FAIL: read kind suppressed by a search claim\n' >&2; rc=1; }
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_passes_through_deny() {
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_DENY"
+    local out; out="$(GRAPHIFY_HOOK_STRICT=1 run_nudge "$t" "$NUDGE_PAYLOAD")"
+    assert_eq "$NUDGE_DENY" "$out" "deny payload forwarded verbatim" || rc=1
+    # A deny is graphify's decision, not our nudge — it must not burn the slot.
+    if [ -e "$t/graphify-out/cache/hook_nudges/sess-a.search" ]; then
+        printf '  ASSERT FAIL: deny consumed the session claim\n' >&2; rc=1
+    fi
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_respects_query_stamp() {
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    : > "$t/graphify-out/cache/last_query_stamp"
+    local out; out="$(run_nudge "$t" "$NUDGE_PAYLOAD")"
+    [ -z "$out" ] || { printf '  ASSERT FAIL: emitted despite a fresh stamp\n' >&2; rc=1; }
+    # Backdate past the TTL: it should speak again.
+    local out2; out2="$(cd "$t" && PATH="$t/bin:$PATH" CLAUDE_PROJECT_DIR="$t" \
+        GRAPHIFY_HOOK_STRICT_TTL=0 sh -c "printf '%s' '$NUDGE_PAYLOAD' | '$NUDGE' search")"
+    [ -n "$out2" ] || { printf '  ASSERT FAIL: stale stamp still suppressed\n' >&2; rc=1; }
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_stale_variant() {
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    : > "$t/graphify-out/needs_update"
+    local out; out="$(run_nudge "$t" "$NUDGE_PAYLOAD")"
+    case "$out" in
+        *"graphify update"*) ;;
+        *) printf '  ASSERT FAIL: stale variant missing the update hint\n' >&2; rc=1 ;;
+    esac
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_sanitizes_session_id() {
+    # The session id becomes a filename. A Bash payload can carry the literal
+    # "session_id": inside the command being nudged, and key order is not
+    # contractual, so a traversal-shaped value must never escape the cache dir.
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    run_nudge "$t" '{"session_id":"../../escape","tool_input":{"pattern":"x"}}' >/dev/null
+    if [ -e "$t/escape.search" ] || [ -e "$t/graphify-out/escape.search" ]; then
+        printf '  ASSERT FAIL: claim file escaped the cache dir\n' >&2; rc=1
+    fi
+    local claims; claims="$(find "$t/graphify-out/cache/hook_nudges" -type f 2>/dev/null | wc -l | tr -d ' ')"
+    assert_eq "1" "$claims" "exactly one claim file, inside the cache dir" || rc=1
+    local name; name="$(find "$t/graphify-out/cache/hook_nudges" -type f -exec basename {} \; 2>/dev/null)"
+    case "$name" in
+        *..*) printf '  ASSERT FAIL: unsanitised claim filename: %s\n' "$name" >&2; rc=1 ;;
+    esac
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_skips_fork_when_satisfied() {
+    # The point of the wrapper is not only fewer tokens: once nothing graphify
+    # can return would be used, it must not pay the process spawn either.
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    run_nudge "$t" "$NUDGE_PAYLOAD" >/dev/null          # claims the slot, forks once
+    rm -f "$t/graphify-out/shim-invocations"
+    run_nudge "$t" "$NUDGE_PAYLOAD" >/dev/null          # already claimed
+    if [ -e "$t/graphify-out/shim-invocations" ]; then
+        printf '  ASSERT FAIL: forked graphify despite a claimed slot\n' >&2; rc=1
+    fi
+    # Under strict mode a deny is still possible, so the shortcut must not apply.
+    rm -f "$t/graphify-out/shim-invocations"
+    (cd "$t" && PATH="$t/bin:$PATH" CLAUDE_PROJECT_DIR="$t" GRAPHIFY_HOOK_STRICT=1 \
+        sh -c "printf '%s' '$NUDGE_PAYLOAD' | '$NUDGE' search") >/dev/null
+    if [ ! -e "$t/graphify-out/shim-invocations" ]; then
+        printf '  ASSERT FAIL: strict mode skipped the graphify call\n' >&2; rc=1
+    fi
+    rm -rf "$t"; return "$rc"
+}
+
+test_nudge_fails_open() {
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+
+    # 1. graphify absent from PATH.
+    local out
+    out="$(cd "$t" && PATH=/usr/bin:/bin CLAUDE_PROJECT_DIR="$t" \
+        sh -c "printf '%s' '$NUDGE_PAYLOAD' | '$NUDGE' search")"
+    local r=$?
+    [ "$r" = "0" ] && [ -z "$out" ] || { printf '  ASSERT FAIL: no-graphify path\n' >&2; rc=1; }
+
+    # 2. stdin is not JSON at all.
+    nudge_fixture "$t" ""
+    out="$(run_nudge "$t" 'not json at all')"; r=$?
+    [ "$r" = "0" ] && [ -z "$out" ] || { printf '  ASSERT FAIL: non-JSON stdin\n' >&2; rc=1; }
+
+    # 3. graphify emits nothing.
+    out="$(run_nudge "$t" "$NUDGE_PAYLOAD")"; r=$?
+    [ "$r" = "0" ] && [ -z "$out" ] || { printf '  ASSERT FAIL: empty graphify output\n' >&2; rc=1; }
+
+    # 4. graphify emits malformed JSON.
+    nudge_fixture "$t" 'not-json'
+    out="$(run_nudge "$t" '{"session_id":"sess-malformed","tool_input":{"pattern":"x"}}')"; r=$?
+    [ "$r" = "0" ] || { printf '  ASSERT FAIL: malformed graphify output exited non-zero\n' >&2; rc=1; }
+
+    # 5. unwritable cache dir.
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    chmod a-w "$t/graphify-out/cache" 2>/dev/null
+    out="$(run_nudge "$t" '{"session_id":"sess-ro","tool_input":{"pattern":"x"}}')"; r=$?
+    chmod u+w "$t/graphify-out/cache" 2>/dev/null
+    [ "$r" = "0" ] || { printf '  ASSERT FAIL: unwritable cache exited non-zero\n' >&2; rc=1; }
+
+    # 6. no kind argument.
+    out="$(printf '%s' "$NUDGE_PAYLOAD" | "$NUDGE")"; r=$?
+    [ "$r" = "0" ] && [ -z "$out" ] || { printf '  ASSERT FAIL: missing kind arg\n' >&2; rc=1; }
+
+    rm -rf "$t"; return "$rc"
+}
+
+test_setup_migrates_guarded_command() {
+    # Repos wired before the wrapper existed carry the ALREADY-GUARDED form.
+    # A `startswith("graphify ")` predicate skips it, which would leave them
+    # unmigrated and then trip the post-install verification.
+    need_graphify || return $?
+    local t; t="$(mktemp -d)"
+    setup_repo "$t"
+    local rc=0 s="$t/main-repo/.claude/settings.json"
+    mkdir -p "$t/main-repo/.claude"
+    cat > "$s" <<'PRE'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v graphify >/dev/null 2>&1 && graphify hook-guard search || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
+PRE
+    (cd "$t/main-repo" && "$SETUP" --quiet) || { rm -rf "$t"; return 1; }
+    assert_file_contains "$s" 'graphify-nudge.sh' || rc=1
+    assert_file_lacks "$s" '&& graphify hook-guard' || rc=1
+    rm -rf "$t"; return "$rc"
+}
+
 run_test "shared cache symlink across worktrees" test_shared_cache_symlink
 run_test "--migrate preserves cache entries"     test_migrate_preserves_entries
 run_test "refuses to clobber a populated cache"  test_refuses_to_clobber_cache
@@ -516,6 +736,15 @@ run_test "refresh caps its log"                  test_refresh_caps_log
 run_test "nudges can be opted out"               test_nudges_opt_out
 run_test "nudges on by default, no CLAUDE.md"    test_nudges_on_by_default
 run_test "hook target untracked and guarded"      test_hook_target_is_untracked_and_guarded
+run_test "nudge text is advisory"                test_nudge_text_is_advisory
+run_test "nudge throttles per session and kind"  test_nudge_throttles_per_session
+run_test "nudge passes a deny through verbatim"  test_nudge_passes_through_deny
+run_test "nudge respects the query stamp"        test_nudge_respects_query_stamp
+run_test "nudge has a stale-graph variant"       test_nudge_stale_variant
+run_test "nudge sanitizes the session id"        test_nudge_sanitizes_session_id
+run_test "nudge skips the fork when satisfied"   test_nudge_skips_fork_when_satisfied
+run_test "nudge fails open"                      test_nudge_fails_open
+run_test "setup migrates a guarded command"      test_setup_migrates_guarded_command
 
 printf '\n%d passed, %d failed, %d skipped.\n' "$PASS" "$FAIL" "$SKIP"
 if [ "$FAIL" -gt 0 ]; then
