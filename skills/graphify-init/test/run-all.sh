@@ -694,9 +694,12 @@ test_nudge_survives_gnu_stat() {
     nudge_fixture "$t" "$NUDGE_SOFT"
     cat > "$t/bin/stat" <<'SHIM'
 #!/bin/sh
+# Models GNU coreutils and defers to no real stat, so it behaves the same on
+# macOS and Linux: -c %Y answers, and -f succeeds with a filesystem block
+# instead of failing — the trap a BSD-first probe falls into.
 case "$1" in
-    -c) shift; f="$2"; [ -e "$f" ] || exit 1; /usr/bin/stat -f %m "$f" 2>/dev/null || exit 1; exit 0 ;;
-    -f) echo "  File: garbage"; exit 0 ;;
+    -c) date +%s; exit 0 ;;
+    -f) echo "  File: \"/\"  ID: 0 Namelen: 255  Type: ext2/ext3"; exit 0 ;;
 esac
 exit 1
 SHIM
