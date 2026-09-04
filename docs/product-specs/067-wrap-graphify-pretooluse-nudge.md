@@ -4,7 +4,8 @@ title: Wrap graphify's PreToolUse nudge
 type: enhancement
 complexity: S
 priority: P2
-stage: IMPLEMENT
+stage: REVIEW
+pr: 68
 ---
 
 # Wrap graphify's PreToolUse nudge

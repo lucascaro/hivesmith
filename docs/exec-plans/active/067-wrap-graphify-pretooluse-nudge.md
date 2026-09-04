@@ -3,7 +3,7 @@
 - **Spec:** [docs/product-specs/067-wrap-graphify-pretooluse-nudge.md](../../product-specs/067-wrap-graphify-pretooluse-nudge.md)
 - **Issue:** #67
 - **Status:** active
-- **PR:** —
+- **PR:** #68
 - **Branch:** feature/67-graphify-nudge-wrapper
 
 ## Summary
