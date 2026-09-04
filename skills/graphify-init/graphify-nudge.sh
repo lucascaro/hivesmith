@@ -47,12 +47,18 @@ cd "$root" 2>/dev/null || exit 0
 OUT="${GRAPHIFY_OUT:-graphify-out}"
 CACHE="$OUT/cache"
 CLAIMS="$CACHE/hook_nudges"
+# Upstream parses this with float(), so 1800.0 is valid there. Truncate rather
+# than reject, so the two agree on the window instead of silently disabling ours.
 TTL="${GRAPHIFY_HOOK_STRICT_TTL:-1800}"
+TTL="${TTL%%.*}"
 
 # stdin can only be consumed once: read it into a variable and replay it to
 # graphify with printf. $(cat) strips the trailing newline, which json.loads
 # does not care about — so this forwards the payload, not the bytes.
-payload="$(cat 2>/dev/null)" || exit 0
+payload=""
+# `read -d ''` consumes all of stdin and returns non-zero at EOF; the payload is
+# still set. A builtin rather than $(cat) because this runs on every tool call.
+IFS= read -r -d '' payload
 [ -n "$payload" ] || exit 0
 
 # Session key. Anchored to the FIRST "session_id" and stopped at the next quote.
@@ -61,11 +67,14 @@ payload="$(cat 2>/dev/null)" || exit 0
 # nudged, JSON key order is not contractual, and `/` or `..` in the value would
 # write outside the cache dir. Same treatment upstream gives it before using a
 # session id as a path component.
-sid="$(printf '%s' "$payload" \
-    | sed -n 's/.*"session_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-    | head -n 1 \
-    | tr -c 'A-Za-z0-9_-' '_' \
-    | cut -c1-64)"
+sid=""
+if [[ "$payload" =~ \"session_id\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
+    sid="${BASH_REMATCH[1]}"
+fi
+# Bash regex matching is leftmost-first, so this takes the FIRST occurrence. A
+# greedy sed would anchor to the last one instead.
+sid="${sid//[^A-Za-z0-9_-]/_}"
+sid="${sid:0:64}"
 [ -n "$sid" ] || sid="unknown"
 claim="$CLAIMS/$sid.$kind"
 
@@ -94,9 +103,16 @@ stamp_fresh() {
 }
 
 strict_enabled() {
-    case "${GRAPHIFY_HOOK_STRICT:-}" in
-        1|true|TRUE|yes|YES|on|ON) return 0 ;;
-        0|false|FALSE|no|NO|off|OFF) return 1 ;;
+    # Upstream resolves this as .strip().lower() (cli.py:679), so `True`, `Yes`
+    # and " 1" are all strict-ON for graphify. Matching a narrower set here would
+    # be strict-OFF for us, the pre-fork shortcut would fire, and a strict-mode
+    # deny would be silently swallowed — the one decision this wrapper promises
+    # to leave entirely to graphify. Normalise the same way it does.
+    strict_v="${GRAPHIFY_HOOK_STRICT:-}"
+    strict_v="$(printf '%s' "$strict_v" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+    case "$strict_v" in
+        1|true|yes|on) return 0 ;;
+        0|false|no|off) return 1 ;;
     esac
     # Unset defers to the flag baked into the installed command; we never
     # install --strict, so absent an explicit opt-in, strict is off.
@@ -119,7 +135,8 @@ command -v graphify >/dev/null 2>&1 || exit 0
 out="$(printf '%s' "$payload" | graphify hook-guard "$kind" 2>/dev/null)" || exit 0
 [ -n "$out" ] || exit 0
 
-# A blocking decision is graphify's to own — pass it through untouched.
+# A blocking decision is graphify's to own — forward its payload unchanged.
+# (`$(...)` drops the trailing newline; the JSON itself is untouched.)
 case "$out" in
     *'"permissionDecision"'*) printf '%s' "$out"; exit 0 ;;
 esac

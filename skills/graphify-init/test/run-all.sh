@@ -613,11 +613,16 @@ test_nudge_sanitizes_session_id() {
     local t; t="$(mktemp -d)"; local rc=0
     nudge_fixture "$t" "$NUDGE_SOFT"
     run_nudge "$t" '{"session_id":"../../escape","tool_input":{"pattern":"x"}}' >/dev/null
+    # A Bash payload can carry the literal key inside the command being nudged;
+    # the FIRST occurrence is the real one.
+    run_nudge "$t" '{"session_id":"real-one","tool_input":{"command":"grep session_id x"}}' >/dev/null
     if [ -e "$t/escape.search" ] || [ -e "$t/graphify-out/escape.search" ]; then
         printf '  ASSERT FAIL: claim file escaped the cache dir\n' >&2; rc=1
     fi
     local claims; claims="$(find "$t/graphify-out/cache/hook_nudges" -type f 2>/dev/null | wc -l | tr -d ' ')"
-    assert_eq "1" "$claims" "exactly one claim file, inside the cache dir" || rc=1
+    assert_eq "2" "$claims" "both claims land inside the cache dir" || rc=1
+    [ -e "$t/graphify-out/cache/hook_nudges/real-one.search" ] \
+        || { printf '  ASSERT FAIL: took a later session_id over the first\n' >&2; rc=1; }
     local name; name="$(find "$t/graphify-out/cache/hook_nudges" -type f -exec basename {} \; 2>/dev/null)"
     case "$name" in
         *..*) printf '  ASSERT FAIL: unsanitised claim filename: %s\n' "$name" >&2; rc=1 ;;
@@ -637,12 +642,19 @@ test_nudge_skips_fork_when_satisfied() {
         printf '  ASSERT FAIL: forked graphify despite a claimed slot\n' >&2; rc=1
     fi
     # Under strict mode a deny is still possible, so the shortcut must not apply.
-    rm -f "$t/graphify-out/shim-invocations"
-    (cd "$t" && PATH="$t/bin:$PATH" CLAUDE_PROJECT_DIR="$t" GRAPHIFY_HOOK_STRICT=1 \
-        sh -c "printf '%s' '$NUDGE_PAYLOAD' | '$NUDGE' search") >/dev/null
-    if [ ! -e "$t/graphify-out/shim-invocations" ]; then
-        printf '  ASSERT FAIL: strict mode skipped the graphify call\n' >&2; rc=1
-    fi
+    # Upstream resolves this env var as .strip().lower(), so every spelling it
+    # accepts must be strict here too — a narrower match would silently swallow
+    # a deny, which is strictly worse than an extra nudge.
+    local v
+    for v in 1 on ON true True TRUE yes Yes " 1"; do
+        rm -f "$t/graphify-out/shim-invocations"
+        (cd "$t" && PATH="$t/bin:$PATH" CLAUDE_PROJECT_DIR="$t" GRAPHIFY_HOOK_STRICT="$v" \
+            sh -c "printf '%s' '$NUDGE_PAYLOAD' | '$NUDGE' search") >/dev/null
+        if [ ! -e "$t/graphify-out/shim-invocations" ]; then
+            printf '  ASSERT FAIL: GRAPHIFY_HOOK_STRICT=%s skipped the graphify call\n' "$v" >&2
+            rc=1
+        fi
+    done
     rm -rf "$t"; return "$rc"
 }
 
@@ -671,12 +683,15 @@ test_nudge_fails_open() {
     out="$(run_nudge "$t" '{"session_id":"sess-malformed","tool_input":{"pattern":"x"}}')"; r=$?
     [ "$r" = "0" ] || { printf '  ASSERT FAIL: malformed graphify output exited non-zero\n' >&2; rc=1; }
 
-    # 5. unwritable cache dir.
+    # 5. unwritable cache dir. Inert as root (chmod does not stop root writes),
+    #    so skip it there rather than pretend it asserted something.
+    if [ "$(id -u)" != "0" ]; then
     nudge_fixture "$t" "$NUDGE_SOFT"
     chmod a-w "$t/graphify-out/cache" 2>/dev/null
     out="$(run_nudge "$t" '{"session_id":"sess-ro","tool_input":{"pattern":"x"}}')"; r=$?
     chmod u+w "$t/graphify-out/cache" 2>/dev/null
     [ "$r" = "0" ] || { printf '  ASSERT FAIL: unwritable cache exited non-zero\n' >&2; rc=1; }
+    fi
 
     # 6. no kind argument.
     out="$(printf '%s' "$NUDGE_PAYLOAD" | "$NUDGE")"; r=$?
