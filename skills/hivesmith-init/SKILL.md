@@ -81,8 +81,8 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - If `.hivesmith/config.toml` already exists, skip silently (it is user-owned; never overwrite without `--force` + per-file confirmation).
    - Otherwise, use AskUserQuestion to ask:
      > "How should this project handle GitHub issues for new features?"
-     > 1. Create issues on GitHub by default — `/feature-new` and `/feature-loop` open a GitHub issue when you start a feature and confirm at Gate 1; you can skip per-feature. You get a real issue number, lifecycle labels (`triaged`/`researching`/`planned`/`implementing`/`qa`), a PR that links `Fixes #N`, and an index row that shows `#N`. (Recommended)
-     > 2. Always create, never ask — same as option 1, but Gate 1 is skipped entirely. The issue is opened as soon as you describe a feature. Use when every feature is going to GitHub and the confirmation is just noise.
+     > 1. Create issues on GitHub by default — `/feature-new` opens a GitHub issue when you start a feature and confirms at Gate 1 (you can skip per-feature); `/feature-loop` opens one without prompting. You get a real issue number, lifecycle labels (`triaged`/`researching`/`planned`/`implementing`/`qa`), a PR that links `Fixes #N`, and an index row that shows `#N`. (Recommended)
+     > 2. Always create, never ask — same as option 1, but `/feature-new`'s Gate 1 is skipped entirely too. The issue is opened as soon as you describe a feature. Use when every feature is going to GitHub and the confirmation is just noise.
      > 3. Keep specs local by default — features live as files in `docs/product-specs/` only; no GitHub issue is created unless you ask per-feature. You get a locally-allocated number, no labels, and an index row with `—` in the issue column.
      > 4. Ask every time — no project default; Gate 1 shows no recommendation and you decide per feature.
    - Map the choice to a value — option 1 → `opt-out`, option 2 → `always`, option 3 → `opt-in`, option 4 → `ask` — and write `.hivesmith/config.toml`:

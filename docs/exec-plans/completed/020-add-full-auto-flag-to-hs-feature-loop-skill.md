@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md](../../product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md)
 - **Issue:** #20
-- **Status:** active
+- **Status:** completed
 - **PR:** #21
 - **Branch:** feature/20-add-full-auto-flag-to-hs-feature-loop-skill
 
@@ -123,6 +123,8 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 - **2026-05-11** — Gate 4 (plan approval) gets exactly one revise pass before falling back to AskUserQuestion. Why: more passes risk silent drift; one pass catches obvious gaps without unbounded auto-iteration.
 
 ## Progress
+
+- **2026-09-04** — Superseded by #64: `--full-auto` removed and made the default. PR #21 had already merged; this backfills the DONE bookkeeping that was never recorded.
 
 - **2026-05-11** — TRIAGE → RESEARCH → PLAN → IMPLEMENT. Branch `feature/20-add-full-auto-flag-to-hs-feature-loop-skill` created; SKILL.md edits applied for argument-hint, Input docs, new Full-auto mode section, Phase 0 step 1a, and all six gate clauses; Rules section softened. Changelog Unreleased entry added.
 

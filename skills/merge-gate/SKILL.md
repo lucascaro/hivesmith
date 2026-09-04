@@ -19,7 +19,7 @@ The gate is the last chance to catch a partial implementation that slipped past 
 
 ## What this gate does *not* check
 
-Build, lint, and test are **not** gate dimensions. They are already run twice: by `/feature-implement` (and `/feature-loop` step 40) before the commit, and by CI on every push to the PR. Re-running them here buys nothing and slows the gate. If CI is red, the PR is not ready for the gate at all.
+Build, lint, and test are **not** gate dimensions. They are already run twice: by `/feature-implement` (and `/feature-loop`'s implement phase) before the commit, and by CI on every push to the PR. Re-running them here buys nothing and slows the gate. If CI is red, the PR is not ready for the gate at all.
 
 Broad regression review is `/review-pr`'s job, driven to convergence by `/review-loop`. The gate's unique contribution is **spec traceability** — walking the spec's `## Success criteria` and `## Non-goals` one at a time — plus a doc-accuracy sweep.
 
@@ -102,7 +102,7 @@ This skill owns Stage = `GATE`. Before doing any work:
    - Last write — set the spec's frontmatter `stage:` to `DONE`. **Do not edit `docs/product-specs/index.md`** — it's generated; the `block-generated-edits` CI job rejects PRs that touch it directly. It is rebuilt and direct-pushed by the `regenerate-generated` job after the merge lands on `main`.
    - Commit: `git commit -m "chore: gate pass for #<issue-number>"`.
    - **Push to the feature branch:** `git push`. This is what keeps the bookkeeping inside the feature PR. On the degraded `MERGED` path, do not push — leave the commit local and tell the user, since there is no branch left to push to.
-   - Report that the PR is ready to merge. **Do not merge from this skill** — merging is the user's call, driven from `/feature-loop` Gate 6 or by hand.
+   - Report that the PR is ready to merge. **Do not merge from this skill** — merging is the user's call, driven from `/feature-loop`'s merge stop or by hand.
 
    **On FAIL** (`OPEN` path):
    - **Do not file follow-up issues.** The PR is open and the code has not shipped; the fix belongs in this PR. Filing an issue here would convert a blocking defect into tracked debt.

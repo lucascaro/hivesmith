@@ -4,7 +4,7 @@ Rich HTML review UX for plan-producing hivesmith skills.
 
 ## What it gives you
 
-When you invoke `/feature-loop plan <task>` (or `/plan-html <task>` directly), instead of reviewing a plain text plan you get:
+When `/feature-loop` reaches its plan stop (or you invoke `/plan-html <task>` directly), instead of reviewing a plain text plan you get:
 
 - A self-contained `<plan>.html` opened in your browser (dark by default, light theme follows OS preference).
 - Per-section `<textarea>` slots that **autosave** to `<plan>.feedback.json` (1.2s debounce, ⌘S also saves).
@@ -24,7 +24,7 @@ The chrome (CSS, JS, savebar, theme wiring, mermaid + highlight.js setup, server
 |---|---|---|
 | `PLAN_FEEDBACK_PORT` | `0` | Preferred port. `0` (default) lets the OS pick any free port — no TOCTOU window. Set to a specific port (e.g. `8765`) to request it; the server falls back to OS-picked if it's taken. |
 | `PLAN_HTML_AUTO_OPEN` | `true` | Set to `false` to skip the `open`/`xdg-open` call (useful on SSH / headless). |
-| `HIVESMITH_PLAN_HTML` | `1` | Set to `0` to opt out — `hs-feature-loop plan ...` falls back to the inline text-plan draft. |
+| `HIVESMITH_PLAN_HTML` | `1` | Set to `0` to opt out — `hs-feature-loop` falls back to the inline text-plan draft at its plan stop. |
 
 ## Sidecar files (next to `<plan>.html`)
 
