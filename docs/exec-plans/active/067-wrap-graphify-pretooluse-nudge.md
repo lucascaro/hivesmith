@@ -195,6 +195,8 @@ None.
 
 ## PR convergence ledger
 
+- **2026-09-04 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop (converged; the IMPORTANT strict-mode finding from iter 1 fixed and covered by a negative-controlled test); head_sha: a7adb11.
+
 - **2026-09-04 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 36d5954e878682cb147aab2e123046c676ca967a8adfc16b2d584e5308b22e49; threads_open: 0; action: stop; head_sha: d8d0379.
 
 ## Gate verdict

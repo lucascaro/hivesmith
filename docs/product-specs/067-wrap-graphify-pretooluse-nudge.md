@@ -4,7 +4,7 @@ title: Wrap graphify's PreToolUse nudge
 type: enhancement
 complexity: S
 priority: P2
-stage: REVIEW
+stage: GATE
 pr: 68
 ---
 
