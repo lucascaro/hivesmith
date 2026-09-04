@@ -18,6 +18,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
 | #64 | Make feature-loop autonomous by default | #65 | 2026-09-04 | [064-make-feature-loop-autonomous-by-default](064-make-feature-loop-autonomous-by-default.md) |
+| #67 | Wrap graphify's PreToolUse nudge | #68 | 2026-09-04 | [067-wrap-graphify-pretooluse-nudge](067-wrap-graphify-pretooluse-nudge.md) |
 | #62 | Add pi harness support to install.sh | #63 | 2026-09-01 | [062-add-pi-harness-support-to-install-sh](062-add-pi-harness-support-to-install-sh.md) |
 | — | Convert feature-qa into a pre-merge merge-gate | #57 | 2026-08-30 | [036-convert-feature-qa-into-a-pre-merge-merge-gate](036-convert-feature-qa-into-a-pre-merge-merge-gate.md) |
 | #58 | Wire graphify into hivesmith with shared cache and auto-refresh hooks | #59 | 2026-08-30 | [058-wire-graphify-into-hivesmith-with-shared-cache](058-wire-graphify-into-hivesmith-with-shared-cache.md) |
