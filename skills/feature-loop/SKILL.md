@@ -240,15 +240,17 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     At most **one** entry per run, and only after a PASS gate verdict — never on an escalated or failed run:
 
     ```bash
-    echo "<lesson body>" | HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/brain-append \
+    HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/brain-append \
       --slug "<kebab-case-lesson-slug>" \
       --scope project \
       --tags "<comma,separated>" \
       --pr <pr-number> \
-      --confidence 0.6
+      --confidence 0.6 <<'LESSON'
+    <lesson body>
+    LESSON
     ```
 
-    The body is read from **stdin** — pipe it in, as above; every other brain-append call site does the same. It follows `templates/brain/SCHEMA.md`: a `# Title`, then `**Lesson:**`, `**Why:**`, `**How to apply:**`. No code dumps — the redactor rejects code fences over 25 lines. Set `--valid-until` when the lesson is tied to a version or a deadline. Scope is always `project`; broadening it is gated behind `/brain-promote`.
+    The body is read from **stdin**. Use the **quoted** heredoc above (`<<'LESSON'`, quotes required) rather than `echo "..."`: the lesson text is composed after reading untrusted spec, issue and brain content, and an unquoted double-quoted string would let `$(...)` or backticks in it execute. Every other brain-append call site uses the same form. It follows `templates/brain/SCHEMA.md`: a `# Title`, then `**Lesson:**`, `**Why:**`, `**How to apply:**`. No code dumps — the redactor rejects code fences over 25 lines. Set `--valid-until` when the lesson is tied to a version or a deadline. Scope is always `project`; broadening it is gated behind `/brain-promote`.
 
 50. **[The merge stop]** Use AskUserQuestion, showing the PR link, the latest `## Gate verdict` entry, and the last `## PR convergence ledger` line:
     > "Review converged and the gate passed. Merge the PR now?"

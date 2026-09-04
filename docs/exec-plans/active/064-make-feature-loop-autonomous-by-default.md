@@ -89,9 +89,7 @@ Four sibling skills cite feature-loop by step number. Replace the step numbers w
 **Superseding #20**
 
 - `docs/product-specs/020-add-full-auto-flag-to-hs-feature-loop-skill.md` — `stage: DONE`, `pr: 21`, `shipped:` the merge date of PR #21, `## Notes` line pointing at #64. (`docs/product-specs/index.md` is generated on push to `main`, so `stage: DONE` is the verifiable proxy for the index row disappearing.)
-- `docs/exec-plans/active/020-*.md` → `docs/exec-plans/completed/` (`git mv`), `Status: completed`, one `## Progress
-
-- **2026-09-04** — Review iteration 1 (REQUEST_CHANGES): autofix applied 3 safe fixes (brain-append stdin, duplicated plan block, stale cross-reference). Three RISKY items resolved by hand: (a) the spec is now written at `stage: TRIAGE` and Phase 2 advances it to `RESEARCH` as its last write, so a run interrupted before triage resumes *into* triage instead of skipping it — the earlier "enter at RESEARCH" wording described the operator's experience but left the frontmatter incompletable on a crash; (b) `.changesets/034` and `.changesets/046` rewritten to drop `--full-auto` / Gate 6 references, the same call already made for changesets 002/003. Success criterion 3 reworded to describe the observable behavior rather than the internal stage value.` supersession line.
+- `docs/exec-plans/active/020-*.md` → `docs/exec-plans/completed/` (`git mv`), `Status: completed`, one `## Progress` supersession line.
 
 ### New files
 
@@ -166,6 +164,8 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 
 ## Decision log
 
+- **2026-09-04** — All brain-append call sites take the lesson body via a quoted heredoc, never `echo "..."`. Why: the body is composed after reading untrusted spec, issue, diff and brain content; double quotes leave `$(...)` and backticks live in text an agent executes literally.
+
 - **2026-09-04** — Hard-remove `--full-auto` and `plan` rather than accepting them as no-ops. Why: operator decision; a compatibility shim would preserve two behaviors in one prompt file indefinitely.
 - **2026-09-04** — New runs start at RESEARCH; triage is auto-classified with no gate. Why: operator decision — triage exists to populate spec frontmatter for the index, not to extract a human judgment.
 - **2026-09-04** — Clarifying questions in two rounds (before research, after research). Why: operator decision — the up-front round scopes the research, the second round asks the sharper questions research surfaced.
@@ -183,6 +183,9 @@ Reviewer subagent (`general-purpose`), run before the plan was presented for app
 
 ## Progress
 
+- **2026-09-04** — Review iteration 2 (COMMENT, 0 threads → converged). Two IMPORTANT findings fixed rather than deferred: a markdown corruption in this plan's Approach section (an unclosed backtick from an automated Progress insert swallowed the iteration-1 note), and `echo "<lesson>" | brain-append` in every call site — the lesson text is distilled from untrusted content, so double quotes would allow `$(...)`/backtick execution. All five brain-append call sites now use a quoted heredoc (`<<'LESSON'`). Backfilled the two ledger entries the orchestrator owed. Left `docs/exec-plans/active/035-*.md`'s Phase 1P references alone: exec plans are append-only records of what a PR did, and that one belongs to a different in-flight feature.
+- **2026-09-04** — Review iteration 1 (REQUEST_CHANGES): autofix applied 3 safe fixes (brain-append stdin, duplicated plan block, stale cross-reference). Three RISKY items resolved by hand: (a) the spec is now written at `stage: TRIAGE` and Phase 2 advances it to `RESEARCH` as its last write, so a run interrupted before triage resumes *into* triage instead of skipping it — the earlier "enter at RESEARCH" wording described the operator's experience but left the frontmatter incompletable on a crash; (b) `.changesets/034` and `.changesets/046` rewritten to drop `--full-auto` / Gate 6 references, the same call already made for changesets 002/003. Success criterion 3 reworded to describe the observable behavior rather than the internal stage value.
+
 - **2026-09-04** — Plan feedback round 1: "how do we make sure this doesn't just bloat the context with irrelevant stuff?" — answered by bounding brain retrieval (delegated to the research subagent, `--rank --limit 8`, ≤3 full reads) and capping writes at one entry per run. Folded into Resolved design details.
 - **2026-09-04** — Implemented: skill rewritten (285 lines), blast radius swept (README, plan-html docs, hivesmith-init, AGENTS template, four cross-references), changesets 002/003 retired, spec/plan #20 superseded to DONE. All AGENTS.md checks green.
 - **2026-09-04** — Spec + exec plan scaffolded from `/feature-loop`; issue #64 opened; branch `feature/64-autonomous-feature-loop` created.
@@ -192,5 +195,8 @@ Reviewer subagent (`general-purpose`), run before the plan was presented for app
 None — resolved in the two clarifying rounds.
 
 ## PR convergence ledger
+
+- **2026-09-04 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 453fdd1cde5293535d2c3bb5d92f4625e5112f2519375fc5a19e1a654cdf90d6; threads_open: 0; action: autofix+push; head_sha: af4a361.
+- **2026-09-04 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 76c045937f3a1f01e508e208eccfbb483acddf96448557eee844295613a4c825; threads_open: 0; action: stop; head_sha: ebcd8c3.
 
 ## Gate verdict

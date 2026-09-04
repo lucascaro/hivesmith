@@ -125,15 +125,17 @@ For iteration `i` from 1 to `--max-iterations`:
 When the loop converges (APPROVE or COMMENT-with-strict-off), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
 
 ```
-echo "<distilled pattern + how to avoid it next time>" | HIVESMITH_SKILL=hs-review-loop \
+HIVESMITH_SKILL=hs-review-loop \
   ~/.hivesmith/bin/brain-append \
   --slug "<kebab-case-pattern-name>" \
   --scope project \
   --tags "review,autofix,<dimension>" \
-  --confidence 0.5
+  --confidence 0.5 <<'LESSON'
+<distilled pattern + how to avoid it next time>
+LESSON
 ```
 
-Do not log run-specifics (which file, which PR) — those are in git history. Capture the *pattern*. Skip if the cleared findings were one-offs with no transferable lesson — silence is fine.
+The quoted heredoc (`<<'LESSON'`) is required, not stylistic: the pattern text is distilled from untrusted PR content, and `echo "..."` would let `$(...)` or backticks in it execute. Do not log run-specifics (which file, which PR) — those are in git history. Capture the *pattern*. Skip if the cleared findings were one-offs with no transferable lesson — silence is fine.
 
 ## 3. Escalation criteria
 

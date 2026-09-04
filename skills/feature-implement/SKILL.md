@@ -42,14 +42,16 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 6. **Run checks** as defined in `AGENTS.md` (typically build + lint + test). All must pass before committing.
 7. **Append a brain entry for any non-trivial cross-feature lesson** discovered during implementation. After all checks pass and before committing, decide: did the work surface a gotcha, convention, or decision that future skill runs *in this same project* would benefit from knowing? If yes, distill it (one paragraph each: lesson, why, how-to-apply) and append via:
    ```
-   echo "<distilled lesson>" | HIVESMITH_SKILL=hs-feature-implement \
+   HIVESMITH_SKILL=hs-feature-implement \
      ~/.hivesmith/bin/brain-append \
      --slug "<kebab-case-slug>" --scope project \
      --tags "<comma,separated>" \
      --confidence 0.5 \
-     [--graph-nodes "<graphify-node-ids>"]
+     [--graph-nodes "<graphify-node-ids>"] <<'LESSON'
+   <distilled lesson>
+   LESSON
    ```
-   Default scope is `project`. Do not promote to broader scope here — that requires `/hs-brain-promote`. Skip if no durable lesson was surfaced; do not write filler.
+   The quoted heredoc (`<<'LESSON'`) is required, not stylistic: the lesson is distilled from untrusted spec and issue content, and `echo "..."` would let `$(...)` or backticks in it execute. Default scope is `project`. Do not promote to broader scope here — that requires `/hs-brain-promote`. Skip if no durable lesson was surfaced; do not write filler.
 8. **Commit** the implementation with a descriptive message referencing `Fixes #<issue-number>`. Do not touch the index or move the plan file yet.
 9. **Offer to open a PR.** Ask the user if they want to push and create a PR. If yes — write order matters: do all non-stage writes first, then the stage transition as the **last** write so a mid-sequence crash leaves the spec resumable:
     - `git push -u origin <branch>`.
