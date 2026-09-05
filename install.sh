@@ -624,6 +624,23 @@ inspect_scope() {  # $1 = scope
         fi
         if has_hivesmith_cron; then say "  auto-upgrade: cron installed"
         else say "  auto-upgrade: off"; fi
+        # Telemetry is reported, never installed here. These hooks fire in every
+        # Claude Code session on the machine, including repos that have nothing
+        # to do with hivesmith, so wiring them as a side effect of installing a
+        # skill pack would turn an informed opt-in into a surprise.
+        if [[ -f "$HOME/.claude/settings.json" ]] \
+           && grep -q 'scripts/telemetry/' "$HOME/.claude/settings.json" 2>/dev/null; then
+            say "  telemetry: wired (user-level, all sessions on this machine)"
+        elif grep -qs 'scripts/telemetry/' .claude/settings.local.json 2>/dev/null; then
+            # /hivesmith-init writes the per-repo opt-in here. Reporting "not
+            # wired" for a project that deliberately opted in reads as a broken
+            # install and invites a second, machine-wide install.
+            say "  telemetry: wired for this repo only (.claude/settings.local.json)"
+        else
+            say "  telemetry: not wired — subagent durations are not being recorded."
+            say "             Machine-wide:  scripts/telemetry/install-hooks.sh"
+            say "             This repo only: run /hivesmith-init and check \"Agent telemetry\""
+        fi
     fi
 }
 
@@ -724,7 +741,7 @@ if [[ "$MODE" == "uninstall" ]]; then
         # referenced by skills). Remove the ones we own; drop the dir if empty.
         BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
         if [[ -d "$BRAIN_BIN_DIR" ]]; then
-            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden; do
+            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden hs-metric; do
                 link="$BRAIN_BIN_DIR/$link_name"
                 if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$HIVESMITH_DIR/"* ]]; then
                     run rm -f "$link"
@@ -1058,6 +1075,10 @@ if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
         "scripts/brain/yaml.py:brain-yaml.py"
         "skills/brain-promote/promote.sh:brain-promote"
         "skills/brain-garden/garden.sh:brain-garden"
+        # Not a hook: hs-metric only runs when a skill the operator started
+        # calls it, so it carries the same consent posture as brain-append.
+        # The name is prefix-independent because the bin dir is.
+        "scripts/metrics/emit.sh:hs-metric"
     )
     for pair in "${brain_links[@]}"; do
         src_rel="${pair%%:*}"

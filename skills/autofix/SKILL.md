@@ -242,6 +242,18 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
     - Remaining: any items still needing manual attention
     ```
 
+12. **Emit the event.** The classification counts are otherwise printed and lost:
+
+    ```bash
+    HIVESMITH_SKILL=hs-autofix ~/.hivesmith/bin/hs-metric --event autofix_applied \
+      --field feature=<NNN> --field pr=<n> \
+      --field safe=<N> --field risky=<M> --field deferred=<over-the-20-cap count> \
+      --field threads_fixed=<N> --field threads_resolved=<M> --field threads_open=<post> \
+      --field checks=<PASS|FAIL>
+    ```
+
+    This is **measurement only**. Do not rewire `/review-loop`'s parse of the summary block below to read this event instead: that path already cross-checks itself against GraphQL, which is the correct source of truth, and adding a control-flow dependency on a new file would buy no correctness and one new failure mode.
+
     The `Threads:` line is load-bearing for `/review-loop` — it reads `<post>`
     to enforce the no-APPROVE-while-threads-open gate. Always emit the line,
     even when the count is zero.

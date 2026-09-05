@@ -24,6 +24,24 @@ if [[ ! -f "$pid_file" ]]; then
 fi
 
 pid=$(cat "$pid_file")
+
+# Verify the PID is actually OUR server before signalling it. A sidecar can
+# outlive its process (a crash, a reboot, a `kill -9` from elsewhere) and PIDs
+# are recycled, so an unverified kill can hit an unrelated process. This used
+# to require a deliberate `stop.sh` call; start.sh's predecessor reap and
+# wait.sh --stop now fire it automatically on every plan render, which is what
+# makes the check worth having.
+if [[ ! "$pid" =~ ^[0-9]+$ ]]; then
+    echo "hs-plan-html: pid file does not contain a pid; refusing to signal" >&2
+    rm -f "$pid_file" "$port_file" "$token_file"
+    exit 0
+fi
+if kill -0 "$pid" 2>/dev/null && ! ps -o command= -p "$pid" 2>/dev/null | grep -q "server.py"; then
+    echo "hs-plan-html: pid=$pid is not a plan-html server (recycled pid); not killing it"
+    rm -f "$pid_file" "$port_file" "$token_file"
+    exit 0
+fi
+
 if kill -0 "$pid" 2>/dev/null; then
     kill "$pid" 2>/dev/null || true
     # Give it a moment to exit cleanly.

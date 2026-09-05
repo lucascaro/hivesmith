@@ -39,6 +39,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - [ ] `CONTRIBUTING.md` (contributor guide skeleton)
    - [ ] `CHANGELOG.md` (Keep a Changelog seed with `[Unreleased]` section)
    - [ ] `scripts/release.sh` (generic release scaffold)
+   - [ ] Agent telemetry for **this repo only** (subagent start/stop events, which is what gives `scripts/metrics/report.py` real per-invocation durations) — **default unchecked**, see step 5b
    Default-check anything not already present. For `AGENTS.md`, default-check when the file is missing OR exists without the `<!-- BEGIN HIVESMITH -->` marker. For everything else, un-check anything already present (would require `--force`).
 
 4. **If `--force` is passed**, offer to overwrite existing files — show a diff preview before each overwrite and get confirmation.
@@ -54,10 +55,25 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - `templates/scripts/release.sh` → `scripts/release.sh` (chmod +x)
    - `templates/scripts/regen-generated.sh` + `templates/scripts/regen-generated.py` → `scripts/` (chmod +x on the `.sh`).
    - `templates/scripts/migrate-to-changesets.sh` + `templates/scripts/migrate-to-changesets.py` → `scripts/` (chmod +x on the `.sh`).
+   - `templates/scripts/regressions.py` → `scripts/regressions.py` (chmod +x). Required by the `Validate regression_of format` step in the scaffolded `changesets.yml` — copy it whenever that workflow is copied, or the job fails on every PR.
    - `templates/.github/workflows/changesets.yml` → `.github/workflows/changesets.yml` — standalone workflow containing the `block-generated-edits`, `verify-generated`, and `regenerate-generated` jobs (skip if the file already exists unless `--force`).
+   - **Agent telemetry (only when the box was checked)** — see step 5b.
    - **Write `.hivesmith/template-version`** — single line with the current hivesmith template version (e.g. `1`). Bumped when the template layout makes a breaking change. `hivesmith doctor` reads this to decide whether to offer migration.
 
    **AGENTS.md is handled specially** (see step 5a).
+
+5b. **Agent telemetry, per repo (only if the box was checked).** Run:
+
+   ```bash
+   <hivesmith>/scripts/telemetry/install-hooks.sh --settings .claude/settings.local.json
+   ```
+
+   Two things about this are deliberate and must not be "simplified":
+
+   - **`settings.local.json`, never `settings.json`.** The hook command embeds an absolute path to *this machine's* hivesmith clone. Committing it would break every other contributor, who has no such path. `settings.local.json` is gitignored by convention; if this project does not ignore it, add it before running this.
+   - **It is default-unchecked.** The user-level installer (`scripts/telemetry/install-hooks.sh` with no `--settings`) wires the same hooks into *every* Claude Code session on the machine, including repos with nothing to do with hivesmith. That is a legitimate choice but it is the user's to make knowingly, not a side effect of scaffolding a project.
+
+   Tell the user which file you wrote and how to undo it (`install-hooks.sh --uninstall --settings .claude/settings.local.json`).
 
 5a. **AGENTS.md — append-create-or-refresh.** Do NOT clobber a user's hand-written content outside the hivesmith block, but DO keep the block in sync with the current template.
    - If `AGENTS.md` does NOT exist in the project: copy `templates/AGENTS.md` → `AGENTS.md` as a full skeleton.

@@ -25,11 +25,23 @@ issue: 29
 pr: 30                    # optional pre-merge; filled when PR opens
 type: added | changed | fixed | removed | deprecated | security
 bump: major | minor | patch | none
+regression_of: 25         # only with type: fixed — the merged PR that introduced the defect
+regression_of_issue: 24   # optional companion
 ---
 - **Headline line.** Body bullets land verbatim under the `### <Type>` heading in `CHANGELOG.md`'s `[Unreleased]` section. Keep the headline imperative and outcome-focused; bullets explain the user-facing change, not the implementation.
 ```
 
-Required: `issue`, `type`, `bump`. Optional: `pr`.
+Required: `issue`, `type`, `bump`. Optional: `pr`, `regression_of`, `regression_of_issue`.
+
+### `regression_of`
+
+The declaration that a fix is undoing damage from a specific merged PR. A positive integer, or a comma-separated list when a fix undoes two PRs' interaction. Valid only with `type: fixed`.
+
+**Absence is a real state, not a gap.** Omit the field when the defect predates the recent window or lives in code no recent PR touched. Never write `unknown`, `n/a`, or a guess — a metric that cannot distinguish "no regression" from "nobody looked" is worse than no metric.
+
+Never infer this from `git blame`. A bug can live on lines the fix never touches, and a refactor is not a defect. The declaration is trustworthy precisely because the agent writing the fix knows what it is fixing, and because the PR titles it reads are themselves agent-written and checkable.
+
+**Read declarations from git history, not this directory.** `scripts/release.sh` deletes every changeset at release time and the regenerator renders only the body into `CHANGELOG.md`, so a working-tree scan silently loses all of them at the next release. `scripts/regressions.py` walks `git log --diff-filter=A -- .changesets/` instead, which also recovers the merge commit and date for free.
 
 `type` values follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) (lowercase here, capitalized in the rendered section heading).
 
