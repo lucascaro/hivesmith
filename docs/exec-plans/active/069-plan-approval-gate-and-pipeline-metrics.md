@@ -114,5 +114,6 @@ Two MINOR findings were deliberately not acted on: `templates/scripts/regression
 ## PR convergence ledger
 
 - **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
+- **2026-09-05 iter 2** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b0a9c689b412f4ee6e16a26bf4e2b6d94f58a538fa4840b95bf3f56dd37d75b8; threads_open: 0; action: escalated:risky fix needs human decision; head_sha: c4a7d33. 12 safe fixes applied and pushed, CI green; 2 RISKY items surfaced for the operator.
 
 ## Gate verdict
