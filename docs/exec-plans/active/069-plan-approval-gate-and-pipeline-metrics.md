@@ -3,7 +3,7 @@
 - **Spec:** [docs/product-specs/069-plan-approval-gate-and-pipeline-metrics.md](../../product-specs/069-plan-approval-gate-and-pipeline-metrics.md)
 - **Issue:** #69
 - **Status:** active
-- **PR:** —
+- **PR:** #70
 - **Branch:** feature/69-plan-approval-gate-and-pipeline-metrics
 
 ## Summary
@@ -92,6 +92,7 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 ## Progress
 
 - **2026-09-05** — Spec and exec plan created; branch `feature/69-plan-approval-gate-and-pipeline-metrics` opened. Stage IMPLEMENT.
+- **2026-09-05** — Implemented all five sequenced parts. All AGENTS.md checks green; 8 previously-orphaned suites verified passing before being gated in CI. PR #70 opened. Stage REVIEW.
 
 ## Open questions
 
