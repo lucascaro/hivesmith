@@ -131,10 +131,22 @@ Eight IMPORTANT findings, all fixed. Two were gaps in this feature's own design,
 9. **Only the first retired gate dimension survived backfill** — legacy entries carry both `build/lint/test` and `regression`.
 10. **The suites required `timeout`,** absent on stock macOS where `AGENTS.md` tells developers to run them. A `perl -e alarm` fallback preserves real exit codes; a background-and-kill shim was tried first and reported the watchdog's status instead of the command's, so it silently passed everything.
 
+## Review findings addressed (iter 4)
+
+Seven IMPORTANT findings. The first is the most serious defect found in the whole run.
+
+1. **Feedback that settled across a timeout boundary was silently discarded.** `wait.sh` snapshotted the *live* feedback file at each startup, but the caller loops it up to 8 times on exit `11`. Feedback still inside its quiet period when a window closed became the next window's baseline, so `cmp` never differed again, exit `10` was unreachable, and the note was lost. Autosave is the only path feedback takes — the page has no explicit submit — so this defeated the revise round of this PR's headline feature. Reproduced before the fix (round 2 returned `11` with the operator's note sitting on disk) and verified after across all four states: late feedback recovered, not re-reported once delivered, and a genuinely new edit still reported. The baseline is now what the agent has *been told*, persisted in `<plan>.feedback.seen.json`.
+2. **The backfill dedup key was not stable.** `<path>:<line>` carries `active/` vs `completed/`, and `/merge-gate` git-mv's every plan on PASS; line numbers also shift as the append-only sections above the ledger grow. Either one re-emits and doubles every backfilled statistic — the exact failure the dedup was added to prevent. Identity is now feature number plus a within-feature discriminator (`iter`, or a new `seq` for gate rows); verified stable across a simulated plan move.
+3. **`test_prose_action_not_mapped_to_enum` was vacuous** — it asserted the absence of a JSON fragment whose key order made it unmatchable, so it passed regardless. Now asserts the offending row produced no event at all.
+4-6. **Bare `hs-metric` invocations** in `/review-loop` and `/merge-gate` are not on `PATH`, so the two stage events added in iter 3 could never have fired; and the missing-emitter fallback was documented only in `/feature-loop` while four other skills invoke it. Absolute path everywhere, and each emitting skill now carries the resolution rule.
+7. **`plan-html`'s overview still said the caller "detects `<plan>.approved.json`"** — the description of the bug this PR fixes.
+
 ## PR convergence ledger
 
 - **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
 - **2026-09-05 iter 2** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b0a9c689b412f4ee6e16a26bf4e2b6d94f58a538fa4840b95bf3f56dd37d75b8; threads_open: 0; action: escalated:risky fix needs human decision; head_sha: c4a7d33. 12 safe fixes applied and pushed, CI green; 2 RISKY items surfaced for the operator.
 - **2026-09-05 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 774dc1abc62b4ece81e953703fc7ad8a2440a1f4f839391e8c0266b41cd657af; threads_open: 0; action: autofix+push; head_sha: 30c0114. 8 IMPORTANT stood (zero recurrence from iter 2), so the loop continued rather than stopping on COMMENT.
+
+- **2026-09-05 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: aae4bdf03ac17ca9243ac3e5201eeb3ac81b3881b970c25f49c682284801098a; threads_open: 0; action: autofix+push; head_sha: bcde37e. 7 IMPORTANT stood, including a confirmed silent-feedback-loss defect in wait.sh; loop continued.
 
 ## Gate verdict

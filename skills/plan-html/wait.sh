@@ -73,19 +73,33 @@ plan_base="${plan_html_abs%.html}"
 pid_file="${plan_base}.server.pid"
 approved_file="${plan_base}.approved.json"
 feedback_file="${plan_base}.feedback.json"
+# What the AGENT has already been told about — not what is on disk right now.
+# The distinction is load-bearing; see the snapshot comment below.
+seen_file="${plan_base}.feedback.seen.json"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Snapshot the feedback file by CONTENT, not mtime. `stat` flags differ between
-# BSD and GNU (`stat -f` means --file-system on coreutils and silently succeeds
-# with garbage), and this repo has been burned by exactly that before. `cmp` is
+# Compare by CONTENT, not mtime. `stat` flags differ between BSD and GNU
+# (`stat -f` means --file-system on coreutils and silently succeeds with
+# garbage), and this repo has been burned by exactly that before. `cmp` is
 # POSIX and correct everywhere. It also gets a free correctness win: an operator
 # who types something and then reverts it reads as "no change", which is right.
 snap="$(mktemp "${TMPDIR:-/tmp}/planwait.XXXXXX")"
 qsnap="$(mktemp "${TMPDIR:-/tmp}/planwaitq.XXXXXX")"
 trap 'rm -f "$snap" "$qsnap"' EXIT
 
-if [[ -f "$feedback_file" ]]; then
-    cp "$feedback_file" "$snap"
+# The baseline is what the agent has ALREADY BEEN TOLD, persisted across
+# invocations — never the live file at startup.
+#
+# This call is bounded and the caller loops it (SKILL.md step 5 runs up to 8
+# rounds on exit 11). Re-reading the live file each time meant that feedback
+# which arrived late in one window — still inside its quiet period when the
+# window closed — became the NEXT window's baseline. It then matched forever,
+# exit 10 was unreachable, the loop burned all its rounds, and the operator's
+# note was silently discarded. Autosave is the only path feedback takes (the
+# page has no explicit submit), so that lost the primary signal of this
+# feature: the silent stall this script exists to prevent, one level down.
+if [[ -f "$seen_file" ]]; then
+    cp "$seen_file" "$snap"
 else
     : >"$snap"
 fi
@@ -133,6 +147,9 @@ while :; do
         # out from under someone mid-sentence. Require it to also hold still.
         if [[ "$have_qsnap" -eq 1 ]] && cmp -s "$feedback_file" "$qsnap"; then
             if (( $(date +%s) - quiet_since >= quiet_for )); then
+                # Record what we are about to report, so the next invocation
+                # baselines against it and only NEW edits count as feedback.
+                cp "$feedback_file" "$seen_file" 2>/dev/null || true
                 echo "wait.sh: feedback available"
                 finish 10
             fi

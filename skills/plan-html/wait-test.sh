@@ -116,12 +116,43 @@ typer=$!
 wait $typer 2>/dev/null
 "$HERE/stop.sh" "$plan" >/dev/null 2>&1
 
-# Content comparison, not mtime: typing something and reverting it is not feedback.
+# Content comparison, not mtime: re-saving identical text (the page autosaves on
+# a timer, so this happens on its own) is not new feedback. Expressed against
+# ALREADY-DELIVERED content, because "has the agent been told" is the baseline —
+# an earlier version of this check seeded the live file before the first wait,
+# which only read as "no feedback" under the baseline bug it was written beside.
 plan="$(mkplan revert)"; serve "$plan"
-echo '{"s1":"original"}' > "$(base "$plan").feedback.json"
-( sleep 1; touch "$(base "$plan").feedback.json"; echo '{"s1":"original"}' > "$(base "$plan").feedback.json" ) &
-"$WAIT" "$plan" --timeout 4 --quiet-for 1 >/dev/null 2>&1; eq test_identical_rewrite_is_not_feedback 11 $?
+printf '%s' '{"s1":"original"}' > "$(base "$plan").feedback.json"
+"$WAIT" "$plan" --timeout 8 --quiet-for 1 >/dev/null 2>&1
+eq test_undelivered_feedback_is_reported_once 10 $?
+( sleep 1; touch "$(base "$plan").feedback.json"
+  printf '%s' '{"s1":"original"}' > "$(base "$plan").feedback.json" ) &
+"$WAIT" "$plan" --timeout 4 --quiet-for 1 >/dev/null 2>&1
+eq test_identical_rewrite_is_not_feedback 11 $?
 wait $! 2>/dev/null
+"$HERE/stop.sh" "$plan" >/dev/null 2>&1
+
+# The caller LOOPS wait.sh on exit 11 (SKILL.md step 5, up to 8 rounds), so
+# feedback that is still inside its quiet period when a window closes must
+# survive into the next one. Re-reading the live file as the baseline made that
+# feedback the new baseline: it then matched forever, exit 10 was unreachable,
+# and the operator's note was silently discarded — the exact stall this script
+# exists to prevent, one level down.
+plan="$(mkplan across)"; serve "$plan"
+( sleep 1; printf '%s' '{"s1":"first note"}' > "$(base "$plan").feedback.json" ) &
+"$WAIT" "$plan" --timeout 4 --quiet-for 8 >/dev/null 2>&1
+eq test_late_feedback_round1_times_out 11 $?
+wait $! 2>/dev/null
+"$WAIT" "$plan" --timeout 12 --quiet-for 8 >/dev/null 2>&1
+eq test_feedback_survives_a_timeout_boundary 10 $?
+# Already delivered: reporting it again would loop the caller on stale input.
+"$WAIT" "$plan" --timeout 4 --quiet-for 2 >/dev/null 2>&1
+eq test_delivered_feedback_is_not_re_reported 11 $?
+# A genuinely new edit must still be reported.
+rm -f "$(base "$plan").feedback.json"
+printf '%s' '{"s1":"first note","s2":"second note"}' > "$(base "$plan").feedback.json"
+"$WAIT" "$plan" --timeout 12 --quiet-for 2 >/dev/null 2>&1
+eq test_new_feedback_after_delivery_is_reported 10 $?
 "$HERE/stop.sh" "$plan" >/dev/null 2>&1
 
 plan="$(mkplan timeout)"; serve "$plan"

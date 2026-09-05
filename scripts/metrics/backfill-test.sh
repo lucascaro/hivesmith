@@ -96,7 +96,11 @@ check test_every_row_is_marked_backfilled   '"backfilled": true'      "$out"
 check test_backfill_source_carries_line     '102-legacy.md:'          "$out"
 
 # Prose in an enum position must be dropped, never coerced to the nearest value.
-nocheck test_prose_action_not_mapped_to_enum '"action": "autofix+push", "head_sha": "999aaaa"' "$out"
+# Asserting the absence of a whole JSON fragment was vacuous: key order and
+# spacing made the pattern unmatchable, so the check passed no matter what.
+# Assert instead that the offending row produced NO event at all — its
+# head_sha is unique to that ledger line.
+nocheck test_prose_action_not_mapped_to_enum '999aaaa' "$out"
 check test_prose_entry_names_failing_field  "action='fixed 3 findings + push'" "$out"
 check test_skips_are_reported               'pre-enum ledger entries not backfilled' "$out"
 

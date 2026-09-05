@@ -42,6 +42,7 @@ log_file="${plan_base}.server.log"
 token_file="${plan_base}.server.token"
 approved_file="${plan_base}.approved.json"
 feedback_file="${plan_base}.feedback.json"
+seen_file="${plan_base}.feedback.seen.json"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -61,7 +62,7 @@ fi
 # page. Feedback is cleared with it — start.sh runs once per plan (the revise
 # loop re-renders to the same path without restarting, and server.py re-reads
 # the HTML on every GET), so no in-round note is ever lost here.
-rm -f "$port_file" "$approved_file" "$feedback_file"
+rm -f "$port_file" "$approved_file" "$feedback_file" "$seen_file"
 
 # Random URL token (32 hex chars).
 token=$(python3 -c 'import secrets; print(secrets.token_hex(16))')

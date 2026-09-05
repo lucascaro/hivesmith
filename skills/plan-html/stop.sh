@@ -33,12 +33,12 @@ pid=$(cat "$pid_file")
 # makes the check worth having.
 if [[ ! "$pid" =~ ^[0-9]+$ ]]; then
     echo "hs-plan-html: pid file does not contain a pid; refusing to signal" >&2
-    rm -f "$pid_file" "$port_file" "$token_file"
+    rm -f "$pid_file" "$port_file" "$token_file" "${plan_base}.feedback.seen.json"
     exit 0
 fi
 if kill -0 "$pid" 2>/dev/null && ! ps -o command= -p "$pid" 2>/dev/null | grep -q "server.py"; then
     echo "hs-plan-html: pid=$pid is not a plan-html server (recycled pid); not killing it"
-    rm -f "$pid_file" "$port_file" "$token_file"
+    rm -f "$pid_file" "$port_file" "$token_file" "${plan_base}.feedback.seen.json"
     exit 0
 fi
 
@@ -57,4 +57,4 @@ else
     echo "hs-plan-html: pid=$pid not running"
 fi
 
-rm -f "$pid_file" "$port_file" "$token_file"
+rm -f "$pid_file" "$port_file" "$token_file" "${plan_base}.feedback.seen.json"

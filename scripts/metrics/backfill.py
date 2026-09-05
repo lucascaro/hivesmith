@@ -115,14 +115,23 @@ def section(lines: list[str], *headings: str) -> tuple[int, list[str]] | None:
     return None
 
 
-def already_backfilled(events_path: Path) -> set:
-    """The (event, backfill_source) pairs already in the stream.
+def row_identity(event: str, feature: str, discriminator) -> tuple:
+    """Stable identity for a backfilled row.
 
-    Re-running --emit after adding a plan is the natural operation, and
-    without this every existing row is appended again, silently doubling every
-    backfilled statistic downstream. `backfill_source` is `<file>:<line>` over
-    an append-only markdown section, so it is a stable identity for a row.
+    Deliberately NOT `<path>:<line>`. That looked stable and is not: the path
+    carries `active/` vs `completed/` and `/merge-gate` git-mv's every plan on
+    PASS, while line numbers shift as the append-only Decision log and Progress
+    sections above the ledger grow. Either one re-emits rows that are already
+    present and silently doubles every backfilled statistic — the exact thing
+    the dedup exists to prevent. Feature number plus a within-feature
+    discriminator survives both. `backfill_source` is kept on the row, but as
+    a human-readable pointer, not as identity.
     """
+    return (event, str(feature), str(discriminator))
+
+
+def already_backfilled(events_path: Path) -> set:
+    """Identities already in the stream."""
     if not events_path.is_file():
         return set()
     seen = set()
@@ -134,8 +143,13 @@ def already_backfilled(events_path: Path) -> set:
             r = json.loads(line)
         except ValueError:
             continue
-        if r.get("backfilled") and r.get("backfill_source"):
-            seen.add((r.get("event"), r["backfill_source"]))
+        if not r.get("backfilled"):
+            continue
+        ev = r.get("event")
+        if ev == "review_iteration":
+            seen.add(row_identity(ev, r.get("feature"), r.get("iter")))
+        elif ev == "gate_verdict":
+            seen.add(row_identity(ev, r.get("feature"), r.get("seq")))
     return seen
 
 
@@ -235,9 +249,15 @@ def main() -> int:
                         current["legacy_dimension"] = f"{_prior},{_tag}" if _prior else _tag
             if current:
                 pending.append(current)
+            gate_seq = 0
             for row in pending:
                 src = row.pop("src")
-                if ("gate_verdict", src) in seen:
+                # seq: the nth gate run for this feature, in file order. The
+                # section is append-only, so this is stable across a plan move
+                # and across edits above it.
+                gate_seq += 1
+                row["seq"] = gate_seq
+                if row_identity("gate_verdict", feature, gate_seq) in seen:
                     n_dup += 1
                 elif emit(tool, "gate_verdict", row, src, args.dry_run):
                     n_gate += 1
@@ -300,7 +320,7 @@ def main() -> int:
                     if ":" in reason:
                         row["escalate_reason"] = reason.split(":", 1)[1].strip()[:60]
                 src = f"{rel}:{lineno}"
-                if ("review_iteration", src) in seen:
+                if row_identity("review_iteration", feature, row["iter"]) in seen:
                     n_dup += 1
                 elif emit(tool, "review_iteration", row, src, args.dry_run):
                     n_ledger += 1

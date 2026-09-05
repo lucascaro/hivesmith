@@ -98,7 +98,7 @@ SCHEMA = {
     "autofix_applied":  ({"feature", "pr", "safe", "risky", "deferred"},
                          {"threads_fixed", "threads_resolved", "threads_open", "checks"}),
     "gate_verdict":     ({"feature", "verdict", "acceptance", "non_goals",
-                          "doc_accuracy"}, {"followups", "legacy_dimension"}),
+                          "doc_accuracy"}, {"followups", "legacy_dimension", "seq"}),
     "stall":            ({"feature", "retry", "stage"}, {"reason"}),
     "stage_transition": ({"feature", "from", "to"}, set()),
     "feature_done":     ({"feature"}, {"pr", "seconds_total"}),
@@ -127,7 +127,7 @@ ENUM = {
     ("stall", "stage"):              STAGES,
 }
 
-INT = {"confidence", "must_fix_count", "applied_count", "round", "rounds",
+INT = {"seq", "confidence", "must_fix_count", "applied_count", "round", "rounds",
        "iter", "safe", "risky", "deferred", "threads_open", "threads_fixed",
        "threads_resolved", "duration_s", "seconds_to_approval", "seconds_total",
        "findings_count", "sections", "bytes", "pr"}
