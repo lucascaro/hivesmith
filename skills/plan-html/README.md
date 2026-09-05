@@ -9,7 +9,7 @@ When `/feature-loop` reaches its plan stop (or you invoke `/plan-html <task>` di
 - A self-contained `<plan>.html` opened in your browser (dark by default, light theme follows OS preference).
 - Per-section `<textarea>` slots that **autosave** to `<plan>.feedback.json` (1.2s debounce, ⌘S also saves).
 - A `↻ updated since your last review` highlight on sections that changed since you last looked.
-- A `✓ Approve plan` button that writes `<plan>.approved.json` — the agent watches for that file to proceed.
+- A `✓ Approve plan` button that writes `<plan>.approved.json`. The calling agent blocks on `wait.sh`, which returns as soon as that file appears — so clicking Approve advances the loop within a second or two, with nothing to do in chat.
 - Syntax-highlighted code, mermaid diagrams, tables, pills.
 
 A tiny stdlib Python server backs it (`127.0.0.1`-bound, URL-token-gated).

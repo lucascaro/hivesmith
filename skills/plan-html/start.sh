@@ -40,15 +40,31 @@ pid_file="${plan_base}.server.pid"
 port_file="${plan_base}.server.port"
 log_file="${plan_base}.server.log"
 token_file="${plan_base}.server.token"
+approved_file="${plan_base}.approved.json"
+feedback_file="${plan_base}.feedback.json"
 
-# Clean up any stale port file from a previous run — start.sh polls for the
-# server's freshly-written port and must not pick up a corpse.
-rm -f "$port_file"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Reap a predecessor server for THIS plan before overwriting its pid sidecar.
+# Orphans accumulate otherwise: stop.sh can only kill a pid it can still read,
+# and the write below would lose it. Fixing it here rather than asking the
+# caller to always call stop.sh is deliberate — you cannot guarantee a cleanup
+# step runs on every exit path, but you can guarantee the next start reaps.
+if [[ -f "$pid_file" ]]; then
+    "$script_dir/stop.sh" "$plan_html_abs" >/dev/null 2>&1 || true
+fi
+
+# Clear stale sidecars from a previous run on this same plan path. The port
+# file matters because start.sh polls for a freshly-written port and must not
+# pick up a corpse. The approval file matters more: leaving it would make
+# wait.sh return "approved" instantly, before the operator has even seen the
+# page. Feedback is cleared with it — start.sh runs once per plan (the revise
+# loop re-renders to the same path without restarting, and server.py re-reads
+# the HTML on every GET), so no in-round note is ever lost here.
+rm -f "$port_file" "$approved_file" "$feedback_file"
 
 # Random URL token (32 hex chars).
 token=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
-
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Preferred port; server.py treats 0 as "OS picks any free port" and falls
 # back to OS-picked if the requested port is taken. No TOCTOU window.

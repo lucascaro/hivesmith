@@ -40,9 +40,20 @@ Any plan-producing skill that wants this review UX follows exactly this sequence
 1. **Guard.** Use the HTML path only when *all* of: `skills/plan-html/template.html` exists, `HIVESMITH_PLAN_HTML` is unset or non-`0`, and the user did not pass `--no-html` / `--text`. The template check matters — a calling skill may be running in a project that has no hivesmith checkout on disk, where none of the repo-relative paths below resolve.
 2. **Fall back, in order,** when the guard fails or any step below exits non-zero: native plan mode if the runtime has one (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`) → an inline text draft under a `### Draft plan for review` heading. Say which fallback you took and why; never fail the caller because the HTML path was unavailable.
 3. **Render.** Build the manifest JSON (schema in `render_plan.py`'s module docstring), then `python3 skills/plan-html/render_plan.py --manifest <path>.json --template skills/plan-html/template.html --out <plan>.html`.
-4. **Serve.** `skills/plan-html/start.sh <plan>.html`. Tell the user the URL — it includes `?t=<token>` and the server rejects requests without it.
-5. **Iterate.** Poll `<plan>.approved.json` (existence == approval). On feedback, read `<plan>.feedback.json`, rebuild the manifest with `changed: true` on affected sections, re-render to the **same** path.
-6. **Stop.** `skills/plan-html/stop.sh <plan>.html` on every exit path *after `start.sh` succeeded*, including error paths. If `start.sh` was never reached, there is no server to stop — do not call it.
+4. **Serve.** Emit the render event, then start the server. One call here covers every caller — do not duplicate it into `/feature-loop` or `/feature-plan`:
+
+   ```bash
+   ~/.hivesmith/bin/hs-metric --event plan_rendered --field feature=<NNN-or-slug> --field round=<1 on first render, +1 per revise>
+   ```
+
+   `skills/plan-html/start.sh <plan>.html`. Tell the user the URL — it includes `?t=<token>` and the server rejects requests without it.
+5. **Wait.** `skills/plan-html/wait.sh <plan>.html --timeout 90`. This call **blocks** — that is the entire point of it. Act on the exit code:
+   - `0` — approved. Go to step 7.
+   - `10` — feedback available. Read `<plan>.feedback.json`, rebuild the manifest with `changed: true` on affected sections, re-render to the **same** path, and wait again. Do **not** re-run `start.sh`; the server re-reads the HTML on every request.
+   - `11` — nothing yet. Call `wait.sh` again, printing one line of progress between calls ("still waiting on plan approval — round `<N>`, `<M>`s elapsed"). Loop at most **8 times** (~12 minutes), then run step 7 and fall back to a chat approval prompt naming the URL, so an operator who never opened the page is not waiting on a dead turn.
+   - `3` — the server is gone. Run step 7, then take the fallback chain at step 2.
+6. **Never poll by hand.** `ls`, `test -f`, `cat`, and "I'll check again later" are **not** substitutes for `wait.sh`. A one-shot check runs before the operator has even seen the page, always fails, and ends the turn — and the loop then stalls silently while the page shows the operator "✓ Approved" and disables the button. That is the exact failure `wait.sh` exists to prevent.
+7. **Stop.** `skills/plan-html/stop.sh <plan>.html` on every exit path *after `start.sh` succeeded*, including error paths. Passing `--stop` to `wait.sh` does this for you on codes `0` and `3` (and correctly does *not* on `10` or `11`, where the server is still needed). If `start.sh` was never reached, there is no server to stop — do not call it. A missed stop leaks at most one process: `start.sh` reaps a predecessor for the same plan path.
 
 Callers today: `/feature-loop`, `/feature-plan`, `/feature-plan-review`.
 
@@ -57,7 +68,8 @@ Callers today: `/feature-loop`, `/feature-plan`, `/feature-plan-review`.
 - `template.html` — frozen HTML scaffold with sentinels `<!-- PLAN_TITLE -->`, `<!-- PLAN_TITLE_HTML -->`, `<!-- PLAN_LEDE -->`, `<!-- PLAN_TOC -->`, `<!-- PLAN_BODY -->`. **Do not regenerate from the LLM — copy/edit by hand only.**
 - `render_plan.py` — stdlib renderer with strict tag allowlist. `--self-test` flag runs a built-in fixture render.
 - `server.py` — stdlib HTTP server. Reads `PLAN_HTML_PATH`, `PLAN_FEEDBACK_PORT`, `PLAN_TOKEN` from env. Binds `127.0.0.1` only.
-- `start.sh` / `stop.sh` — lifecycle wrappers.
+- `start.sh` / `stop.sh` — lifecycle wrappers. `start.sh` also reaps a predecessor server for the same plan path and clears stale `.approved.json` / `.feedback.json` sidecars, so a re-run on the same slug cannot inherit a previous run's approval.
+- `wait.sh` — the blocking approval gate. Exit `0` approved, `10` feedback settled, `11` timeout, `3` server gone, `2` usage. `--quiet-for` (default 8s) is why a revise round waits for typing to stop: the page autosaves on a 1.2s debounce.
 - `README.md` — user-facing usage notes.
 
 ## Anti-injection rule

@@ -23,7 +23,7 @@ jobs:
         with:
           scandir: '.'
           additional_files: install.sh scripts/brain/append.sh scripts/brain/index.sh scripts/brain/lib.sh scripts/brain/list.sh scripts/brain/read.sh scripts/brain/redact.sh scripts/brain/search.sh scripts/brain/test/run-all.sh scripts/dev-link-local.sh scripts/harvest/correction-episodes-test.sh scripts/harvest/harvest-plans-test.sh scripts/harvest/plan-citations-test.sh scripts/hooks/pre-push scripts/migrate-to-changesets.sh scripts/regen-generated.sh scripts/release.sh scripts/telemetry/attribution-test.sh scripts/telemetry/install-hooks-test.sh scripts/telemetry/install-hooks.sh scripts/telemetry/install-pi.sh scripts/telemetry/log-agent-stop.sh scripts/telemetry/log-agent.sh scripts/telemetry/prepare-commit-msg skills/brain-garden/garden.sh skills/brain-promote/promote.sh skills/feature-ingest/ingest.sh skills/graphify-init/graphify-nudge.sh
-            skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/namecheck/namecheck.sh skills/plan-html/start.sh skills/plan-html/stop.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh
+            skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/namecheck/namecheck.sh scripts/metrics/emit-test.sh scripts/metrics/emit.sh scripts/metrics/regressions-test.sh skills/plan-html/start.sh skills/plan-html/stop.sh skills/plan-html/wait-test.sh skills/plan-html/wait.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh
             install.sh
             scripts/dev-link-local.sh
             scripts/release.sh
@@ -166,6 +166,48 @@ jobs:
           # GRAPHIFY_REQUIRED=1: a missing graphify must fail the job, not
           # quietly skip the guard-patch regression this suite exists to catch.
           GRAPHIFY_REQUIRED=1 bash skills/graphify-init/test/run-all.sh
+
+  script-suites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # regressions-test walks synthetic history
+      - name: Run every script test suite
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "ci"
+          # Run them all before failing. A matrix of 8 jobs for 8 sub-second
+          # bash suites wastes runner minutes, but hiding suites 2-8 behind
+          # suite 1's failure is worse — these were unrun in CI for months.
+          fail=0
+          for s in scripts/telemetry/install-hooks-test.sh \
+                   scripts/telemetry/attribution-test.sh \
+                   scripts/harvest/plan-citations-test.sh \
+                   scripts/harvest/harvest-plans-test.sh \
+                   scripts/harvest/correction-episodes-test.sh \
+                   scripts/metrics/emit-test.sh \
+                   scripts/metrics/regressions-test.sh \
+                   skills/plan-html/wait-test.sh; do
+            echo "── $s"
+            bash "$s" || fail=1
+          done
+          exit $fail
+
+  metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # declarations are recovered from full history
+      - name: Regression + plan harvest report
+        run: |
+          # Prints to the job log and commits nothing. Writing an artifact to
+          # main would need contents: write (only regenerate-generated has it)
+          # and would then be a generated file that block-generated-edits
+          # fails on every PR that touches it.
+          python3 scripts/metrics/regressions.py . --soak-days 30
+          python3 scripts/harvest/harvest_plans.py . | tail -1
 
   # Informational — macOS smoke. Not used as a branch-protection context.
   install-smoke-macos:

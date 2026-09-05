@@ -93,6 +93,15 @@ jobs:
           echo "Add a per-PR changeset (see .changesets/README.md for the schema),"
           echo "or apply the 'no-changeset' label if this is a docs/CI-only change."
           exit 1
+      - name: Validate regression_of format
+        # FORMAT only. This never fails because a declaration is ABSENT —
+        # absence is a meaningful state ("no regression" / "nobody checked"),
+        # and failing on it would only train agents to fill the field with a
+        # guess, which is exactly the data corruption being prevented.
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          python3 scripts/metrics/regressions.py . --validate-changed "$BASE" "$HEAD"
 
   regenerate-generated:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -87,6 +87,19 @@ This skill owns Stage = `GATE`. Before doing any work:
 
    **Legacy fallback:** plans scaffolded before this skill was renamed carry a `## QA verdict` heading instead. Append to that heading when `## Gate verdict` is absent; do not rename it — it is the historical record.
 
+   **Then emit the event**, in the same step, so the per-dimension envelope survives the flattening into prose:
+
+   ```bash
+   HIVESMITH_SKILL=hs-merge-gate ~/.hivesmith/bin/hs-metric --event gate_verdict \
+     --field feature=<NNN> --field verdict=<PASS|FAIL|NEEDS_FOLLOWUP> \
+     --field acceptance=<PASS|FAIL|NEEDS_FOLLOWUP> \
+     --field non_goals=<PASS|FAIL|NEEDS_FOLLOWUP> \
+     --field doc_accuracy=<PASS|FAIL|NEEDS_FOLLOWUP> \
+     --field followups=<comma-separated issue numbers, omit the flag when none>
+   ```
+
+   **Regression declaration check (doc accuracy dimension).** If the PR adds a `.changesets/*.md` with `type: fixed` and **no** `regression_of:` field, record `regression_of: declared-absent` in the doc-accuracy evidence. This is **not a FAIL** — an explicit "nobody checked" is a distinct and useful state, and failing on it would only train agents to fill the field with a guess. If `regression_of` is present, sanity-check that the PR number it names exists and was merged before this branch.
+
 6. **Apply the GitHub label** (only when a GitHub issue exists for this feature — specs created locally carry no issue number and the index row shows `—`; skip every `gh issue` step for those):
    - PASS → `gh issue edit <number> --remove-label gate --add-label gate-passed`
    - FAIL → `gh issue edit <number> --remove-label gate --add-label gate-failed`

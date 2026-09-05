@@ -102,7 +102,7 @@ For iteration `i` from 1 to `--max-iterations`:
 
 2. **Parse** the JSON envelope from the worker's reply. If it is missing or malformed, escalate with reason `"worker returned malformed envelope"`.
 
-3. **Loop-detection guard.** If `envelope.findings_hash` is non-empty and equals `prev_findings_hash`, escalate with reason `"loop-detection guard: identical findings two iterations in a row"`. Otherwise set `prev_findings_hash = envelope.findings_hash`.
+3. **Loop-detection guard.** If `envelope.findings_hash` is non-empty and equals `prev_findings_hash`, emit `hs-metric --event stall --field feature=<NNN> --field stage=REVIEW --field retry=review-loop-guard --field reason=identical-findings` and escalate with reason `"loop-detection guard: identical findings two iterations in a row"`. Otherwise set `prev_findings_hash = envelope.findings_hash`.
 
 4. **Append to the plan ledger** (only if a matching plan was found in the cold-start step). Add one line to the plan's `## PR convergence ledger` section:
 
@@ -111,6 +111,23 @@ For iteration `i` from 1 to `--max-iterations`:
    ```
 
    This is append-only. The orchestrator writes the line; the worker does not (the worker has no knowledge of the plan file).
+
+   **In the same step, emit the event.** The ledger line and the event are one instruction on purpose — split across two steps they drift, and the ledger is already lossy (it drops `findings_summary`, `ci_status`, `risky_surfaced` and `autofix_ran` from the envelope):
+
+   ```bash
+   HIVESMITH_SKILL=hs-review-loop ~/.hivesmith/bin/hs-metric --event review_iteration \
+     --field feature=<NNN> --field pr=<n> --field iter=<i> \
+     --field verdict=<APPROVE|COMMENT|REQUEST_CHANGES> \
+     --field findings_count=<len(envelope.findings_summary)> \
+     --field threads_open=<envelope.unresolved_threads_post> \
+     --field action=<stop|autofix+push|autofix+push (conflict)|escalated> \
+     --field mergeable=<MERGEABLE|CONFLICTING|UNKNOWN> \
+     --field findings_hash=<hex, omit the flag if empty> \
+     --field head_sha=<short sha> \
+     --field escalate_reason=<slug, only when action=escalated>
+   ```
+
+   Emit it even when no plan file was found — the event stream is not the plan, and a run without an exec plan is exactly the run whose data would otherwise vanish.
 
 5. **Branch on verdict:**
    - `APPROVE` AND `unresolved_threads_post == 0` — done. Exit the loop, append a brain entry (see §3.5) if a durable lesson was surfaced this run, then go to §4.
