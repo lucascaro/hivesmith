@@ -48,7 +48,12 @@ import sys
 from pathlib import Path
 
 ENTRY = re.compile(r"^\s*-\s+\*\*(?P<date>\d{4}-\d{2}-\d{2})(?P<rest>.*)$")
-ITER = re.compile(r"\biter\s+(\d+)")
+# A sub-iteration ("iter 3c", "iter 1.5") is NOT iteration 3 or 1. Without the
+# lookahead this captures the leading digits and silently collides with the
+# real iteration of that number. Today those rows happen to be dropped by the
+# enum check instead, but that is luck, not design: a sub-iteration with valid
+# enum values would backfill under the wrong iteration number.
+ITER = re.compile(r"\biter\s+(\d+)(?![\w.])")
 DIM = re.compile(r"^\s+-\s+(?P<name>[a-z/ -]+?)\s+—\s+(?P<verdict>PASS|FAIL|NEEDS_FOLLOWUP)\b")
 HEX = re.compile(r"^[0-9a-f]{6,}$")
 PR_HDR = re.compile(r"^\s*-\s*\*\*PR:\*\*\s*.*?#?(\d+)", re.M)
@@ -223,7 +228,16 @@ def main() -> int:
                     # in the series and there would be no way to tell later.
                     # They are dropped and named, so the gap is inspectable.
                     n_skip += 1
-                    skipped.append((f"{rel}:{lineno}", ln.strip()[:100]))
+                    # Name the field that failed, with its raw value. Printing
+                    # a truncated excerpt of the line instead would usually cut
+                    # off before the offending field, which is the one thing
+                    # the operator needs in order to judge the gap.
+                    why = []
+                    if not v:
+                        why.append(f"verdict={f.get('verdict', '')!r}")
+                    if not a:
+                        why.append(f"action={f.get('action', '')!r}")
+                    skipped.append((f"{rel}:{lineno}", "; ".join(why)))
                     continue
                 row = {"feature": feature, "iter": it.group(1), "verdict": v, "action": a}
                 if pr:
@@ -255,8 +269,8 @@ def main() -> int:
         print(f"\n{len(skipped)} pre-enum ledger entries not backfilled "
               f"(values that predate the enum contract; not mapped, to avoid "
               f"inventing history):")
-        for src, text in skipped:
-            print(f"  {src}\n    {text}")
+        for src, why in skipped:
+            print(f"  {src}\n    unmapped: {why}")
     print(f"\nRESULT: PASS plans={n_plans} gate={n_gate} ledger={n_ledger} skipped={n_skip}")
     return 0
 

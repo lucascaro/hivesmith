@@ -142,6 +142,7 @@ else bad test_stop_flag_keeps_server_on_timeout "server reaped on exit 11"; fi
 "$WAIT" >/dev/null 2>&1;                          eq test_no_args_is_usage_error 2 $?
 "$WAIT" "$WORK/nope.html" >/dev/null 2>&1;        eq test_missing_plan_is_usage_error 2 $?
 "$WAIT" "$plan" --timeout abc >/dev/null 2>&1;    eq test_non_numeric_timeout_is_usage_error 2 $?
+"$WAIT" "$plan" --quiet-for abc >/dev/null 2>&1;  eq test_non_numeric_quiet_for_is_usage_error 2 $?
 "$WAIT" "$plan" --bogus >/dev/null 2>&1;          eq test_unknown_flag_is_usage_error 2 $?
 
 # bash 3.2 is the floor (stock macOS). These constructs are not available.

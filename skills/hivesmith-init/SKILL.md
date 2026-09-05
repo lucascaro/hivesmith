@@ -39,7 +39,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - [ ] `CONTRIBUTING.md` (contributor guide skeleton)
    - [ ] `CHANGELOG.md` (Keep a Changelog seed with `[Unreleased]` section)
    - [ ] `scripts/release.sh` (generic release scaffold)
-   - [ ] Agent telemetry for **this repo only** (subagent start/stop events, which is what gives `/hs-metrics` real durations) — **default unchecked**, see step 5b
+   - [ ] Agent telemetry for **this repo only** (subagent start/stop events, which is what gives `scripts/metrics/report.py` real per-invocation durations) — **default unchecked**, see step 5b
    Default-check anything not already present. For `AGENTS.md`, default-check when the file is missing OR exists without the `<!-- BEGIN HIVESMITH -->` marker. For everything else, un-check anything already present (would require `--force`).
 
 4. **If `--force` is passed**, offer to overwrite existing files — show a diff preview before each overwrite and get confirmation.

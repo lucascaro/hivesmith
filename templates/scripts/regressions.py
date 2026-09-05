@@ -96,51 +96,106 @@ def parse_regression_of(raw: str) -> list[int]:
     return [int(x) for x in raw.split(",") if x.strip()]
 
 
+def cat_file_batch(root: Path, specs: list[str]) -> list[str]:
+    """Read many blobs in ONE git process.
+
+    Binary, not text=True: `cat-file --batch` frames each blob with a BYTE
+    length, and changeset bodies are full of em dashes, so slicing a decoded
+    string by that length desyncs the stream and silently shifts every
+    subsequent file's content onto the wrong changeset.
+    """
+    if not specs:
+        return []
+    proc = subprocess.run(["git", "-C", str(root), "cat-file", "--batch"],
+                          input=("\n".join(specs) + "\n").encode(), capture_output=True)
+    data, out, i = proc.stdout, [], 0
+    for _ in specs:
+        nl = data.find(b"\n", i)
+        if nl == -1:
+            out.append("")
+            continue
+        parts = data[i:nl].split()
+        if len(parts) < 3 or parts[1] != b"blob":
+            out.append("")            # missing / not a blob
+            i = nl + 1
+            continue
+        size = int(parts[2])
+        start = nl + 1
+        out.append(data[start:start + size].decode("utf-8", "replace"))
+        i = start + size + 1          # git appends a newline after the blob
+    return out
+
+
+def commit_prs(root: Path) -> tuple[dict, dict]:
+    """The full merged-PR universe: sha -> pr, and pr -> {date, subject}.
+
+    This deliberately walks ALL history, not just commits that added a
+    changeset. A PR merged under the `no-changeset` label (docs, CI) shipped
+    code like any other and can still be the thing a later fix undoes. Deriving
+    the universe from changeset-adding commits only would drop those PRs from
+    the denominator AND make a legitimate `regression_of:` pointing at one look
+    like a dangling reference to a PR that never existed.
+    """
+    by_sha: dict[str, int] = {}
+    by_pr: dict[int, dict] = {}
+    raw = git(root, "log", "--date=short",
+              "--format=" + SEP.join(["%H", "%ad", "%s", "%b"]) + REC)
+    for block in raw.split(REC):
+        parts = block.lstrip("\n").split(SEP)
+        if len(parts) < 4:
+            continue
+        sha, when, subject, body = parts[:4]
+        pr = pr_of(subject, body)
+        if pr is None:
+            continue
+        by_sha[sha] = pr
+        by_pr.setdefault(pr, {"date": when, "subject": subject})
+    return by_sha, by_pr
+
+
 def changeset_history(root: Path) -> list[dict]:
     """Every changeset ever ADDED, with the commit that added it.
 
     --diff-filter=A is what survives release.sh's deletion: the file is gone at
     HEAD but its addition is still in the history.
 
-    The commit metadata and the file list are two separate queries on purpose.
-    Asking for both at once (`--format=...%b --name-only`) interleaves them --
-    a multi-line %b runs straight into the file list with no marker between
-    them, and any record separator you append to the format lands *before* the
-    files, so they get parsed as part of the next commit. The bug is silent:
-    every commit appears to touch nothing.
+    The format deliberately omits %b. A multi-line body run together with
+    --name-only has no marker between the two, and any record separator
+    appended to the format lands *before* the file list, so the files get
+    parsed as part of the next commit — a silent bug where every commit
+    appears to touch nothing. A subject is single-line, so this is
+    unambiguous, and the body is not needed here: the PR number comes from
+    commit_prs().
     """
-    fmt = SEP.join(["%H", "%h", "%ad", "%s", "%b"]) + REC
+    fmt = REC + SEP.join(["%H", "%ad", "%s"])
     raw = git(root, "log", "--diff-filter=A", "--date=short",
-              "--format=" + fmt, "--", ".changesets/")
+              "--format=" + fmt, "--name-only", "--", ".changesets/")
     out = []
     for block in raw.split(REC):
         if not block.strip():
             continue
-        parts = block.lstrip("\n").split(SEP)
-        if len(parts) < 5:
+        lines = block.lstrip("\n").splitlines()
+        head = lines[0].split(SEP)
+        if len(head) < 3:
             continue
-        sha, short, when, subject, body = parts[:5]
-        files = git(root, "show", "--diff-filter=A", "--name-only",
-                    "--format=", sha, "--", ".changesets/").split()
-        for path in files:
-            if path.endswith("README.md") or not path.endswith(".md"):
+        sha, when, subject = head[:3]
+        for path in lines[1:]:
+            path = path.strip()
+            if not path or not path.endswith(".md") or path.endswith("README.md"):
                 continue
-            text = git(root, "show", f"{sha}:{path}")
-            out.append({"sha": sha, "short": short, "date": when,
-                        "subject": subject, "body": body,
-                        "path": path, "fm": frontmatter(text)})
+            out.append({"sha": sha, "date": when, "subject": subject, "path": path})
+    for entry, text in zip(out, cat_file_batch(root, [f"{e['sha']}:{e['path']}" for e in out])):
+        entry["fm"] = frontmatter(text)
     return out
 
 
 def collect(root: Path, soak_days: int):
     entries = changeset_history(root)
-    merged: dict[int, dict] = {}      # pr -> {date, subject}
+    by_sha, merged = commit_prs(root)
     declarations: list[dict] = []
 
     for e in entries:
-        pr = pr_of(e["subject"], e["body"])
-        if pr is not None and pr not in merged:
-            merged[pr] = {"date": e["date"], "subject": e["subject"]}
+        pr = by_sha.get(e["sha"])
         raw = e["fm"].get("regression_of")
         if not raw:
             continue

@@ -23,7 +23,7 @@ jobs:
         with:
           scandir: '.'
           additional_files: install.sh scripts/brain/append.sh scripts/brain/index.sh scripts/brain/lib.sh scripts/brain/list.sh scripts/brain/read.sh scripts/brain/redact.sh scripts/brain/search.sh scripts/brain/test/run-all.sh scripts/dev-link-local.sh scripts/harvest/correction-episodes-test.sh scripts/harvest/harvest-plans-test.sh scripts/harvest/plan-citations-test.sh scripts/hooks/pre-push scripts/migrate-to-changesets.sh scripts/regen-generated.sh scripts/release.sh scripts/telemetry/attribution-test.sh scripts/telemetry/install-hooks-test.sh scripts/telemetry/install-hooks.sh scripts/telemetry/install-pi.sh scripts/telemetry/log-agent-stop.sh scripts/telemetry/log-agent.sh scripts/telemetry/prepare-commit-msg skills/brain-garden/garden.sh skills/brain-promote/promote.sh skills/feature-ingest/ingest.sh skills/graphify-init/graphify-nudge.sh
-            skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/namecheck/namecheck.sh scripts/metrics/emit-test.sh scripts/metrics/emit.sh scripts/metrics/regressions-test.sh skills/plan-html/start.sh skills/plan-html/stop.sh skills/plan-html/wait-test.sh skills/plan-html/wait.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh
+            skills/graphify-init/graphify-refresh.sh skills/graphify-init/graphify-setup.sh skills/graphify-init/test/run-all.sh skills/namecheck/namecheck.sh scripts/metrics/backfill-test.sh scripts/metrics/emit-test.sh scripts/metrics/emit.sh scripts/metrics/regressions-test.sh skills/plan-html/start.sh skills/plan-html/stop.sh skills/plan-html/wait-test.sh skills/plan-html/wait.sh templates/features/ingest.sh templates/scripts/migrate-to-changesets.sh templates/scripts/regen-generated.sh templates/scripts/release.sh
             install.sh
             scripts/dev-link-local.sh
             scripts/release.sh
@@ -188,6 +188,7 @@ jobs:
                    scripts/harvest/correction-episodes-test.sh \
                    scripts/metrics/emit-test.sh \
                    scripts/metrics/regressions-test.sh \
+                   scripts/metrics/backfill-test.sh \
                    skills/plan-html/wait-test.sh; do
             echo "── $s"
             bash "$s" || fail=1

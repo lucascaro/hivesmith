@@ -98,6 +98,21 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 
 None.
 
+## Review findings addressed (iter 1)
+
+Six IMPORTANT findings from `/hs-review-pr`, all fixed:
+
+1. **`regressions.py` merged-PR universe was built only from changeset-adding commits.** PRs merged under the `no-changeset` label never entered the set, so a legitimate `regression_of:` naming one was reported as a dangling reference to a PR that never existed, and the denominator undercounted. Now derived from full history via `commit_prs()` — the real count is 52, not 21.
+2. **`ITER` regex captured `3` from `iter 3c`.** Those rows happened to be dropped by the enum check, not the regex, so a future sub-iteration with valid enum values would have backfilled under a colliding iteration number. Tightened with a `(?![\w.])` lookahead.
+3. **`backfill.py` had no tests and was absent from CI** — added `backfill-test.sh` (26 checks).
+4. **`report.py` had no tests** — covered by the same suite, including that the second-opinion disclaimer prints inline with the number.
+5. **`changeset_history()` spawned 2 git subprocesses per changeset**, on a path the `metrics` CI job runs every push. Restructured to 3 total calls via one bulk `git log` plus `git cat-file --batch` (measured 43 → 3). The batch reader is byte-framed, not text-framed: changeset bodies contain em dashes, and slicing a decoded string by git's byte length silently shifts every later file's content onto the wrong changeset.
+6. **Dangling `/hs-metrics` reference** in `hivesmith-init` — no such skill exists; points at `scripts/metrics/report.py`.
+
+Two MINOR findings were deliberately not acted on: `templates/scripts/regressions.py` being a byte-identical copy matches the existing convention for `regen-generated.sh` and `migrate-to-changesets.sh` (the absent drift-check is pre-existing and out of scope), and `pipeline-events.jsonl` having no rotation matches the existing `agent-events.jsonl` pattern.
+
 ## PR convergence ledger
+
+- **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
 
 ## Gate verdict
