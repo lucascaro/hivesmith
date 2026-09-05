@@ -20,6 +20,13 @@
 # Merge this workflow into your existing CI file or keep it standalone.
 name: changesets
 
+# Least privilege by default. `regenerate-generated` re-grants `contents: write`
+# at job level (it direct-pushes the regenerated aggregates to main); the two
+# PR gate jobs only read, so they drop to read-only. Mirrors `ci.yml` and this
+# workflow's own template.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]

@@ -111,6 +111,11 @@ Six IMPORTANT findings from `/hs-review-pr`, all fixed:
 
 Two MINOR findings were deliberately not acted on: `templates/scripts/regressions.py` being a byte-identical copy matches the existing convention for `regen-generated.sh` and `migrate-to-changesets.sh` (the absent drift-check is pre-existing and out of scope), and `pipeline-events.jsonl` having no rotation matches the existing `agent-events.jsonl` pattern.
 
+## Decision log (operator, post iter 2)
+
+- **2026-09-05** — Added top-level `permissions: contents: read` to `.github/workflows/changesets.yml`. Why: operator decision on the RISKY item surfaced by review iteration 2. This PR introduced the divergence from the workflow's own template, which already declared it. `regenerate-generated` re-grants `contents: write` at job level, so only the two read-only PR gate jobs are narrowed.
+- **2026-09-05** — Declined charset validation on `emit.sh` free-text fields. Why: operator decision. The injection vector is closed at the source — `review-loop/SKILL.md` requires those values be slugged to `[a-z0-9-]` before reaching a command line — and there is no single obviously-correct charset, so a gate here would risk rejecting legitimate values for defense that is already in place.
+
 ## PR convergence ledger
 
 - **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
