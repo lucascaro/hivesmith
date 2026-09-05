@@ -93,7 +93,14 @@ def frontmatter(text: str) -> dict:
 
 
 def parse_regression_of(raw: str) -> list[int]:
-    return [int(x) for x in raw.split(",") if x.strip()]
+    # Total by construction. `collect()` reads raw frontmatter out of git
+    # history, where the format gate (--validate-changed) never ran: it only
+    # ever inspects changesets in a PR diff, so anything landed before that
+    # job existed reaches here unchecked. A bare int() turned one malformed
+    # declaration (`regression_of: #42`) into a ValueError that killed the
+    # whole report and the CI metrics job. Unparseable targets are dropped
+    # here and surface as a dangling declaration, which is the visible state.
+    return [int(x) for x in raw.split(",") if x.strip().lstrip("+-").isdigit()]
 
 
 def cat_file_batch(root: Path, specs: list[str]) -> list[str]:

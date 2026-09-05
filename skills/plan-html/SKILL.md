@@ -43,7 +43,7 @@ Any plan-producing skill that wants this review UX follows exactly this sequence
 4. **Serve.** Emit the render event, then start the server. One call here covers every caller — do not duplicate it into `/feature-loop` or `/feature-plan`:
 
    ```bash
-   ~/.hivesmith/bin/hs-metric --event plan_rendered --field feature=<NNN-or-slug> --field round=<1 on first render, +1 per revise>
+   HIVESMITH_SKILL=hs-plan-html ~/.hivesmith/bin/hs-metric --event plan_rendered --field feature=<NNN-or-slug> --field round=<1 on first render, +1 per revise>
    ```
 
    `skills/plan-html/start.sh <plan>.html`. Tell the user the URL — it includes `?t=<token>` and the server rejects requests without it.

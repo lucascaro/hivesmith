@@ -31,10 +31,22 @@ quiet_for=8
 do_stop=0
 plan_html=""
 
+# A value-taking flag MUST be checked before `shift 2`. Without `set -e`, a
+# `shift 2` with one argument left fails silently and shifts NOTHING, so the
+# loop re-processes the same flag forever. That turns the one call the plan
+# gate blocks on into a busy loop that eats the whole harness Bash timeout —
+# the exact silent stall wait.sh exists to prevent. `${2:-}` hides it.
+need_value() {
+    if [[ $2 -lt 2 ]]; then
+        echo "wait.sh: $1 requires a value" >&2
+        exit 2
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --timeout)   timeout="${2:-}"; shift 2 ;;
-        --quiet-for) quiet_for="${2:-}"; shift 2 ;;
+        --timeout)   need_value "$1" $#; timeout="$2"; shift 2 ;;
+        --quiet-for) need_value "$1" $#; quiet_for="$2"; shift 2 ;;
         --stop)      do_stop=1; shift ;;
         -h|--help)   sed -n '2,25p' "${BASH_SOURCE[0]}"; exit 0 ;;
         -*)          echo "wait.sh: unknown flag: $1" >&2; exit 2 ;;

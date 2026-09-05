@@ -10,6 +10,14 @@
 #
 # RESULT: PASS checks=<n>  /  RESULT: FAIL reason=<slug>
 set -uo pipefail
+
+# Isolate every `git init` below from the developer's ambient config. A global
+# core.hooksPath would run the developer's real hooks inside this throwaway
+# repo, writing outside the mktemp sandbox, and commit.gpgsign=true would
+# break every fixture commit.
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_CONFIG_SYSTEM=/dev/null
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOOL="$HERE/regressions.py"
 PASS=0; FAIL=0

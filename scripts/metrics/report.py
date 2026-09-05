@@ -99,7 +99,7 @@ def main() -> int:
     back = [e for e in ev if e.get("backfilled")]
     by = defaultdict(list)
     for e in ev:
-        by[e["event"]].append(e)
+        by[e.get("event", "?")].append(e)
     features = {e.get("feature") for e in ev if e.get("feature")}
 
     print(f"PIPELINE   {args.since or 'all time'} → now      "
@@ -115,11 +115,17 @@ def main() -> int:
         print()
         stalls = Counter(e.get("retry", "?") for e in by["stall"])
         moves = Counter(e.get("to", "?") for e in by["stage_transition"])
+        # Attribute a stall by the `stage` field it already carries. Matching
+        # the stage name against the retry slug instead was wrong twice over:
+        # REVIEW's first four letters ("revi") are a substring of
+        # "plan-revise-rerun", so a PLAN stall was counted under REVIEW as
+        # well as PLAN, and a retry slug naming no stage was counted nowhere.
+        stalls_by_stage = Counter(e.get("stage", "?") for e in by["stall"])
         print(" stage reached      count   stalls")
         for stage in ["RESEARCH", "PLAN", "IMPLEMENT", "REVIEW", "GATE", "DONE"]:
             if not moves.get(stage):
                 continue
-            rel = sum(n for r, n in stalls.items() if stage.lower()[:4] in r)
+            rel = stalls_by_stage.get(stage, 0)
             print(f" {stage:<18} {moves[stage]:>5}   {rel or ''}")
         for retry, n in stalls.most_common():
             print(f"   stall: {retry} × {n}")
@@ -201,6 +207,12 @@ def main() -> int:
     r = subprocess.run([sys.executable, str(Path(__file__).with_name("regressions.py")),
                         str(args.repo)], capture_output=True, text=True)
     sys.stdout.write(r.stdout)
+    # A half-empty report that still says PASS is worse than a failure: the
+    # regressions block simply vanishes and anything parsing the RESULT line
+    # reads it as healthy. Carry the child's failure into the exit status.
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr)
+        print(f"  regressions.py failed (rc={r.returncode}) — see stderr above")
 
     if args.json:
         args.json.write_text(json.dumps(
@@ -208,6 +220,9 @@ def main() -> int:
              "backfilled": len(back),
              "counts": {k: len(v) for k, v in by.items()}}, indent=2))
 
+    if r.returncode != 0:
+        print("\nRESULT: FAIL reason=regressions-failed")
+        return 1
     print(f"\nRESULT: PASS features={len(features)} live={len(live)} backfilled={len(back)}")
     return 0
 

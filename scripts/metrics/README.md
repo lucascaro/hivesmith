@@ -59,4 +59,4 @@ python3 scripts/metrics/regressions.py . --validate-changed origin/main HEAD
 
 ## Tests
 
-`emit-test.sh` (23 checks) and `regressions-test.sh` (15 checks). Both build throwaway repos and print `RESULT: PASS checks=<n>`. They run in the `script-suites` CI job alongside the telemetry and harvest suites.
+`emit-test.sh`, `regressions-test.sh` and `backfill-test.sh`. Each builds a throwaway repo and prints `RESULT: PASS checks=<n>`; the counts move as checks are added, so they are not repeated here. All three run in the `script-suites` CI job alongside the telemetry and harvest suites.

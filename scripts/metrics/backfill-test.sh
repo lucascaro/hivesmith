@@ -11,6 +11,14 @@
 #
 # RESULT: PASS checks=<n>  /  RESULT: FAIL reason=<slug>
 set -uo pipefail
+
+# Isolate every `git init` below from the developer's ambient config. A global
+# core.hooksPath would run the developer's real hooks inside this throwaway
+# repo, writing outside the mktemp sandbox, and commit.gpgsign=true would
+# break every fixture commit.
+export GIT_CONFIG_GLOBAL=/dev/null
+export GIT_CONFIG_SYSTEM=/dev/null
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKFILL="$HERE/backfill.py"
 REPORT="$HERE/report.py"
@@ -118,11 +126,19 @@ else
   bad test_written_stream_is_valid_jsonl "a written line does not parse"
 fi
 
+# Assert the rerun's exit status AND that it actually appended the same rows
+# again. Checking only "log is non-empty" passed on the FIRST run's output, so
+# a second run that died on a traceback would still have been reported ok.
+n1="$(wc -l < "$LOG" | tr -d ' ')"
 python3 "$BACKFILL" . --emit --tool "$EMIT" >/dev/null 2>&1
-if [ "$(python3 -c 'import sys;print(sum(1 for _ in open(sys.argv[1])))' "$LOG")" -gt 0 ]; then
-  ok test_backfill_is_rerunnable
+rerun_rc=$?
+n2="$(wc -l < "$LOG" | tr -d ' ')"
+if [ $rerun_rc -ne 0 ]; then
+  bad test_backfill_is_rerunnable "second run exited $rerun_rc"
+elif [ "$n2" -ne $((2 * n1)) ]; then
+  bad test_backfill_is_rerunnable "wanted $((2 * n1)) lines after rerun, got $n2"
 else
-  bad test_backfill_is_rerunnable "second run emptied the log"
+  ok test_backfill_is_rerunnable
 fi
 
 out="$(python3 "$BACKFILL" . 2>&1)"; rc=$?

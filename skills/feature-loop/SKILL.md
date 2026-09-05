@@ -124,7 +124,7 @@ Skipped entirely when resuming an existing feature.
     - **Priority:** where this sits relative to existing specs' frontmatter `priority:` in `docs/product-specs/*.md` (current) or `features/BACKLOG.md` (legacy). Read frontmatter directly — the generated `index.md` is a derived view.
 17. Write `type`, `complexity` and `priority` into the spec frontmatter. These exist so the generated index is useful; they are not a decision that needs a human. If the operator disagrees they can edit the spec at the plan stop, which is right after this.
 18. Apply the GitHub label (only when a GitHub issue exists): `gh issue edit <number> --add-label triaged`.
-19. Emit `hs-metric --event stage_transition --field feature=<NNN> --field from=TRIAGE --field to=RESEARCH`, then set the spec frontmatter `stage: RESEARCH` as the **last** write of this phase — after `type`, `complexity` and `priority` are on disk, so a crash between the two leaves the spec resumable at `TRIAGE`. Continue to Phase 3.
+19. Emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=TRIAGE --field to=RESEARCH`, then set the spec frontmatter `stage: RESEARCH` as the **last** write of this phase — after `type`, `complexity` and `priority` are on disk, so a crash between the two leaves the spec resumable at `TRIAGE`. Continue to Phase 3.
 
 ## Phase 3: Research
 
@@ -140,7 +140,7 @@ Skipped entirely when resuming an existing feature.
     - **Constraints / dependencies:** anything that blocks or complicates the work.
     - **Prior lessons:** the distilled bullets the workers returned, or a single line saying none matched.
 24. For complex features (M/L), if Research would exceed ~200 lines, split detail into a design doc at `docs/design-docs/<slug>.md` (legacy: `research/<slug>/RESEARCH.md`) and link from the plan.
-25. Emit `hs-metric --event stage_transition --field feature=<NNN> --field from=RESEARCH --field to=PLAN`, then set the spec frontmatter `stage: PLAN` (last write). **Do not edit `docs/product-specs/index.md`.** **Legacy layout only:** update the corresponding `features/BACKLOG.md` row.
+25. Emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=RESEARCH --field to=PLAN`, then set the spec frontmatter `stage: PLAN` (last write). **Do not edit `docs/product-specs/index.md`.** **Legacy layout only:** update the corresponding `features/BACKLOG.md` row.
 26. Apply the GitHub label (only when a GitHub issue exists): `gh issue edit <number> --remove-label triaged --add-label researching`.
 
 ## Phase 3Q: Clarifying round B
@@ -229,7 +229,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
       --field via=<html|native-plan-mode|chat>
     ```
 
-    Then write the Approach, Files to change, New files, Tests, Verification and `## Second opinion` sections into the exec plan. Write order matters: all non-stage writes first, then set the spec frontmatter `stage: IMPLEMENT` as the **last** write (emitting `hs-metric --event stage_transition --field feature=<NNN> --field from=PLAN --field to=IMPLEMENT` alongside it). **Do not edit `docs/product-specs/index.md`.** **Legacy layout only:** update the `features/BACKLOG.md` row.
+    Then write the Approach, Files to change, New files, Tests, Verification and `## Second opinion` sections into the exec plan. Write order matters: all non-stage writes first, then set the spec frontmatter `stage: IMPLEMENT` as the **last** write (emitting `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=PLAN --field to=IMPLEMENT` alongside it). **Do not edit `docs/product-specs/index.md`.** **Legacy layout only:** update the `features/BACKLOG.md` row.
 35. Apply the GitHub label (only when a GitHub issue exists): `gh issue edit <number> --remove-label researching --add-label planned`.
 
 ## Phase 5: Implement
@@ -249,7 +249,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     - `git push -u origin <branch>`
     - `gh pr create` referencing the issue — capture the PR number from the output. Only include `Fixes #<number>` issue-linking syntax when a GitHub issue exists.
     - Apply the GitHub label (only when a GitHub issue exists): `gh issue edit <number> --remove-label planned --add-label implementing`.
-    - Record the PR and branch in the plan header (`PR:` and `Branch:` fields). Backfill the PR number into the spec frontmatter (`pr: <n>`) and into any `.changesets/*.md` files created during implementation. Last write — set the spec frontmatter `stage: REVIEW`, and emit `hs-metric --event stage_transition --field feature=<NNN> --field from=IMPLEMENT --field to=REVIEW`.
+    - Record the PR and branch in the plan header (`PR:` and `Branch:` fields). Backfill the PR number into the spec frontmatter (`pr: <n>`) and into any `.changesets/*.md` files created during implementation. Last write — set the spec frontmatter `stage: REVIEW`, and emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=IMPLEMENT --field to=REVIEW`.
 
 ## Phase 6: Review
 

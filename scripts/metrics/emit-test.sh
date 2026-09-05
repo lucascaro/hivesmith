@@ -67,6 +67,41 @@ reject test_backfilled_without_source_fails_64 64 --event feature_done --field f
 reject test_missing_event_is_usage_error 2 --field feature=1
 reject test_unknown_argument_is_usage_error 2 --event feature_done --bogus
 
+# A value-taking flag with NO value is a different branch from one with a WRONG
+# value: `shift 2` on a one-argument tail shifts nothing, so an unguarded loop
+# re-reads the same flag forever (and `--field` grows FIELDS until the process
+# dies). `timeout` bounds it so a regression fails the suite instead of hanging
+# CI. Reachable in practice: an empty shell variable collapses
+# `--field "$X"` into a trailing `--field`.
+no_value() { # name  args...
+  local name="$1"; shift
+  timeout 5 "$TOOL" "$@" >/dev/null 2>&1; local rc=$?
+  if [[ "$rc" == 124 ]]; then bad "$name" "hung instead of exiting 2"; return; fi
+  if [[ "$rc" != 2 ]]; then bad "$name" "wanted exit 2, got $rc"; return; fi
+  if [[ "$(lines)" != "$before" ]]; then bad "$name" "log grew on a rejected event"; return; fi
+  ok "$name"
+}
+no_value test_event_without_value_is_usage_error --event
+no_value test_field_without_value_is_usage_error --event feature_done --field
+no_value test_backfill_source_without_value_is_usage_error --event feature_done --field feature=1 --backfilled --backfill-source
+
+# The one enum value that carries a space. It is documented in
+# skills/review-loop/SKILL.md, so it must actually be emittable — a value that
+# only survives when the caller quotes it is a trap the schema should catch.
+accept() { # name  args...
+  local name="$1"; shift
+  local n0; n0="$(lines)"
+  "$TOOL" "$@" >/dev/null 2>&1; local rc=$?
+  if [[ "$rc" != 0 ]]; then bad "$name" "wanted exit 0, got $rc"; return; fi
+  if [[ "$(lines)" == "$n0" ]]; then bad "$name" "accepted but appended nothing"; return; fi
+  ok "$name"
+}
+accept test_action_enum_with_a_space_is_accepted \
+  --event review_iteration --field feature=069 --field pr=70 --field iter=1 \
+  --field verdict=REQUEST_CHANGES --field findings_count=3 --field threads_open=0 \
+  --field 'action=autofix+push (conflict)'
+before="$(lines)"
+
 # Each event's verdict enum is distinct — review_iteration must not accept the
 # second-opinion vocabulary just because the field has the same name.
 reject test_enums_are_per_event 64 --event review_iteration --field feature=1 --field pr=2 --field iter=1 --field verdict=approve --field findings_count=0 --field threads_open=0 --field action=stop

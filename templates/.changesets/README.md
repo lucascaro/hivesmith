@@ -41,7 +41,7 @@ The declaration that a fix is undoing damage from a specific merged PR. A positi
 
 Never infer this from `git blame`. A bug can live on lines the fix never touches, and a refactor is not a defect. The declaration is trustworthy precisely because the agent writing the fix knows what it is fixing, and because the PR titles it reads are themselves agent-written and checkable.
 
-**Read declarations from git history, not this directory.** `scripts/release.sh` deletes every changeset at release time and the regenerator renders only the body into `CHANGELOG.md`, so a working-tree scan silently loses all of them at the next release. `scripts/metrics/regressions.py` walks `git log --diff-filter=A -- .changesets/` instead, which also recovers the merge commit and date for free.
+**Read declarations from git history, not this directory.** `scripts/release.sh` deletes every changeset at release time and the regenerator renders only the body into `CHANGELOG.md`, so a working-tree scan silently loses all of them at the next release. `scripts/regressions.py` walks `git log --diff-filter=A -- .changesets/` instead, which also recovers the merge commit and date for free.
 
 `type` values follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) (lowercase here, capitalized in the rendered section heading).
 

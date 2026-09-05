@@ -145,6 +145,15 @@ else bad test_stop_flag_keeps_server_on_timeout "server reaped on exit 11"; fi
 "$WAIT" "$plan" --quiet-for abc >/dev/null 2>&1;  eq test_non_numeric_quiet_for_is_usage_error 2 $?
 "$WAIT" "$plan" --bogus >/dev/null 2>&1;          eq test_unknown_flag_is_usage_error 2 $?
 
+# A flag with NO value at all, which is a different branch from a flag with a
+# WRONG value: `shift 2` on a one-argument tail shifts nothing, so an
+# unguarded loop re-reads the same flag forever. `timeout` bounds the check so
+# a regression fails the suite instead of hanging CI.
+timeout 5 "$WAIT" "$plan" --timeout >/dev/null 2>&1
+eq test_timeout_without_value_is_usage_error 2 $?
+timeout 5 "$WAIT" "$plan" --quiet-for >/dev/null 2>&1
+eq test_quiet_for_without_value_is_usage_error 2 $?
+
 # bash 3.2 is the floor (stock macOS). These constructs are not available.
 if grep -nE 'wait -n|mapfile|readarray|\$\{[a-zA-Z_]+,,\}|declare -A' "$WAIT" >/dev/null; then
   bad test_bash32_compatible "wait.sh uses a bash 4+ construct"

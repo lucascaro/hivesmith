@@ -34,14 +34,28 @@ BACKFILLED=0
 BACKFILL_SOURCE=""
 FIELDS=()
 
+# A value-taking flag MUST be checked before `shift 2`. Without `set -e`, a
+# `shift 2` with one argument left fails silently and shifts NOTHING, so `$1`
+# is still the same flag next pass and the loop spins forever — `--field` then
+# grows FIELDS until the process is killed. `${2:-}` hides it by making the
+# assignment succeed. Callers are LLM-composed command lines, where an empty
+# variable collapses `--field "$X"` into a trailing `--field`, so this is a
+# reachable input, not a theoretical one.
+need_value() {
+    if [[ $2 -lt 2 ]]; then
+        echo "hs-metric: $1 requires a value" >&2
+        exit 2
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --event)           EVENT="${2:-}"; shift 2 ;;
-        --field)           FIELDS+=("${2:-}"); shift 2 ;;
+        --event)           need_value "$1" $#; EVENT="$2"; shift 2 ;;
+        --field)           need_value "$1" $#; FIELDS+=("$2"); shift 2 ;;
         --backfilled)      BACKFILLED=1; shift ;;
-        --backfill-source) BACKFILL_SOURCE="${2:-}"; shift 2 ;;
+        --backfill-source) need_value "$1" $#; BACKFILL_SOURCE="$2"; shift 2 ;;
         --dry-run)         DRY_RUN=1; shift ;;
-        -h|--help)         sed -n '2,27p' "${BASH_SOURCE[0]}"; exit 0 ;;
+        -h|--help)         sed -n '2,28p' "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "hs-metric: unknown argument: $1" >&2; exit 2 ;;
     esac
 done
