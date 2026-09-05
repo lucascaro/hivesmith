@@ -631,6 +631,11 @@ inspect_scope() {  # $1 = scope
         if [[ -f "$HOME/.claude/settings.json" ]] \
            && grep -q 'scripts/telemetry/' "$HOME/.claude/settings.json" 2>/dev/null; then
             say "  telemetry: wired (user-level, all sessions on this machine)"
+        elif grep -qs 'scripts/telemetry/' .claude/settings.local.json 2>/dev/null; then
+            # /hivesmith-init writes the per-repo opt-in here. Reporting "not
+            # wired" for a project that deliberately opted in reads as a broken
+            # install and invites a second, machine-wide install.
+            say "  telemetry: wired for this repo only (.claude/settings.local.json)"
         else
             say "  telemetry: not wired — subagent durations are not being recorded."
             say "             Machine-wide:  scripts/telemetry/install-hooks.sh"

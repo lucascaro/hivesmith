@@ -208,7 +208,10 @@ jobs:
           # and would then be a generated file that block-generated-edits
           # fails on every PR that touches it.
           python3 scripts/metrics/regressions.py . --soak-days 30
-          python3 scripts/harvest/harvest_plans.py . | tail -1
+          # `| tail -1` would report the pipeline's exit status, not the
+          # script's, so a crashed harvest would pass this job silently.
+          python3 scripts/harvest/harvest_plans.py . > /tmp/harvest.out
+          tail -1 /tmp/harvest.out
 
   # Informational — macOS smoke. Not used as a branch-protection context.
   install-smoke-macos:

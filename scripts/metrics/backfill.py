@@ -41,6 +41,7 @@ RESULT: PASS plans=<n> gate=<n> ledger=<n> skipped=<n>
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -114,6 +115,30 @@ def section(lines: list[str], *headings: str) -> tuple[int, list[str]] | None:
     return None
 
 
+def already_backfilled(events_path: Path) -> set:
+    """The (event, backfill_source) pairs already in the stream.
+
+    Re-running --emit after adding a plan is the natural operation, and
+    without this every existing row is appended again, silently doubling every
+    backfilled statistic downstream. `backfill_source` is `<file>:<line>` over
+    an append-only markdown section, so it is a stable identity for a row.
+    """
+    if not events_path.is_file():
+        return set()
+    seen = set()
+    for line in events_path.read_text(errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        if r.get("backfilled") and r.get("backfill_source"):
+            seen.add((r.get("event"), r["backfill_source"]))
+    return seen
+
+
 def emit(tool: str, event: str, fields: dict, source: str, dry: bool) -> bool:
     argv = [tool, "--event", event]
     for k, v in fields.items():
@@ -138,6 +163,13 @@ def main() -> int:
     ap.add_argument("--emit", action="store_true", help="required; without it nothing runs")
     ap.add_argument("--dry-run", action="store_true", help="print rows instead of appending")
     ap.add_argument("--tool", default=os.path.expanduser("~/.hivesmith/bin/hs-metric"))
+    ap.add_argument("--events", type=Path,
+                    default=Path(os.environ.get("HIVESMITH_HOME",
+                                                Path.home() / ".hivesmith"))
+                    / "telemetry" / "pipeline-events.jsonl",
+                    help="stream to check for rows already backfilled")
+    ap.add_argument("--force", action="store_true",
+                    help="re-emit rows already present (duplicates them)")
     args = ap.parse_args()
     if not args.emit:
         ap.error("pass --emit (with --dry-run first)")
@@ -153,7 +185,8 @@ def main() -> int:
 
     plans = sorted(list((args.repo / "docs/exec-plans/active").glob("*.md"))
                    + list((args.repo / "docs/exec-plans/completed").glob("*.md")))
-    n_plans = n_gate = n_ledger = n_skip = 0
+    n_plans = n_gate = n_ledger = n_skip = n_dup = 0
+    seen = set() if args.force else already_backfilled(args.events)
     skipped: list[tuple[str, str]] = []
 
     for plan in plans:
@@ -195,12 +228,18 @@ def main() -> int:
                     if name in DIM_FIELD:
                         current[DIM_FIELD[name]] = d.group("verdict")
                     else:
-                        current.setdefault("legacy_dimension", name.replace(" ", "-"))
+                        # Legacy gate entries carry BOTH build/lint/test and
+                        # regression; setdefault kept only whichever came first.
+                        _prior = current.get("legacy_dimension")
+                        _tag = name.replace(" ", "-")
+                        current["legacy_dimension"] = f"{_prior},{_tag}" if _prior else _tag
             if current:
                 pending.append(current)
             for row in pending:
                 src = row.pop("src")
-                if emit(tool, "gate_verdict", row, src, args.dry_run):
+                if ("gate_verdict", src) in seen:
+                    n_dup += 1
+                elif emit(tool, "gate_verdict", row, src, args.dry_run):
                     n_gate += 1
                 else:
                     n_skip += 1
@@ -260,7 +299,10 @@ def main() -> int:
                     reason = f.get("action", "")
                     if ":" in reason:
                         row["escalate_reason"] = reason.split(":", 1)[1].strip()[:60]
-                if emit(tool, "review_iteration", row, f"{rel}:{lineno}", args.dry_run):
+                src = f"{rel}:{lineno}"
+                if ("review_iteration", src) in seen:
+                    n_dup += 1
+                elif emit(tool, "review_iteration", row, src, args.dry_run):
                     n_ledger += 1
                 else:
                     n_skip += 1
@@ -271,7 +313,11 @@ def main() -> int:
               f"inventing history):")
         for src, why in skipped:
             print(f"  {src}\n    unmapped: {why}")
-    print(f"\nRESULT: PASS plans={n_plans} gate={n_gate} ledger={n_ledger} skipped={n_skip}")
+    if n_dup:
+        print(f"\n{n_dup} rows already in the stream, not re-emitted "
+              f"(--force to duplicate them anyway).")
+    print(f"\nRESULT: PASS plans={n_plans} gate={n_gate} ledger={n_ledger} "
+          f"skipped={n_skip} already_present={n_dup}")
     return 0
 
 

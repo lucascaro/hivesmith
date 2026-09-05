@@ -76,6 +76,7 @@ cat > docs/exec-plans/completed/102-legacy.md <<'P'
 - **2026-01-07** — verdict: PASS; checks: 5 passed / 0 failed / 0 followups; followups: none; one-line: legacy.
   - 2026-01-07 dimensions:
     - build/lint/test — PASS — shellcheck ok
+    - regression — PASS — nothing regressed
     - acceptance — PASS — ok
     - non-goals — PASS
     - doc accuracy — PASS — ok
@@ -86,7 +87,9 @@ out="$(python3 "$BACKFILL" . --emit --dry-run --tool "$EMIT" 2>&1)"
 
 check test_modern_gate_verdict_backfilled   '"event": "gate_verdict"' "$out"
 check test_legacy_qa_verdict_heading_parsed '"feature": "102"'        "$out"
-check test_retired_dimension_preserved      '"legacy_dimension": "build/lint/test"' "$out"
+check test_retired_dimension_preserved      '"legacy_dimension": "build/lint/test' "$out"
+# Legacy entries carry BOTH retired dimensions; keeping only the first loses data.
+check test_all_retired_dimensions_kept      'build/lint/test,regression' "$out"
 check test_ledger_backfilled                '"event": "review_iteration"' "$out"
 check test_pr_recovered_from_plan_header    '"pr": 201'               "$out"
 check test_every_row_is_marked_backfilled   '"backfilled": true'      "$out"
@@ -126,19 +129,35 @@ else
   bad test_written_stream_is_valid_jsonl "a written line does not parse"
 fi
 
-# Assert the rerun's exit status AND that it actually appended the same rows
-# again. Checking only "log is non-empty" passed on the FIRST run's output, so
-# a second run that died on a traceback would still have been reported ok.
+# Re-running --emit after adding a plan is the natural operation, so it must be
+# idempotent. An earlier version of this suite asserted the row count DOUBLED,
+# which encoded the bug as intent: every backfilled statistic downstream would
+# silently double on a rerun and the test would have gone on passing.
 n1="$(wc -l < "$LOG" | tr -d ' ')"
 python3 "$BACKFILL" . --emit --tool "$EMIT" >/dev/null 2>&1
 rerun_rc=$?
 n2="$(wc -l < "$LOG" | tr -d ' ')"
 if [ $rerun_rc -ne 0 ]; then
-  bad test_backfill_is_rerunnable "second run exited $rerun_rc"
-elif [ "$n2" -ne $((2 * n1)) ]; then
-  bad test_backfill_is_rerunnable "wanted $((2 * n1)) lines after rerun, got $n2"
+  bad test_backfill_rerun_exits_clean "second run exited $rerun_rc"
 else
-  ok test_backfill_is_rerunnable
+  ok test_backfill_rerun_exits_clean
+fi
+if [ "$n2" -ne "$n1" ]; then
+  bad test_backfill_is_idempotent "rerun appended $((n2 - n1)) duplicate rows"
+else
+  ok test_backfill_is_idempotent
+fi
+
+out="$(python3 "$BACKFILL" . --emit --tool "$EMIT" 2>&1)"
+check test_backfill_reports_already_present "already_present=$n1" "$out"
+
+# --force is the documented escape hatch, and must still duplicate.
+python3 "$BACKFILL" . --emit --force --tool "$EMIT" >/dev/null 2>&1
+n3="$(wc -l < "$LOG" | tr -d ' ')"
+if [ "$n3" -eq $((2 * n1)) ]; then
+  ok test_force_re_emits
+else
+  bad test_force_re_emits "wanted $((2 * n1)) lines after --force, got $n3"
 fi
 
 out="$(python3 "$BACKFILL" . 2>&1)"; rc=$?
@@ -160,6 +179,44 @@ so_out="$("$EMIT" --event second_opinion --field feature=101 --field verdict=rev
 check test_second_opinion_block_appears     "SECOND OPINION"          "$so_out"
 check test_second_opinion_disclaimer_inline "PREVENTED anything"      "$so_out"
 check test_second_opinion_reports_yield     "must_fix 4 raised, 3 applied" "$so_out"
+
+# ---- report.py stage/stall attribution ------------------------------------
+# The bug this guards: attributing a stall by matching the stage name against
+# the retry slug counted a PLAN stall ("plan-revise-rerun") under REVIEW too,
+# because REVIEW's first four letters are a substring of it.
+ATTR="$HIVESMITH_HOME/attr.jsonl"
+: > "$ATTR"
+for st in PLAN IMPLEMENT REVIEW GATE; do
+  HIVESMITH_HOME="$HIVESMITH_HOME" "$EMIT" --event stage_transition \
+    --field feature=101 --field from=PLAN --field "to=$st" --dry-run >> "$ATTR" 2>/dev/null
+done
+HIVESMITH_HOME="$HIVESMITH_HOME" "$EMIT" --event stall --field feature=101 \
+  --field stage=PLAN --field retry=plan-revise-rerun --dry-run >> "$ATTR" 2>/dev/null
+
+attr_out="$(python3 "$REPORT" --repo . --events "$ATTR" 2>&1)"
+if printf '%s' "$attr_out" | grep -qE '^ PLAN +[0-9]+ +1'; then
+  ok test_stall_counted_under_its_own_stage
+else
+  bad test_stall_counted_under_its_own_stage "PLAN row missing its stall: $(printf '%s' "$attr_out" | tr '\n' '|' | tail -c 200)"
+fi
+if printf '%s' "$attr_out" | grep -qE '^ REVIEW +[0-9]+ +[0-9]'; then
+  bad test_stall_not_double_counted_under_review "a PLAN stall was also counted under REVIEW"
+else
+  ok test_stall_not_double_counted_under_review
+fi
+check test_stall_retry_slug_is_listed "stall: plan-revise-rerun" "$attr_out"
+
+# regressions.py crashing must not be swallowed into a PASS.
+BROKEN="$(mktemp -d)"
+cd "$BROKEN" || exit 1
+out="$(python3 "$REPORT" --repo . --events "$ATTR" 2>&1)"; rc=$?
+cd "$REPO" || exit 1
+if printf '%s' "$out" | grep -q "RESULT: PASS" && [ $rc -eq 0 ]; then
+  bad test_regressions_failure_is_not_swallowed "reported PASS with a non-repo target"
+else
+  ok test_regressions_failure_is_not_swallowed
+fi
+rm -rf "$BROKEN"
 
 # A missing local stream must degrade, not crash.
 out="$(python3 "$REPORT" --repo . --events "$HIVESMITH_HOME/nope.jsonl" 2>&1)"; rc=$?

@@ -92,15 +92,28 @@ def frontmatter(text: str) -> dict:
     return out
 
 
-def parse_regression_of(raw: str) -> list[int]:
-    # Total by construction. `collect()` reads raw frontmatter out of git
-    # history, where the format gate (--validate-changed) never ran: it only
-    # ever inspects changesets in a PR diff, so anything landed before that
-    # job existed reaches here unchecked. A bare int() turned one malformed
-    # declaration (`regression_of: #42`) into a ValueError that killed the
-    # whole report and the CI metrics job. Unparseable targets are dropped
-    # here and surface as a dangling declaration, which is the visible state.
-    return [int(x) for x in raw.split(",") if x.strip().lstrip("+-").isdigit()]
+def parse_regression_of(raw: str) -> tuple[list[int], list[str]]:
+    """Split a declaration into (parsed targets, unparseable targets).
+
+    Total by construction. `collect()` reads raw frontmatter out of git
+    history, where the format gate (--validate-changed) never ran -- it only
+    inspects changesets in a PR diff, so anything landed before that job
+    existed reaches here unchecked, and a bare int() on `regression_of: #42`
+    killed the whole report and the CI metrics job.
+
+    Both halves are returned because dropping the bad half silently is the
+    worse failure: a malformed declaration would produce no declaration at
+    all, so it could not even surface as dangling, and the report would show
+    the PR as clean while a human had explicitly recorded a regression against
+    it. Malformed targets are reported as malformed.
+    """
+    good, bad = [], []
+    for x in raw.split(","):
+        x = x.strip()
+        if not x:
+            continue
+        (good if x.lstrip("+-").isdigit() else bad).append(x)
+    return [int(x) for x in good], bad
 
 
 def cat_file_batch(root: Path, specs: list[str]) -> list[str]:
@@ -200,6 +213,7 @@ def collect(root: Path, soak_days: int):
     entries = changeset_history(root)
     by_sha, merged = commit_prs(root)
     declarations: list[dict] = []
+    malformed: list[dict] = []
 
     for e in entries:
         pr = by_sha.get(e["sha"])
@@ -208,7 +222,10 @@ def collect(root: Path, soak_days: int):
             continue
         if e["fm"].get("type") != "fixed":
             continue  # validator's problem, not the report's
-        for target in parse_regression_of(raw):
+        targets, malformed_targets = parse_regression_of(raw)
+        for bad in malformed_targets:
+            malformed.append({"changeset": e["path"], "raw": bad})
+        for target in targets:
             declarations.append({
                 "fix_pr": pr, "fix_date": e["date"], "target_pr": target,
                 "changeset": e["path"], "issue": e["fm"].get("regression_of_issue"),
@@ -238,7 +255,7 @@ def collect(root: Path, soak_days: int):
     # A declaration naming a PR we never saw merged is a real signal, not noise:
     # either the number is wrong or the corpus is shallower than the claim.
     dangling = [d for d in declarations if d["target_pr"] not in merged]
-    return merged, regressed, clean, unobserved, dangling
+    return merged, regressed, clean, unobserved, dangling, malformed
 
 
 def validate_changed(root: Path, base: str, head: str) -> int:
@@ -256,6 +273,11 @@ def validate_changed(root: Path, base: str, head: str) -> int:
     names = git(root, "diff", "--name-only", "--diff-filter=AM",
                 f"{base}...{head}", "--", ".changesets/").split()
     problems = []
+    # Hoisted: this walks the whole base history, and computing it inside the
+    # per-changeset loop re-walked it once per declaration, in a job that runs
+    # on every PR.
+    merged = {pr for pr in (pr_of(s, "") for s in
+                            git(root, "log", "--format=%s", base).splitlines()) if pr}
     for path in names:
         if path.endswith("README.md"):
             continue
@@ -276,9 +298,8 @@ def validate_changed(root: Path, base: str, head: str) -> int:
             problems.append(f"{path}: regression_of must be an integer or comma-separated "
                             f"integers, got {raw!r} — omit the field rather than guessing")
             continue
-        merged = {pr for pr in (pr_of(s, "") for s in
-                                git(root, "log", "--format=%s", base).splitlines()) if pr}
-        for target in parse_regression_of(raw):
+        targets, _ = parse_regression_of(raw)
+        for target in targets:
             if merged and target not in merged:
                 problems.append(f"{path}: regression_of: {target} names a PR that is not "
                                 f"in this branch's history")
@@ -309,7 +330,7 @@ def main() -> int:
     if args.validate_changed:
         return validate_changed(root, *args.validate_changed)
 
-    merged, regressed, clean, unobserved, dangling = collect(root, args.soak_days)
+    merged, regressed, clean, unobserved, dangling, malformed = collect(root, args.soak_days)
 
     print(f"REGRESSIONS — declared, not inferred (.changesets/ regression_of:)")
     print(f"  merged PRs {len(merged)}   regressed {len(regressed)}   "
@@ -324,6 +345,9 @@ def main() -> int:
     if days:
         days.sort()
         print(f"  median time-to-detect {days[len(days) // 2]}d")
+    for m in malformed:
+        print(f"  WARN regression_of: {m['raw']!r} in {m['changeset']} is not an integer "
+              f"— the declaration was recorded but its target could not be read")
     for d in dangling:
         print(f"  WARN regression_of: {d['target_pr']} in {d['changeset']} "
               f"names a PR not seen in this history")
@@ -335,7 +359,8 @@ def main() -> int:
         args.json.write_text(json.dumps(
             {"merged": merged, "regressed": regressed, "clean": clean,
              "unobserved": unobserved, "dangling": dangling,
-             "soak_days": args.soak_days}, indent=2, default=str))
+             "malformed": malformed, "soak_days": args.soak_days},
+            indent=2, default=str))
 
     print(f"RESULT: PASS merged={len(merged)} regressed={len(regressed)} "
           f"clean={len(clean)} unobserved={len(unobserved)}")

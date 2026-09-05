@@ -38,7 +38,16 @@ Delegate whenever it is cheaper or faster than doing the work in the main thread
 - **Plan second opinion** (Phase 4) — one `general-purpose` agent reviewing the drafted plan before the human sees it.
 - **Review and gate** — `/review-loop` and `/merge-gate` dispatch their own `hs-reviewer` / `hs-validator` workers. Untouched by this skill.
 
-**Metrics are unconditional.** Every `hs-metric` call in this skill is required, not best-effort. If the binary is missing the call fails in your own turn and you report it — that is correct, because a metric stream with invisible gaps is worse than no stream. `hs-metric` rejects unknown fields; if you need one, add it to the schema in `scripts/metrics/emit.sh` rather than smuggling prose into a field.
+**Metrics are unconditional, but a missing emitter is not a pipeline failure.** Every `hs-metric` call in this skill is required, not best-effort — a metric stream with invisible gaps is worse than no stream, so `hs-metric` fails loudly on a bad event, a missing field, an unknown field, or a bad value, and you report that.
+
+The one case that is *not* a failure is the binary not being installed at all: `~/.hivesmith/bin/hs-metric` appears when `install.sh` runs, so a checkout whose install predates it has skills but no emitter. Halting a feature mid-implement over a stale symlink is disproportionate. Resolve it in this order, and take the first that exists:
+
+1. `~/.hivesmith/bin/hs-metric`
+2. `scripts/metrics/emit.sh` in the current repo (a hivesmith checkout dogfooding itself)
+
+If neither exists, print exactly one line — `metrics: hs-metric not installed (run install.sh); this run is NOT being recorded` — and continue. The gap is then announced rather than silent, which is the property that actually matters. Never wrap a call in `|| true`: that hides a *schema* rejection, which is a real bug in the call site.
+
+`hs-metric` rejects unknown fields; if you need one, add it to the schema in `scripts/metrics/emit.sh` rather than smuggling prose into a field.
 
 **Implementation is never delegated.** A subagent implementer sees the plan text but not the conventions the plan assumes, which is the classic quality regression. Phase 5 runs in the main thread.
 

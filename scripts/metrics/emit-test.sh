@@ -16,6 +16,28 @@ ok()  { PASS=$((PASS+1)); printf '  ok    %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  FAIL  %s\n     -> %s\n' "$1" "$2"; }
 eq()  { if [[ "$2" == "$3" ]]; then ok "$1"; else bad "$1" "wanted $2, got $3"; fi; }
 
+# `timeout` is GNU coreutils and is absent from stock macOS, where AGENTS.md
+# still tells developers to run this suite. The checks that need a time bound
+# are exactly the ones that catch an infinite argument-parsing loop, so they
+# are not skippable. perl ships on both platforms and preserves the real exit
+# code, unlike a background-and-kill shim (which reports the watchdog's status,
+# not the command's).
+if command -v timeout >/dev/null 2>&1; then
+  tmo() { timeout "$@"; }
+elif command -v gtimeout >/dev/null 2>&1; then
+  tmo() { gtimeout "$@"; }
+else
+  tmo() {
+    local secs="$1"; shift
+    # `exec` keeps the child's own exit status; SIGALRM surfaces as 142, which
+    # is remapped to timeout's own 124 so callers need not care which ran.
+    ( exec 2>/dev/null; perl -e 'alarm shift; exec @ARGV' "$secs" "$@" )
+    local rc=$?
+    [ "$rc" -eq 142 ] && return 124
+    return "$rc"
+  }
+fi
+
 HIVESMITH_HOME="$(mktemp -d)"; export HIVESMITH_HOME
 trap 'rm -rf "$HIVESMITH_HOME"' EXIT
 LOG="$HIVESMITH_HOME/telemetry/pipeline-events.jsonl"
@@ -75,7 +97,7 @@ reject test_unknown_argument_is_usage_error 2 --event feature_done --bogus
 # `--field "$X"` into a trailing `--field`.
 no_value() { # name  args...
   local name="$1"; shift
-  timeout 5 "$TOOL" "$@" >/dev/null 2>&1; local rc=$?
+  tmo 5 "$TOOL" "$@" >/dev/null 2>&1; local rc=$?
   if [[ "$rc" == 124 ]]; then bad "$name" "hung instead of exiting 2"; return; fi
   if [[ "$rc" != 2 ]]; then bad "$name" "wanted exit 2, got $rc"; return; fi
   if [[ "$(lines)" != "$before" ]]; then bad "$name" "log grew on a rejected event"; return; fi

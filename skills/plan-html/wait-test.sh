@@ -16,6 +16,28 @@ ok()  { PASS=$((PASS+1)); printf '  ok    %s\n' "$1"; }
 bad() { FAIL=$((FAIL+1)); printf '  FAIL  %s\n     -> %s\n' "$1" "$2"; }
 eq()  { if [[ "$2" == "$3" ]]; then ok "$1"; else bad "$1" "wanted exit $2, got $3"; fi; }
 
+# `timeout` is GNU coreutils and is absent from stock macOS, where AGENTS.md
+# still tells developers to run this suite. The checks that need a time bound
+# are exactly the ones that catch an infinite argument-parsing loop, so they
+# are not skippable. perl ships on both platforms and preserves the real exit
+# code, unlike a background-and-kill shim (which reports the watchdog's status,
+# not the command's).
+if command -v timeout >/dev/null 2>&1; then
+  tmo() { timeout "$@"; }
+elif command -v gtimeout >/dev/null 2>&1; then
+  tmo() { gtimeout "$@"; }
+else
+  tmo() {
+    local secs="$1"; shift
+    # `exec` keeps the child's own exit status; SIGALRM surfaces as 142, which
+    # is remapped to timeout's own 124 so callers need not care which ran.
+    ( exec 2>/dev/null; perl -e 'alarm shift; exec @ARGV' "$secs" "$@" )
+    local rc=$?
+    [ "$rc" -eq 142 ] && return 124
+    return "$rc"
+  }
+fi
+
 WORK="$(mktemp -d)"
 cleanup() {
   for p in "$WORK"/*.server.pid; do
@@ -149,9 +171,9 @@ else bad test_stop_flag_keeps_server_on_timeout "server reaped on exit 11"; fi
 # WRONG value: `shift 2` on a one-argument tail shifts nothing, so an
 # unguarded loop re-reads the same flag forever. `timeout` bounds the check so
 # a regression fails the suite instead of hanging CI.
-timeout 5 "$WAIT" "$plan" --timeout >/dev/null 2>&1
+tmo 5 "$WAIT" "$plan" --timeout >/dev/null 2>&1
 eq test_timeout_without_value_is_usage_error 2 $?
-timeout 5 "$WAIT" "$plan" --quiet-for >/dev/null 2>&1
+tmo 5 "$WAIT" "$plan" --quiet-for >/dev/null 2>&1
 eq test_quiet_for_without_value_is_usage_error 2 $?
 
 # bash 3.2 is the floor (stock macOS). These constructs are not available.

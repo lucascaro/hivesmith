@@ -116,9 +116,25 @@ Two MINOR findings were deliberately not acted on: `templates/scripts/regression
 - **2026-09-05** — Added top-level `permissions: contents: read` to `.github/workflows/changesets.yml`. Why: operator decision on the RISKY item surfaced by review iteration 2. This PR introduced the divergence from the workflow's own template, which already declared it. `regenerate-generated` re-grants `contents: write` at job level, so only the two read-only PR gate jobs are narrowed.
 - **2026-09-05** — Declined charset validation on `emit.sh` free-text fields. Why: operator decision. The injection vector is closed at the source — `review-loop/SKILL.md` requires those values be slugged to `[a-z0-9-]` before reaching a command line — and there is no single obviously-correct charset, so a gate here would risk rejecting legitimate values for defense that is already in place.
 
+## Review findings addressed (iter 3)
+
+Eight IMPORTANT findings, all fixed. Two were gaps in this feature's own design, and one was a bug the test suite actively asserted as correct:
+
+1. **`regression_of: #42` produced no declaration at all.** The iter-2 fix made `parse_regression_of` tolerant by filtering non-digits, which meant a malformed target vanished instead of surfacing — contradicting the function's own comment, and making the PR read as clean while a human had explicitly declared a regression against it. Now returns both halves; malformed targets are reported as malformed.
+2. **`REVIEW→GATE` and `GATE→DONE` emitted no `stage_transition`.** `/review-loop` §4a and `/merge-gate` are the declared single owners of those writes and neither carried the event, so `report.py` could never render a GATE or DONE row. Directly contradicted "metrics are unconditional".
+3. **`backfill.py --emit` doubled every row on a rerun, and `backfill-test.sh` asserted the doubling** (`n2 == 2 * n1`) — the test cemented the bug. Now idempotent by `(event, backfill_source)`, with `--force` as the documented escape hatch.
+4. **`stop.sh` SIGKILLed an unverified PID.** Pre-existing, but this feature added two automatic callers (`start.sh`'s reap, `wait.sh --stop`), so what needed a deliberate call now fires on every plan render — with recycled PIDs that is someone else's process. Verifies the PID is a plan-html server first.
+5. **`install.sh --doctor` reported "telemetry: not wired"** even for a project that took the per-repo opt-in, which reads as a broken install and invites a second machine-wide one.
+6. **A missing `hs-metric` binary halted the pipeline.** Install lag is not a metrics failure; the emitter now resolves `~/.hivesmith/bin/hs-metric` → `scripts/metrics/emit.sh`, and if neither exists prints one visible "NOT being recorded" line and continues. A schema rejection still fails loudly — `|| true` is explicitly forbidden.
+7. **`validate_changed` re-walked full base history once per declaration**, inside the CI gate. Hoisted.
+8. **`ci.yml` piped `harvest_plans.py` into `tail`,** so a crash reported the pipeline's status and passed silently.
+9. **Only the first retired gate dimension survived backfill** — legacy entries carry both `build/lint/test` and `regression`.
+10. **The suites required `timeout`,** absent on stock macOS where `AGENTS.md` tells developers to run them. A `perl -e alarm` fallback preserves real exit codes; a background-and-kill shim was tried first and reported the watchdog's status instead of the command's, so it silently passed everything.
+
 ## PR convergence ledger
 
 - **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
 - **2026-09-05 iter 2** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b0a9c689b412f4ee6e16a26bf4e2b6d94f58a538fa4840b95bf3f56dd37d75b8; threads_open: 0; action: escalated:risky fix needs human decision; head_sha: c4a7d33. 12 safe fixes applied and pushed, CI green; 2 RISKY items surfaced for the operator.
+- **2026-09-05 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 774dc1abc62b4ece81e953703fc7ad8a2440a1f4f839391e8c0266b41cd657af; threads_open: 0; action: autofix+push; head_sha: 30c0114. 8 IMPORTANT stood (zero recurrence from iter 2), so the loop continued rather than stopping on COMMENT.
 
 ## Gate verdict
