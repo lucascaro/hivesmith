@@ -96,8 +96,13 @@ nocheck test_zero_declared_is_not_called_clean_only "regressed 1" "$out4"
 rm -rf "$BARE"
 
 # --- validate-changed: FORMAT only, never absence ---------------------------
+# Do NOT hardcode "main": git's default branch name differs by version and by
+# config, and a wrong base ref used to make validate-changed report PASS on an
+# empty diff. That is now a hard failure in the tool, and this captures the
+# real name so the suite exercises the intended path.
+BASE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 git checkout -qb topic
-v() { python3 "$TOOL" . --validate-changed main topic 2>&1; }
+v() { python3 "$TOOL" . --validate-changed "$BASE_BRANCH" topic 2>&1; }
 
 cs 20 fixed "fix: no declaration at all (#20)" "" "2026-02-01T00:00:00"
 out="$(v)"; rc=$?
@@ -125,6 +130,13 @@ git add -A && git commit -qm "chore: list declaration"
 out="$(v)"; rc=$?
 if [[ $rc -eq 0 ]]; then ok test_comma_list_is_accepted
 else bad test_comma_list_is_accepted "exit $rc: $out"; fi
+
+out="$(python3 "$TOOL" . --validate-changed no-such-ref topic 2>&1)"; rc=$?
+if [[ $rc -ne 0 ]] && printf '%s' "$out" | grep -q "unresolvable-ref"; then
+  ok test_unresolvable_ref_fails_loudly
+else
+  bad test_unresolvable_ref_fails_loudly "a bad base ref must not report PASS (exit $rc: $out)"
+fi
 
 echo
 if [[ "$FAIL" -gt 0 ]]; then

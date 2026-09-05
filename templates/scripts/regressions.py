@@ -57,6 +57,11 @@ def git(root: Path, *args: str) -> str:
     return r.stdout
 
 
+def git_ok(root: Path, *args: str) -> bool:
+    return subprocess.run(["git", "-C", str(root), *args],
+                          capture_output=True, text=True).returncode == 0
+
+
 def pr_of(subject: str, body: str) -> int | None:
     """Recover the PR number from a merged commit, both merge styles."""
     m = SQUASH.search(subject) or MERGE.match(subject)
@@ -176,6 +181,16 @@ def collect(root: Path, soak_days: int):
 
 def validate_changed(root: Path, base: str, head: str) -> int:
     """Format-only gate for CI. Never fails on ABSENCE of a declaration."""
+    # An unresolvable ref makes `git diff` print nothing to stdout and fail on
+    # stderr, which this would otherwise read as "no changesets changed" and
+    # report as a PASS. A gate that silently passes when it cannot see the diff
+    # is worse than no gate, so both refs are resolved first.
+    for ref in (base, head):
+        if not git_ok(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"):
+            print(f"  cannot resolve ref: {ref}")
+            print("RESULT: FAIL reason=unresolvable-ref")
+            return 1
+
     names = git(root, "diff", "--name-only", "--diff-filter=AM",
                 f"{base}...{head}", "--", ".changesets/").split()
     problems = []
