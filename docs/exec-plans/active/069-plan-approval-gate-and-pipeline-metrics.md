@@ -141,6 +141,18 @@ Seven IMPORTANT findings. The first is the most serious defect found in the whol
 4-6. **Bare `hs-metric` invocations** in `/review-loop` and `/merge-gate` are not on `PATH`, so the two stage events added in iter 3 could never have fired; and the missing-emitter fallback was documented only in `/feature-loop` while four other skills invoke it. Absolute path everywhere, and each emitting skill now carries the resolution rule.
 7. **`plan-html`'s overview still said the caller "detects `<plan>.approved.json`"** — the description of the bug this PR fixes.
 
+## Review findings addressed (iter 5)
+
+Five IMPORTANT plus four MINOR, all in the metrics-instrumentation surface — none touched the two shipped mechanisms. Iteration 5 explicitly reported the PR as merge-ready before these were applied; they were fixed because they were cheap and real, not because they blocked.
+
+1. **`~~/.hivesmith/bin/hs-metric` — a double tilde** introduced by iteration 4's own path fix. Bash does not expand `~~/`, so the GATE→DONE call failed, the missing-emitter rule swallowed it, and the DONE row that fix existed to enable still never appeared. Sole occurrence in the repo.
+2. **`plan_rendered`'s `round` could never exceed 1** — the emit was bundled into the serve step, and the revise branch must not re-run `start.sh`, so it never re-emitted. Split into 4a (emit) and 4b (serve); the revise branch re-runs 4a only.
+3. **`plan-html` emitted `feature=<NNN-or-slug>`** while every other skill emits `feature=<NNN>`. A slug joins to nothing and sorts to the end of `report.py`'s trend ordering. Now `<NNN>`, with "omit the metric" as the documented answer for a standalone plan.
+4. **`seconds_to_approval` was required but unobtainable** on the native-plan-mode and chat paths, which never run `start.sh` — the schema was pushing the agent to invent a duration, the one thing this stream forbids. Now optional.
+5. **The malformed and dangling `regression_of` WARN paths had no full-report test.** The existing fixture only reached `--validate-changed` before being removed, so the iteration-3 crash (a bare `int()` killing the report and the CI metrics job) was re-introducible with the suite green. Now covered with a committed fixture — using `twelve` rather than `#42`, because `#` after a colon is a comment in both YAML and this parser and would not exercise the path at all.
+
+Minor: the recycled-PID guard was an unanchored `grep server.py` (now matches the skill's own path); a PR named by two fix changesets was counted twice in the regressed total; `backfill.py`'s docstring RESULT contract omitted `already_present=`.
+
 ## PR convergence ledger
 
 - **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
@@ -148,5 +160,6 @@ Seven IMPORTANT findings. The first is the most serious defect found in the whol
 - **2026-09-05 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 774dc1abc62b4ece81e953703fc7ad8a2440a1f4f839391e8c0266b41cd657af; threads_open: 0; action: autofix+push; head_sha: 30c0114. 8 IMPORTANT stood (zero recurrence from iter 2), so the loop continued rather than stopping on COMMENT.
 
 - **2026-09-05 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: aae4bdf03ac17ca9243ac3e5201eeb3ac81b3881b970c25f49c682284801098a; threads_open: 0; action: autofix+push; head_sha: bcde37e. 7 IMPORTANT stood, including a confirmed silent-feedback-loss defect in wait.sh; loop continued.
+- **2026-09-05 iter 5** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: cd55ad2f406d6183a35ff6105c98eefaf844616cee5e37449c71240026667245; threads_open: 0; action: stop; head_sha: 382f1cd. Reviewer's explicit merge-readiness call: nothing blocking; 5 IMPORTANT confined to telemetry fidelity, fixed anyway. Loop reached its 5-iteration budget.
 
 ## Gate verdict

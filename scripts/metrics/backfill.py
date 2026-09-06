@@ -36,7 +36,7 @@ Every row is emitted through `hs-metric --backfilled --backfill-source
 <file:line>`, so it carries its provenance and can never be mistaken for live
 measurement.
 
-RESULT: PASS plans=<n> gate=<n> ledger=<n> skipped=<n>
+RESULT: PASS plans=<n> gate=<n> ledger=<n> skipped=<n> already_present=<n>
 """
 from __future__ import annotations
 

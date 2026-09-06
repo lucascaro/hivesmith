@@ -234,7 +234,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     ```bash
     HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event plan_approved \
       --field feature=<NNN> --field rounds=<re-render count, 1 if approved first pass> \
-      --field seconds_to_approval=<wall seconds since the first start.sh> \
+      --field seconds_to_approval=<wall seconds since the first start.sh; OMIT the flag entirely on the native-plan-mode and chat paths, which have no start.sh to measure from — never estimate it> \
       --field via=<html|native-plan-mode|chat>
     ```
 

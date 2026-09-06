@@ -89,7 +89,10 @@ import datetime, difflib, json, os, sys
 # event -> (required fields, optional fields)
 SCHEMA = {
     "plan_rendered":    ({"feature", "round"}, {"sections", "bytes"}),
-    "plan_approved":    ({"feature", "rounds", "seconds_to_approval"}, {"via"}),
+    # seconds_to_approval is optional: the native-plan-mode and chat fallbacks
+    # never run start.sh, so there is no clock to read. Requiring it there would
+    # force the agent to invent a duration, which is what this stream forbids.
+    "plan_approved":    ({"feature", "rounds"}, {"via", "seconds_to_approval"}),
     "second_opinion":   ({"feature", "verdict", "confidence", "must_fix_count",
                           "applied_count", "round", "duration_s"}, set()),
     "review_iteration": ({"feature", "pr", "iter", "verdict", "findings_count",

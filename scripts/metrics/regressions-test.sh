@@ -139,6 +139,28 @@ out="$(v)"; rc=$?
 if [[ $rc -eq 0 ]]; then ok test_comma_list_is_accepted
 else bad test_comma_list_is_accepted "exit $rc: $out"; fi
 
+# The malformed and dangling WARN paths in collect() need a COMMITTED fixture.
+# The `unknown` changeset above only ever reaches --validate-changed and is then
+# git rm'd, so every full-report run happens before it exists — which is how a
+# bare int() on `regression_of: #42` crashing the whole report (and the CI
+# metrics job) could be re-introduced with this suite still green.
+# 'twelve', not '#42': a '#' after the colon is a comment in real YAML and in
+# this parser, so `regression_of: #42` yields an EMPTY value, not a malformed
+# one — it would not exercise this path at all. (CI's format gate still rejects
+# the empty case on a PR; this is about what history can contain.)
+cs 30 fixed "fix: malformed declaration (#30)" 'twelve' "2026-03-01T00:00:00"
+cs 31 fixed "fix: names a PR not in history (#31)" 9999 "2026-03-02T00:00:00"
+
+out="$(python3 "$TOOL" . --soak-days 30 2>&1)"; rc=$?
+if [[ $rc -eq 0 ]]; then ok test_malformed_declaration_does_not_crash_report
+else bad test_malformed_declaration_does_not_crash_report "report exited $rc"; fi
+check test_malformed_declaration_is_warned   "is not an integer" "$out"
+check test_malformed_names_its_changeset     "030-c30.md"        "$out"
+check test_dangling_declaration_is_warned    "not seen in this history" "$out"
+# A malformed target must not silently vanish: before this, filtering non-digits
+# produced no declaration at all, so it could not even surface as dangling.
+nocheck test_malformed_is_not_silently_dropped "regressed 0   clean 0" "$out"
+
 out="$(python3 "$TOOL" . --validate-changed no-such-ref topic 2>&1)"; rc=$?
 if [[ $rc -ne 0 ]] && printf '%s' "$out" | grep -q "unresolvable-ref"; then
   ok test_unresolvable_ref_fails_loudly

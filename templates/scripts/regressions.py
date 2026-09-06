@@ -333,7 +333,8 @@ def main() -> int:
     merged, regressed, clean, unobserved, dangling, malformed = collect(root, args.soak_days)
 
     print(f"REGRESSIONS — declared, not inferred (.changesets/ regression_of:)")
-    print(f"  merged PRs {len(merged)}   regressed {len(regressed)}   "
+    n_regressed_prs = len({r["pr"] for r in regressed})
+    print(f"  merged PRs {len(merged)}   regressed {n_regressed_prs}   "
           f"clean {len(clean)}   unobserved {len(unobserved)} "
           f"(<{args.soak_days}d, nothing claimed)")
     if not merged:
@@ -362,7 +363,7 @@ def main() -> int:
              "malformed": malformed, "soak_days": args.soak_days},
             indent=2, default=str))
 
-    print(f"RESULT: PASS merged={len(merged)} regressed={len(regressed)} "
+    print(f"RESULT: PASS merged={len(merged)} regressed={n_regressed_prs} "
           f"clean={len(clean)} unobserved={len(unobserved)}")
     return 0
 

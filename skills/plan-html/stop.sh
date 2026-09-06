@@ -36,7 +36,7 @@ if [[ ! "$pid" =~ ^[0-9]+$ ]]; then
     rm -f "$pid_file" "$port_file" "$token_file" "${plan_base}.feedback.seen.json"
     exit 0
 fi
-if kill -0 "$pid" 2>/dev/null && ! ps -o command= -p "$pid" 2>/dev/null | grep -q "server.py"; then
+if kill -0 "$pid" 2>/dev/null && ! ps -o command= -p "$pid" 2>/dev/null | grep -q "plan-html/server\.py"; then
     echo "hs-plan-html: pid=$pid is not a plan-html server (recycled pid); not killing it"
     rm -f "$pid_file" "$port_file" "$token_file" "${plan_base}.feedback.seen.json"
     exit 0

@@ -40,16 +40,18 @@ Any plan-producing skill that wants this review UX follows exactly this sequence
 1. **Guard.** Use the HTML path only when *all* of: `skills/plan-html/template.html` exists, `HIVESMITH_PLAN_HTML` is unset or non-`0`, and the user did not pass `--no-html` / `--text`. The template check matters — a calling skill may be running in a project that has no hivesmith checkout on disk, where none of the repo-relative paths below resolve.
 2. **Fall back, in order,** when the guard fails or any step below exits non-zero: native plan mode if the runtime has one (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`) → an inline text draft under a `### Draft plan for review` heading. Say which fallback you took and why; never fail the caller because the HTML path was unavailable.
 3. **Render.** Build the manifest JSON (schema in `render_plan.py`'s module docstring), then `python3 skills/plan-html/render_plan.py --manifest <path>.json --template skills/plan-html/template.html --out <plan>.html`.
-4. **Serve.** Emit the render event, then start the server. One call here covers every caller — do not duplicate it into `/feature-loop` or `/feature-plan`:
+4a. **Emit the render event.** One call here covers every caller — do not duplicate it into `/feature-loop` or `/feature-plan`:
 
    ```bash
-   HIVESMITH_SKILL=hs-plan-html ~/.hivesmith/bin/hs-metric --event plan_rendered --field feature=<NNN-or-slug> --field round=<1 on first render, +1 per revise>
+   HIVESMITH_SKILL=hs-plan-html ~/.hivesmith/bin/hs-metric --event plan_rendered --field feature=<NNN> --field round=<1 on first render, +1 per revise>
    ```
 
-   `skills/plan-html/start.sh <plan>.html`. Tell the user the URL — it includes `?t=<token>` and the server rejects requests without it.
+   `feature` is the **3-digit spec number**, matching every other skill's `feature=<NNN>`. A slug does not join to those rows, and `report.py` orders trends by feature number, so a non-numeric key sorts to the end and distorts the first-N/last-N comparison. For a standalone plan with no spec behind it, omit the metric rather than inventing a key.
+
+4b. **Serve.** `skills/plan-html/start.sh <plan>.html`. Tell the user the URL — it includes `?t=<token>` and the server rejects requests without it.
 5. **Wait.** `skills/plan-html/wait.sh <plan>.html --timeout 90`. This call **blocks** — that is the entire point of it. Act on the exit code:
    - `0` — approved. Go to step 7.
-   - `10` — feedback available. Read `<plan>.feedback.json`, rebuild the manifest with `changed: true` on affected sections, re-render to the **same** path, and wait again. Do **not** re-run `start.sh`; the server re-reads the HTML on every request.
+   - `10` — feedback available. Read `<plan>.feedback.json`, rebuild the manifest with `changed: true` on affected sections, re-render to the **same** path, **re-run step 4a with `round` incremented**, and wait again. Do **not** re-run `start.sh` (step 4b); the server re-reads the HTML on every request. Without the 4a re-emit `round` stays pinned at 1 forever, and the revise count is the thing this event exists to measure.
    - `11` — nothing yet. Call `wait.sh` again, printing one line of progress between calls ("still waiting on plan approval — round `<N>`, `<M>`s elapsed"). Loop at most **8 times** (~12 minutes), then run step 7 and fall back to a chat approval prompt naming the URL, so an operator who never opened the page is not waiting on a dead turn.
    - `3` — the server is gone. Run step 7, then take the fallback chain at step 2.
 6. **Never poll by hand.** `ls`, `test -f`, `cat`, and "I'll check again later" are **not** substitutes for `wait.sh`. A one-shot check runs before the operator has even seen the page, always fails, and ends the turn — and the loop then stalls silently while the page shows the operator "✓ Approved" and disables the button. That is the exact failure `wait.sh` exists to prevent.
