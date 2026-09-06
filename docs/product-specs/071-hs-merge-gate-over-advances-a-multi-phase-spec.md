@@ -4,8 +4,8 @@ title: /hs-merge-gate over-advances a multi-phase spec to DONE on its first phas
 type: bug
 complexity: M
 priority: P1
-stage: IMPLEMENT        # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
-# pr: <number>         # uncomment when PR opens
+stage: REVIEW           # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
+pr: 72
 # shipped: 2026-MM-DD  # uncomment on DONE
 # rejection_reason:    # required when stage=REJECTED
 ---

@@ -1,5 +1,6 @@
 ---
 type: fixed
+pr: 72
 bump: minor
 ---
 - **Merge gate no longer marks a phased feature DONE on its first phase** — exec plans gain an optional `Phase: N of M` header field. While `N < M`, `/merge-gate` records a per-phase PASS in `## Gate verdict` (carrying `phase: N/M`) and refuses the DONE bookkeeping entirely: no `Status: completed`, no move to `completed/`, no `pr:`/`shipped:`, no `stage: DONE`. It still commits and pushes the verdict, so the next gate or review-loop run does not refuse on a dirty tree. Plans that declare no phase are unaffected. Starting phase N+1 is a documented manual reset (`stage: IMPLEMENT`, bump `Phase:`, clear the plan's `PR:`/`Branch:`), and `/feature-loop`'s Phase 5 step 37 no longer force-advances a non-final plan back to `GATE`, which previously would have undone that reset. The `gate_verdict` metric accepts an optional `phase` field so a phase PASS is distinguishable from a full PASS.

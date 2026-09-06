@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/071-hs-merge-gate-over-advances-a-multi-phase-spec.md](../../product-specs/071-hs-merge-gate-over-advances-a-multi-phase-spec.md)
 - **Issue:** #71
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #72
+- **Branch:** `feature/71-merge-gate-phase-aware`
 
 <!--
 Stage is **not** carried here. The spec's YAML frontmatter `stage:` is the
