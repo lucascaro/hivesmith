@@ -51,7 +51,7 @@ cat > docs/exec-plans/completed/101-modern.md <<'P'
 
 ## Gate verdict
 
-- **2026-03-03** — verdict: PASS; checks: 3 dimensions passed / 0 failed / 0 followups; followups: none; one-line: ok.
+- **2026-03-03** — verdict: PASS; checks: 3 dimensions passed / 0 failed / 0 followups; followups: none; phase: 1/3; one-line: ok.
   - 2026-03-03 dimensions:
     - acceptance — PASS — fine
     - non-goals — PASS
@@ -73,7 +73,7 @@ cat > docs/exec-plans/completed/102-legacy.md <<'P'
 
 ## QA verdict
 
-- **2026-01-07** — verdict: PASS; checks: 5 passed / 0 failed / 0 followups; followups: none; one-line: legacy.
+- **2026-01-07** — verdict: PASS; checks: 5 passed / 0 failed / 0 followups; followups: none; phase: —; one-line: legacy.
   - 2026-01-07 dimensions:
     - build/lint/test — PASS — shellcheck ok
     - regression — PASS — nothing regressed
@@ -94,6 +94,11 @@ check test_ledger_backfilled                '"event": "review_iteration"' "$out"
 check test_pr_recovered_from_plan_header    '"pr": 201'               "$out"
 check test_every_row_is_marked_backfilled   '"backfilled": true'      "$out"
 check test_backfill_source_carries_line     '102-legacy.md:'          "$out"
+
+# A non-final-phase gate PASS must stay distinguishable from a full PASS after
+# backfill; the `—` placeholder carries no phase and must not be emitted as one.
+check   test_gate_phase_backfilled          '"phase": "1/3"'          "$out"
+nocheck test_gate_phase_placeholder_dropped '"phase": "—"'            "$out"
 
 # Prose in an enum position must be dropped, never coerced to the nearest value.
 # Asserting the absence of a whole JSON fragment was vacuous: key order and

@@ -235,6 +235,14 @@ def main() -> int:
                         nums = re.findall(r"\d+", fu)
                         if nums and "none" not in fu.lower():
                             current["followups"] = ",".join(nums)
+                        # `phase: N/M` marks a non-final-phase gate PASS. Without
+                        # it a backfilled phase PASS is indistinguishable from a
+                        # full PASS, which is the distinction the field exists
+                        # for. The `—` placeholder and any prose are dropped
+                        # rather than guessed at.
+                        ph = re.fullmatch(r"\d+/\d+", f.get("phase", "").strip())
+                        if ph:
+                            current["phase"] = ph.group(0)
                     continue
                 d = DIM.match(ln)
                 if d and current is not None:

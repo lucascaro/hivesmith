@@ -150,7 +150,7 @@ For iteration `i` from 1 to `--max-iterations`:
 
 ## 3.5 Brain append on convergence
 
-When the loop converges (APPROVE or COMMENT-with-strict-off), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
+When the loop converges (APPROVE, or COMMENT with no BLOCKING or IMPORTANT findings remaining), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
 
 ```
 HIVESMITH_SKILL=hs-review-loop \
