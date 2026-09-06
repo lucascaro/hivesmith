@@ -4,13 +4,14 @@ title: Plan approval gate + deterministic pipeline metrics
 type: enhancement
 complexity: L
 priority: P1
-stage: GATE
+stage: DONE
 pr: 70
+shipped: 2026-09-05
 ---
 
 # Plan approval gate + deterministic pipeline metrics
 
-- **Exec plan:** [docs/exec-plans/active/069-plan-approval-gate-and-pipeline-metrics.md](../exec-plans/active/069-plan-approval-gate-and-pipeline-metrics.md)
+- **Exec plan:** [docs/exec-plans/completed/069-plan-approval-gate-and-pipeline-metrics.md](../exec-plans/completed/069-plan-approval-gate-and-pipeline-metrics.md)
 
 ## Problem
 
@@ -33,7 +34,7 @@ Every pipeline run leaves behind schema-validated events that answer three quest
 - `.changesets/*.md` accepts `regression_of:` on `type: fixed`, CI validates its format (never its absence), and `scripts/metrics/regressions.py` recovers declarations from git history after `release.sh` has deleted the files.
 - `regressions.py` reports Regressed / Clean / Unobserved as three distinct counts and never prints a bare regression rate.
 - `scripts/metrics/report.py` prints the second-opinion block with its correlational disclaimer inline, and counts backfilled rows separately from live ones.
-- The 8 currently-orphaned test suites plus the 3 new ones run in CI.
+- The 5 previously-orphaned test suites plus the 4 new ones run in CI.
 
 ## Non-goals
 

@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/069-plan-approval-gate-and-pipeline-metrics.md](../../product-specs/069-plan-approval-gate-and-pipeline-metrics.md)
 - **Issue:** #69
-- **Status:** active
+- **Status:** completed
 - **PR:** #70
 - **Branch:** feature/69-plan-approval-gate-and-pipeline-metrics
 
@@ -92,7 +92,7 @@ awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q 
 ## Progress
 
 - **2026-09-05** — Spec and exec plan created; branch `feature/69-plan-approval-gate-and-pipeline-metrics` opened. Stage IMPLEMENT.
-- **2026-09-05** — Implemented all five sequenced parts. All AGENTS.md checks green; 8 previously-orphaned suites verified passing before being gated in CI. PR #70 opened. Stage REVIEW.
+- **2026-09-05** — Implemented all five sequenced parts. All AGENTS.md checks green; the 5 previously-orphaned suites verified passing before being gated in CI. PR #70 opened. Stage REVIEW.
 
 ## Open questions
 
@@ -167,6 +167,14 @@ Operator-requested extra round, past the 5-iteration budget, to cover iteration 
 
 - **2026-09-05 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: aae4bdf03ac17ca9243ac3e5201eeb3ac81b3881b970c25f49c682284801098a; threads_open: 0; action: autofix+push; head_sha: bcde37e. 7 IMPORTANT stood, including a confirmed silent-feedback-loss defect in wait.sh; loop continued.
 - **2026-09-05 iter 5** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: cd55ad2f406d6183a35ff6105c98eefaf844616cee5e37449c71240026667245; threads_open: 0; action: stop; head_sha: 382f1cd. Reviewer's explicit merge-readiness call: nothing blocking; 5 IMPORTANT confined to telemetry fidelity, fixed anyway. Loop reached its 5-iteration budget.
-- **2026-09-05 iter 6** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 3dbe5731dc16a75550e6615b60518e21d2bfd101059ddec7191e678cf59560dc; threads_open: 0; action: autofix+push; head_sha: 2142243. Operator-requested round past budget to review iter 5's diff; 9 of 10 hunks verified clean, 1 vacuous test assertion fixed and mutation-tested.
+- **2026-09-05 iter 6** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 3dbe5731dc16a75550e6615b60518e21d2bfd101059ddec7191e678cf59560dc; threads_open: 0; action: stop; head_sha: 2142243. Operator-requested round past budget to review iter 5's diff; 9 of 10 hunks verified clean, 1 vacuous test assertion fixed and mutation-tested. **Ledger correction:** this line first read `action: autofix+push`, which recorded the orchestrator's follow-up fix rather than the loop's terminal decision — the worker's own decision was `stop` (COMMENT, strict off, zero threads). The head did advance afterwards to `3e0051a` (the test-assertion fix) and `1ca015a` (the GATE bookkeeping), so those two commits were not themselves reviewed; the gate below records that as an explicit exception rather than treating the ledger as clean.
 
 ## Gate verdict
+
+- **2026-09-05** — verdict: PASS; checks: 3 dimensions passed / 0 failed / 0 followups; followups: none; one-line: all 8 success criteria exercised live (not read), all 5 non-goals held, docs accurate after correcting an inflated suite count found by the gate itself.
+  - 2026-09-05 dimensions:
+    - acceptance — PASS — all 8 criteria exercised by execution, not inspection: wait-test 27/27, emit-test 27/27, regressions-test 21/21, backfill-test 34/34; predecessor reaping reproduced live (first pid killed, second alive); all five `hs-metric` rejection modes confirmed to exit 64 with no file ever created; `regressions.py` printed three distinct counts (merged 52 / regressed 0 / clean 31 / unobserved 21) and no bare rate; `report.py` counted live and backfilled rows separately.
+    - non-goals — PASS — no holdout arm (reviewer dispatched unconditionally; `report.py` explicitly disclaims one); `backfill.py` parses no `## Second opinion` section; `install.sh`'s telemetry block is report-only with no write to any settings file; `review-loop`'s prose parse and GraphQL cross-check are unchanged and `autofix_applied` is measurement-only; no committed metrics artifact (`git ls-files` shows no tracked `.jsonl`). No scope bleed beyond the plan's stated blast radius.
+    - doc accuracy — PASS — changeset frontmatter valid and `CHANGELOG.md` untouched; the `AGENTS.md` ↔ `ci.yml` shellcheck invariant holds at 45/45 with an empty symmetric difference; `templates/scripts/regressions.py` byte-identical to source; every documented `hs-metric` invocation resolves and uses only fields in `emit.sh`'s SCHEMA; no live `/hs-metrics` or `~~/` reference remains.
+  - 2026-09-05 correction applied during the gate: the spec, changeset and plan claimed **8** orphaned test suites; only **5** were actually unexecuted on `main` (`scripts/brain/test/run-all.sh` and `skills/graphify-init/test/run-all.sh` already had CI jobs). The `script-suites` job runs 9 suites: those 5 plus 4 new. Corrected in all three files before the verdict was recorded — the changeset text renders into `CHANGELOG.md`, so this would otherwise have shipped a wrong number to users.
+  - **Ledger exception (operator-approved):** the gate's cold-start guard requires the latest ledger entry to read `action: stop`. Iteration 6's entry was first written as `autofix+push`, which recorded the orchestrator's follow-up fix rather than the loop's terminal decision (the worker decided `stop` on COMMENT with zero threads). It was corrected, and the head did advance afterwards to `3e0051a` and `1ca015a` — a mutation-verified test-assertion fix and the GATE bookkeeping, no production code — which no review covered. The operator elected to proceed with the exception recorded rather than spend a seventh review round on 22 lines of test file.
