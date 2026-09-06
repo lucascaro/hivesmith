@@ -124,7 +124,10 @@ bash scripts/metrics/emit-test.sh
 ! grep -rn 'COMMENT.\{0,2\} with strict off and zero threads' skills/
 ! grep -rn 'COMMENT.\{0,2\} with only MINOR remaining' skills/
 # ...and the new wording is present at all three review-loop sites (currently 0):
-[ "$(grep -c 'BLOCKING or IMPORTANT' skills/review-loop/SKILL.md)" -ge 3 ]
+# Every restatement of the stop condition, in any phrasing. The earlier `-ge 3`
+# floor let a fourth site (§3.5, hyphenated "COMMENT-with-strict-off") survive.
+! grep -rn 'COMMENT-with-strict-off' skills/
+[ "$(grep -c 'BLOCKING or IMPORTANT' skills/review-loop/SKILL.md)" -ge 4 ]
 # merge-gate must now reference the hash rule in its restatement (currently 0 hits):
 grep -q 'findings_hash' skills/merge-gate/SKILL.md
 # ...but its own guard must NOT have been tightened — legacy ledgers still gate:
@@ -216,7 +219,7 @@ Per the loop's rules the reviewer is not run a third time; the remaining judgmen
 
 <Append-only. One entry per `/review-loop` iteration so a fresh harness run can pick up where the previous one left off without rereading PR comments. Keep entries one line each.>
 
-- **<date> iter <N>** — verdict: <APPROVE|COMMENT|REQUEST_CHANGES>; mergeable: <MERGEABLE|CONFLICTING|UNKNOWN>; findings_hash: <hex|empty>; threads_open: <n>; action: <stop|autofix+push|autofix+push (conflict)|escalated:<reason>>; head_sha: <short-sha>.
+- **2026-09-06 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: bf98334832cc3f0f4439ac469c65b440c24f430cf5ee70757b011314f404fa37; threads_open: 0; action: autofix+push; head_sha: 43bf2aa.
 
 ## Gate verdict
 
