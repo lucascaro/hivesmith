@@ -226,4 +226,4 @@ Per the loop's rules the reviewer is not run a third time; the remaining judgmen
 
 <Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
 
-- **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.
+- **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M or —>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.

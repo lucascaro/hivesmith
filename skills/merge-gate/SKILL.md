@@ -108,7 +108,8 @@ This skill owns Stage = `GATE`. Before doing any work:
    **Regression declaration check (doc accuracy dimension).** If the PR adds a `.changesets/*.md` with `type: fixed` and **no** `regression_of:` field, record `regression_of: declared-absent` in the doc-accuracy evidence. This is **not a FAIL** — an explicit "nobody checked" is a distinct and useful state, and failing on it would only train agents to fill the field with a guess. If `regression_of` is present, sanity-check that the PR number it names exists and was merged before this branch.
 
 6. **Apply the GitHub label** (only when a GitHub issue exists for this feature — specs created locally carry no issue number and the index row shows `—`; skip every `gh issue` step for those):
-   - PASS → `gh issue edit <number> --remove-label gate --add-label gate-passed`
+   - PASS (final phase, or no `Phase:` declared) → `gh issue edit <number> --remove-label gate --add-label gate-passed`
+   - PASS (**non-final phase**, `N < M`) → **leave the labels alone.** The spec is still at `GATE` and phases N+1..M remain; `gate-passed` would advertise a finished feature, and nothing later puts `gate` back — the phase-N+1 reset writes `stage: IMPLEMENT` but no label, and `/review-loop` §4a only ever removes `implementing`. Keeping `gate` is a stated Non-goal decision, not an oversight: no `gate-phase-passed` label is introduced.
    - FAIL → `gh issue edit <number> --remove-label gate --add-label gate-failed`
    - NEEDS_FOLLOWUP → `gh issue edit <number> --remove-label gate --add-label gate-followup`
 

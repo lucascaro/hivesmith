@@ -307,10 +307,10 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 51. **[The merge stop]** Use AskUserQuestion, showing the PR link, the latest `## Gate verdict` entry, and the last `## PR convergence ledger` line:
     > "Review converged and the gate passed. Merge the PR now?"
     > 1. Yes — merge with `gh pr merge --squash`
-    > 2. No — leave the PR open (stage stays DONE on the branch until it lands)
+    > 2. No — leave the PR open (stage stays DONE on the branch until it lands; on a non-final phase it stays GATE)
 
     This is never automatic. There is no signal — clean ledger, PASS verdict, green CI — that lets the loop merge on its own.
-52. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). No label write is needed — `/merge-gate` already swapped `gate` → `gate-passed`. No stage write is needed either — the gate already set `stage: DONE`, and it lands with the merge. The `regenerate-generated` job rebuilds `docs/product-specs/index.md` on push to `main` and moves the row into the Completed table on its own.
+52. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). On a **final-phase** PASS no label write is needed — `/merge-gate` already swapped `gate` → `gate-passed` — and no stage write is needed either, because the gate already set `stage: DONE` and it lands with the merge. **On a non-final phase neither happened**: the label is still `gate` and the stage is still `GATE`, both deliberately. Do not "fix" them here — the feature is not done, and the route to phase N+1 is the manual reset (`stage: IMPLEMENT`, bump the plan's `Phase:`, clear its `PR:`/`Branch:`), which step 46 already told the operator to make. The `regenerate-generated` job rebuilds `docs/product-specs/index.md` on push to `main` and moves the row into the Completed table on its own.
 
 ## Phase 9: Summary
 
