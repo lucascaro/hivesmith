@@ -76,6 +76,6 @@ this file or from the generated `docs/product-specs/index.md`.
 
 ## Gate verdict
 
-<Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
+<Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS *and* the plan declares no non-final `Phase:` — a `Phase: N of M` with `N < M` records a per-phase PASS and holds the spec at GATE.>
 
 - **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M or —>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.
