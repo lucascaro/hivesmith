@@ -13,7 +13,7 @@ This skill is the **inner PR-convergence loop**. It is independent of the featur
 
 ## Philosophy: boil the lake
 
-Completeness is cheap when AI does the work. Keep iterating until findings actually clear — don't declare victory after one round of `/autofix` while non-trivial findings still stand. Each pass should fully apply the boil-the-lake stance from `/review-pr` and `/autofix`: every occurrence of every defect, every implementor of every touched contract. The loop ends when the review verdict is `APPROVE` (or `COMMENT` with only MINOR remaining), or when an escalation criterion fires (genuine ocean, contradictory findings, max iterations) — surface those for the user, don't quietly stop. The default bias is toward running the loop to true convergence, not to a comfortable-looking diff.
+Completeness is cheap when AI does the work. Keep iterating until findings actually clear — don't declare victory after one round of `/autofix` while non-trivial findings still stand. Each pass should fully apply the boil-the-lake stance from `/review-pr` and `/autofix`: every occurrence of every defect, every implementor of every touched contract. The loop ends when the review verdict is `APPROVE`, or `COMMENT` with no BLOCKING or IMPORTANT findings remaining, or when an escalation criterion fires (genuine ocean, contradictory findings, max iterations) — surface those for the user, don't quietly stop. The default bias is toward running the loop to true convergence, not to a comfortable-looking diff.
 
 ## Inputs
 
@@ -27,6 +27,8 @@ Before iterating, locate the matching exec plan (current: `docs/exec-plans/{acti
 1. Read its `## PR convergence ledger` section. The last line gives `prev_findings_hash` (the hex value) — seed the loop-detection guard with it instead of starting empty.
 2. Read `stage:` from the matching spec's YAML frontmatter (`docs/product-specs/<NNN>-*.md`) — the exec plan no longer carries a `Stage:` line, and the generated `index.md` is a derived view. Set it to `REVIEW` **only when the current stage is earlier than `REVIEW`** (`IMPLEMENT`, or unset) — that is the resume case this write exists for. **Never demote `GATE` or `DONE` back to `REVIEW`.** Under the pre-merge gate both are reachable on a still-open PR: a `/merge-gate` FAIL leaves `GATE` while the fix happens on the branch, and a gate PASS leaves `DONE` before the merge stop merges. Overwriting either would strand the feature — demoting `DONE` in particular destroys the gate's terminal write while `pr:`, `shipped:` and the `completed/` plan move stay behind, and no later step rewrites them. When the stage is already `GATE` or `DONE`, leave it untouched and say so in the run output: the loop is re-running on an already-gated PR. **Legacy fallback:** when no spec frontmatter exists, read `Stage:` from the exec plan if present.
 3. Throughout iteration, **append** one line per iteration to the ledger. Never rewrite or delete prior entries.
+
+**Resuming after a mid-flight death.** A ledger whose last entry reads `action: autofix+push` (rather than `stop` or `escalated:`) means a previous run pushed a fix and then died before it could re-review — a crashed harness, an API rate limit, a killed process. That is a normal, resumable state, not corruption, and it is why `/merge-gate` refuses such a ledger: the pushed head was never reviewed. **The recovery is simply to re-run this loop on the same PR.** It is safe: the next iteration re-reviews the already-pushed head, seeds `prev_findings_hash` from that trailing entry so the loop-detection guard still works across the restart, and appends a fresh line rather than rewriting the stale one.
 
 If no matching plan is found (PR was hand-authored, not from the feature pipeline), skip the ledger entirely and run the loop with an empty `prev_findings_hash`. This is fine — the ledger is an optimization, not a requirement.
 
@@ -72,7 +74,7 @@ For iteration `i` from 1 to `--max-iterations`:
    >    - `APPROVE` with **zero unresolved threads** AND `MERGEABLE != CONFLICTING` → stop. No autofix, no push.
    >    - `APPROVE` with unresolved threads → coerce to `REQUEST_CHANGES`. The review itself had nothing to say, but Copilot / human threads are still open and must be closed by autofix (fix or reply-and-resolve with a concrete reason).
    >    - **Any verdict with `MERGEABLE == CONFLICTING`** → coerce to `REQUEST_CHANGES`. Autofix's pre-flight merge initiator (step 2.5 of the autofix skill) will surface the conflict locally and resolve SAFE conflicts or surface RISKY ones.
-   >    - `COMMENT` → if strict mode is true OR there are unresolved threads, treat as `REQUEST_CHANGES`; otherwise stop.
+   >    - `COMMENT` → stop **only** when strict mode is false AND there are no unresolved threads AND `findings_hash` is empty. An empty hash is exactly "no BLOCKING or IMPORTANT findings remain" (you computed it over those in step 4), so this is the Philosophy rule stated mechanically. Otherwise treat as `REQUEST_CHANGES` — a `COMMENT` verdict still carrying IMPORTANT findings is not convergence. Judge this before you autofix, so the hash and the thread count describe the same snapshot.
    >    - `REQUEST_CHANGES` (including coerced) → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. Determine whether autofix took any thread-side actions by parsing the `Threads:` breakdown in autofix's Phase 5 summary (specifically the `Fixed:` and `Resolved with rationale:` counts — sum > 0 means thread-side actions occurred). If `POST_SHA == PRE_SHA` AND the parsed `Fixed + Resolved with rationale` total is `0`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
    >    - After autofix, re-query unresolved threads (same paginated GraphQL call) and record `unresolved_threads_post`. Cross-check against autofix's Phase 5 `Threads:` line `Still open:` count. If the two disagree, **trust the GraphQL re-query as source of truth** and set `escalate_reason: "autofix Threads summary disagrees with GraphQL re-query"`.
    >    - If autofix surfaces RISKY items it would not auto-apply, list them in `risky_surfaced` and set `escalate_reason: "risky fix needs human decision"`.
@@ -141,14 +143,14 @@ For iteration `i` from 1 to `--max-iterations`:
 5. **Branch on verdict:**
    - `APPROVE` AND `unresolved_threads_post == 0` — done. Exit the loop, append a brain entry (see §3.5) if a durable lesson was surfaced this run, then go to §4.
    - `APPROVE` with `unresolved_threads_post > 0` — never exit here. Continue to iteration `i+1` so autofix gets another pass at the open threads. If the next iteration's worker still cannot close them and we hit max iterations, §3 fires.
-   - `COMMENT` with strict off AND `unresolved_threads_post == 0` — done. Same path as APPROVE.
+   - `COMMENT` — done only when the worker itself stopped (strict off, `unresolved_threads_pre == 0`, empty `findings_hash` — i.e. no BLOCKING or IMPORTANT findings remaining); read those envelope fields, not `unresolved_threads_post`. The worker decides before it autofixes, so its `findings_hash` and thread count share one snapshot; `unresolved_threads_post` is post-autofix, and conjoining the two across snapshots would never fire on an iteration that autofixed. Same path as APPROVE.
    - `COMMENT` with `unresolved_threads_post > 0` — continue (same reasoning as APPROVE-with-threads).
    - `escalate_reason` non-empty — escalate with that reason (see §3). **Do NOT append a brain entry on escalation** — non-converged runs are unreliable.
    - Otherwise — append a short line to `iteration_results` (`#i: <verdict>, <N> findings, threads=<post>, pushed=<bool>`) and continue to iteration `i+1`.
 
 ## 3.5 Brain append on convergence
 
-When the loop converges (APPROVE or COMMENT-with-strict-off), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
+When the loop converges (APPROVE, or COMMENT with no BLOCKING or IMPORTANT findings remaining), inspect the cleared findings. If a recurring *pattern* surfaced (e.g. "fixture file path drift", "shellcheck SC2086 came up across three files", "autofix kept widening try/except"), distill it into a one-paragraph lesson and append:
 
 ```
 HIVESMITH_SKILL=hs-review-loop \
@@ -167,7 +169,7 @@ The quoted heredoc (`<<'LESSON'`) is required, not stylistic: the pattern text i
 
 Stop the loop and surface to the user when any of these hit:
 
-- Max iterations reached without `APPROVE`.
+- Max iterations reached without convergence (`APPROVE`, or `COMMENT` meeting §2 step 5's stop condition).
 - Loop-detection guard fires (same findings two iterations in a row).
 - Autofix produced no changes but findings remain.
 - A required CI check fails twice with the same error (not a flake).
@@ -188,7 +190,7 @@ When escalating, post a single PR comment summarizing:
 ## Review loop result
 PR: #<n>
 Iterations: <i>/<max>
-Final verdict: APPROVE | ESCALATED
+Final verdict: APPROVE | COMMENT | ESCALATED
 <reason if escalated>
 
 ## Findings cleared this run
@@ -200,13 +202,13 @@ Final verdict: APPROVE | ESCALATED
 
 ## 4a. On convergence (pre-merge post-loop hook)
 
-Once the loop converges with `APPROVE`, and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=REVIEW --field to=GATE` alongside it (this section owns the transition, so it owns the event; without it the GATE row can never appear in `report.py`), then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop`'s review phase is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
+Once the loop converges — `APPROVE` with zero unresolved threads, **or** `COMMENT` meeting §2 step 5's stop condition (strict off, zero unresolved threads, empty `findings_hash`) — and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=REVIEW --field to=GATE` alongside it (this section owns the transition, so it owns the event; without it the GATE row can never appear in `report.py`), then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop`'s review phase is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
 
 If the PR turns out to have been merged already (e.g. the user merged in a separate window before this skill exits), still set `GATE` and point at `/merge-gate` — it has a degraded post-merge path for exactly this case.
 
 ## 5. Rules
 
-- Never merge from inside the loop. Convergence is "no BLOCKING findings"; merging is the human's call (or a separate skill).
+- Never merge from inside the loop. Convergence is "no BLOCKING or IMPORTANT findings"; merging is the human's call (or a separate skill).
 - Never overwrite the user's pre-authorization. If the user said "do not change file X", autofix's RISKY classifier should hold — escalate instead.
 - Always push after autofix runs and CI completes before re-reviewing — re-reviewing the old diff wastes a turn.
 - Loop budget is finite. Five iterations is the default; more than that suggests the harness, not the loop, needs work.

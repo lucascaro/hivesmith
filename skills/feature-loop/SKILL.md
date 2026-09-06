@@ -10,7 +10,7 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent AskUserQuestion
 
 Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → GATE → DONE — autonomously. One invocation takes a description to a merge-ready PR.
 
-`REVIEW` = PR open, `/review-loop` driving convergence. `GATE` = review converged, `/merge-gate` validating the **still-open** PR against the spec's acceptance criteria. `DONE` = gate verdict PASS recorded and the plan moved to `completed/`; the merge is a separate later step, so a spec can be `DONE` with its PR still open. The gate runs before the merge so a failure is fixed in the same PR, and so the DONE bookkeeping ships inside the feature PR rather than as a follow-up PR.
+`REVIEW` = PR open, `/review-loop` driving convergence. `GATE` = review converged, `/merge-gate` validating the **still-open** PR against the spec's acceptance criteria. `DONE` = gate verdict PASS recorded and the plan moved to `completed/`; the merge is a separate later step, so a spec can be `DONE` with its PR still open. A plan that declares a **non-final** `Phase: N of M` (`N < M`) never reaches `DONE` from its gate — the gate records a per-phase PASS and holds the spec at `GATE`. The gate runs before the merge so a failure is fixed in the same PR, and so the DONE bookkeeping ships inside the feature PR rather than as a follow-up PR.
 
 ## The two stops
 
@@ -96,7 +96,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
    - `PLAN` → Phase 4
    - `IMPLEMENT` → Phase 5
    - `REVIEW` → Phase 6
-   - `GATE` → Phase 7
+   - `GATE` → Phase 7. **If the plan declares a non-final `Phase: N of M` and that phase's PR is already merged**, the previous phase is finished and re-gating it is a no-op loop — the feature needs the phase-N+1 reset instead: set the spec's `stage:` to `IMPLEMENT`, bump the plan's `Phase:` to `N+1 of M`, and clear the plan's `PR:` and `Branch:`. Say so and stop rather than re-running the gate; this reset is deliberately manual (see the spec's Non-goals).
    - `DONE` → check the spec's `pr:`. If it names a PR still in state `OPEN`, the gate passed but the merge has not happened yet (the merge stop was declined, or the run was interrupted after the gate) — resume at Phase 8's merge stop to finish it. Only report completed and stop when the PR is `MERGED`, or when there is no `pr:` at all.
 
 ## Phase 1: New issue (description input only)
@@ -245,6 +245,8 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 
 36. Read `AGENTS.md` for build, lint, and test commands. All invocations below come from there.
 37. Check whether the plan has a PR link in its header. If it does, check `gh pr view <number> --json state` — if merged, advance the spec frontmatter `stage: GATE` and jump to Phase 7; `/merge-gate` will take its degraded post-merge path. Do not run any code mutations from this phase on an already-merged feature.
+
+    **Exception — a non-final phase.** Skip this force-advance entirely when the plan declares `Phase: N of M` with `N < M`. A merged `PR:` there names the *previous* phase, not this one, and writing `stage: GATE` back would silently undo the phase-N+1 reset the operator just performed — sending the feature into a re-gate loop it can never leave. Treat a stale `PR:`/`Branch:` on a non-final plan as leftovers to clear (the reset should have cleared them), not as evidence that this phase already shipped.
 38. Create a feature branch: `git checkout -b feature/<issue-number>-<slug>`.
 39. Implement the plan in the main thread:
     - Follow the Approach and Files-to-change sections.
@@ -270,13 +272,15 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 ## Phase 7: Gate
 
 45. Invoke `/merge-gate <issue-number>`. That skill validates the **still-open** PR against the spec's `## Success criteria` and `## Non-goals` plus doc accuracy, writes a `## Gate verdict` entry to the plan, and decides PASS / FAIL / NEEDS_FOLLOWUP. It does not re-run build/lint/test — Phase 5 and CI already own those — and it never merges.
-46. **On PASS:** `/merge-gate` sets `Status: completed` in the plan, moves it to `completed/`, writes `pr:` + `shipped:`, advances the spec frontmatter `stage: DONE`, then commits and pushes to the feature branch. All that bookkeeping ships inside the feature PR. Continue to Phase 8.
+46. **On PASS (final phase, or no `Phase:` declared):** `/merge-gate` sets `Status: completed` in the plan, moves it to `completed/`, writes `pr:` + `shipped:`, advances the spec frontmatter `stage: DONE`, then commits and pushes to the feature branch. All that bookkeeping ships inside the feature PR. Continue to Phase 8.
+
+    **On PASS with a non-final phase** (`Phase: N of M`, `N < M`): the gate records a per-phase PASS with `phase: N/M`, commits and pushes that verdict, and deliberately writes **no** DONE bookkeeping — the spec stays at `GATE`. Continue to Phase 8 anyway: the PR is real and meant to merge, and the merge stop is still the operator's call. Skip the `feature_done` metric (step 49) and report the phase-N+1 reset in the summary. The feature is not finished, so do not describe it as such.
 47. **On FAIL:** the PR is still open, so the fix belongs in it. Surface the failing criteria, fix them on the branch (re-running the `AGENTS.md` checks from Phase 5 before committing), push, and re-run `/merge-gate` **once**. If it fails a second time, stop and report — do not keep looping.
 48. **On NEEDS_FOLLOWUP:** surface `/merge-gate`'s decision and stop. Do not loop.
 
 ## Phase 8: Reflect, then merge
 
-49. **Record completion.** After a PASS gate verdict:
+49. **Record completion.** After a **final-phase** PASS gate verdict (skip this entirely on a non-final phase — the feature is not done, and a `feature_done` row there would overcount completions):
 
     ```bash
     HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event feature_done \
@@ -303,10 +307,10 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 51. **[The merge stop]** Use AskUserQuestion, showing the PR link, the latest `## Gate verdict` entry, and the last `## PR convergence ledger` line:
     > "Review converged and the gate passed. Merge the PR now?"
     > 1. Yes — merge with `gh pr merge --squash`
-    > 2. No — leave the PR open (stage stays DONE on the branch until it lands)
+    > 2. No — leave the PR open (stage stays DONE on the branch until it lands; on a non-final phase it stays GATE)
 
     This is never automatic. There is no signal — clean ledger, PASS verdict, green CI — that lets the loop merge on its own.
-52. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). No label write is needed — `/merge-gate` already swapped `gate` → `gate-passed`. No stage write is needed either — the gate already set `stage: DONE`, and it lands with the merge. The `regenerate-generated` job rebuilds `docs/product-specs/index.md` on push to `main` and moves the row into the Completed table on its own.
+52. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). On a **final-phase** PASS no label write is needed — `/merge-gate` already swapped `gate` → `gate-passed` — and no stage write is needed either, because the gate already set `stage: DONE` and it lands with the merge. **On a non-final phase neither happened**: the label is still `gate` and the stage is still `GATE`, both deliberately. Do not "fix" them here — the feature is not done, and the route to phase N+1 is the manual reset (`stage: IMPLEMENT`, bump the plan's `Phase:`, clear its `PR:`/`Branch:`), which step 46 already told the operator to make. The `regenerate-generated` job rebuilds `docs/product-specs/index.md` on push to `main` and moves the row into the Completed table on its own.
 
 ## Phase 9: Summary
 

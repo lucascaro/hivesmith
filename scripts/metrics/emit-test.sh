@@ -77,6 +77,9 @@ reject() { # name  expected_rc  args...
 }
 
 reject test_unknown_event_fails_64 64 --event second-opinion --field feature=1
+# The gate_verdict optional-field set stays closed: a typo must be rejected,
+# not silently recorded as a new field. See feature 071.
+reject test_gate_verdict_rejects_unknown_phase_typo 64 --event gate_verdict --field feature=071 --field verdict=PASS --field acceptance=PASS --field non_goals=PASS --field doc_accuracy=PASS --field phaze=1/3
 reject test_missing_required_field_fails_64 64 --event second_opinion --field feature=069 --field verdict=revise
 reject test_unknown_field_fails_64 64 --event stall --field feature=1 --field retry=gate-fail-rerun --field stage=GATE --field rationale=prose
 reject test_non_integer_int_fails_64 64 --event second_opinion --field feature=1 --field verdict=approve --field confidence=high --field must_fix_count=1 --field applied_count=1 --field round=1 --field duration_s=1
@@ -122,6 +125,14 @@ accept test_action_enum_with_a_space_is_accepted \
   --event review_iteration --field feature=069 --field pr=70 --field iter=1 \
   --field verdict=REQUEST_CHANGES --field findings_count=3 --field threads_open=0 \
   --field 'action=autofix+push (conflict)'
+
+# --- phased gate verdicts ---------------------------------------------------
+# A non-final phase PASS must be distinguishable from a full PASS in telemetry,
+# so gate_verdict carries an optional `phase`. See feature 071.
+accept test_gate_verdict_accepts_phase \
+  --event gate_verdict --field feature=071 --field verdict=PASS \
+  --field acceptance=PASS --field non_goals=PASS --field doc_accuracy=PASS \
+  --field phase=1/3
 before="$(lines)"
 
 # Each event's verdict enum is distinct — review_iteration must not accept the
