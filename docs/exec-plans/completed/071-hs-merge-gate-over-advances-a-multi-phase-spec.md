@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/071-hs-merge-gate-over-advances-a-multi-phase-spec.md](../../product-specs/071-hs-merge-gate-over-advances-a-multi-phase-spec.md)
 - **Issue:** #71
-- **Status:** active
+- **Status:** completed
 - **PR:** #72
 - **Branch:** `feature/71-merge-gate-phase-aware`
 
@@ -229,4 +229,8 @@ Per the loop's rules the reviewer is not run a third time; the remaining judgmen
 
 <Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
 
-- **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M or —>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.
+- **2026-09-06** — verdict: PASS; phase: —; checks: 12 passed / 0 failed / 0 followups; followups: none; one-line: all three dimensions PASS on the still-open PR #72; every success criterion demonstrated by running the suites, not by reading prose.
+  - 2026-09-06 dimensions:
+    - acceptance — PASS — all 12 criteria exercised; emit-test 29/29 (incl. `test_gate_verdict_accepts_phase` + its reject case), backfill-test 36/36, both `_template.md` copies byte-identical via `cmp -s`, all 17 plan verification greps pass individually. Adversarial checks held: `feature-loop` step 37's non-final exception is present and unambiguously scoped, and the merge-gate cold-start guard was **not** tightened (`threads_open: 0` acceptance unchanged; `findings_hash` appears only in the corrected description).
+    - non-goals — PASS — all 5 clear. No per-criterion `(phase N)` tags, no per-phase `stage:` frontmatter, `/feature-plan` untouched, no `gate-phase-passed` label (the string appears only in prose stating it is not introduced), and no automatic backwards stage write — step 37 only *skips* an existing force-advance; every IMPLEMENT reset is documented as manual. No scope bleed across the 17 changed files.
+    - doc accuracy — PASS — changeset present and well-formed (`type: fixed`, `pr: 72`, `bump: minor`); `regression_of: declared-absent` recorded (an explicit "nobody checked", not a failure); CHANGELOG `[Unreleased]` non-empty; generated `docs/product-specs/index.md` untouched; templates byte-identical; no straggler restatement of the old exception-free contract left in any shipped doc.
