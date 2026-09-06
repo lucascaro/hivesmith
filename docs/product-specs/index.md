@@ -17,6 +17,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
+| #71 | /hs-merge-gate over-advances a multi-phase spec to DONE on its first phase's gate | #72 | 2026-09-06 | [071-hs-merge-gate-over-advances-a-multi-phase-spec](071-hs-merge-gate-over-advances-a-multi-phase-spec.md) |
 | #69 | Plan approval gate + deterministic pipeline metrics | #70 | 2026-09-05 | [069-plan-approval-gate-and-pipeline-metrics](069-plan-approval-gate-and-pipeline-metrics.md) |
 | #64 | Make feature-loop autonomous by default | #65 | 2026-09-04 | [064-make-feature-loop-autonomous-by-default](064-make-feature-loop-autonomous-by-default.md) |
 | #67 | Wrap graphify's PreToolUse nudge | #68 | 2026-09-04 | [067-wrap-graphify-pretooluse-nudge](067-wrap-graphify-pretooluse-nudge.md) |
