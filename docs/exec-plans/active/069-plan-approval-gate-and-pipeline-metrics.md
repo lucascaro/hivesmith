@@ -153,6 +153,12 @@ Five IMPORTANT plus four MINOR, all in the metrics-instrumentation surface — n
 
 Minor: the recycled-PID guard was an unanchored `grep server.py` (now matches the skill's own path); a PR named by two fix changesets was counted twice in the regressed total; `backfill.py`'s docstring RESULT contract omitted `already_present=`.
 
+## Review findings addressed (iter 6)
+
+Operator-requested extra round, past the 5-iteration budget, to cover iteration 5's own diff — which no review had seen. Nine of its ten hunks were verified correct and introduced nothing. One IMPORTANT:
+
+1. **A vacuous assertion in the test iteration 5 added to close a coverage hole.** `nocheck ... "regressed 0   clean 0"` asserted the absence of a string this corpus never prints (it prints `regressed 1   clean 3`), so it passed no matter what the tool did — it would have passed with the original silent-drop bug restored. Replaced with per-kind WARN counts (2 malformed + 1 dangling), and **mutation-tested**: reintroducing the silent-drop behaviour makes it fail, along with two neighbouring checks. This is the third round in which a fix introduced the next defect, though the weakest instance — it weakened a new test rather than shipped behaviour.
+
 ## PR convergence ledger
 
 - **2026-09-05 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: c44967da371358972530fc7447f7b33c30346aa302cc0a5f4faa01f8fb32ef8e; threads_open: 0; action: autofix+push; head_sha: fa90d8d. Six IMPORTANT findings stood, so the loop continued rather than stopping on COMMENT — convergence is "only MINOR remaining", not "no blockers".
@@ -161,5 +167,6 @@ Minor: the recycled-PID guard was an unanchored `grep server.py` (now matches th
 
 - **2026-09-05 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: aae4bdf03ac17ca9243ac3e5201eeb3ac81b3881b970c25f49c682284801098a; threads_open: 0; action: autofix+push; head_sha: bcde37e. 7 IMPORTANT stood, including a confirmed silent-feedback-loss defect in wait.sh; loop continued.
 - **2026-09-05 iter 5** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: cd55ad2f406d6183a35ff6105c98eefaf844616cee5e37449c71240026667245; threads_open: 0; action: stop; head_sha: 382f1cd. Reviewer's explicit merge-readiness call: nothing blocking; 5 IMPORTANT confined to telemetry fidelity, fixed anyway. Loop reached its 5-iteration budget.
+- **2026-09-05 iter 6** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 3dbe5731dc16a75550e6615b60518e21d2bfd101059ddec7191e678cf59560dc; threads_open: 0; action: autofix+push; head_sha: 2142243. Operator-requested round past budget to review iter 5's diff; 9 of 10 hunks verified clean, 1 vacuous test assertion fixed and mutation-tested.
 
 ## Gate verdict

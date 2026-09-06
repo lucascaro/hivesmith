@@ -157,9 +157,25 @@ else bad test_malformed_declaration_does_not_crash_report "report exited $rc"; f
 check test_malformed_declaration_is_warned   "is not an integer" "$out"
 check test_malformed_names_its_changeset     "030-c30.md"        "$out"
 check test_dangling_declaration_is_warned    "not seen in this history" "$out"
-# A malformed target must not silently vanish: before this, filtering non-digits
-# produced no declaration at all, so it could not even surface as dangling.
-nocheck test_malformed_is_not_silently_dropped "regressed 0   clean 0" "$out"
+# A malformed target must not silently vanish, and must not be confused with a
+# dangling one — they are different states with different causes. Asserting the
+# ABSENCE of "regressed 0   clean 0" was vacuous: this corpus prints
+# "regressed 1   clean 3", so that string was unreachable whatever the tool did.
+# Count the two distinct WARN kinds instead; that fails if either path regresses.
+# Counted per kind, not in total. Two changesets in this corpus carry an
+# unparseable target — 022 ('unknown', added and then git rm'd, which the
+# --diff-filter=A walk still sees, by design) and 030 ('twelve') — and one
+# names a PR that was never merged. Exact counts are deliberate: they fail if
+# either path stops reporting, and they fail loudly if someone adds a fixture
+# without thinking about which state it lands in.
+n_malformed="$(printf '%s\n' "$out" | grep -c 'is not an integer')"
+n_dangling="$(printf '%s\n' "$out" | grep -c 'not seen in this history')"
+if [ "$n_malformed" -eq 2 ] && [ "$n_dangling" -eq 1 ]; then
+  ok test_malformed_and_dangling_are_distinct_states
+else
+  bad test_malformed_and_dangling_are_distinct_states \
+    "wanted 2 malformed + 1 dangling, got $n_malformed + $n_dangling"
+fi
 
 out="$(python3 "$TOOL" . --validate-changed no-such-ref topic 2>&1)"; rc=$?
 if [[ $rc -ne 0 ]] && printf '%s' "$out" | grep -q "unresolvable-ref"; then
