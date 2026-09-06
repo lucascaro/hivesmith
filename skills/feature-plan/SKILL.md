@@ -87,7 +87,7 @@ Boiling the lake is about *coverage of the stated scope*, not about inventing sc
    - **Text path:** if the runtime has a native plan mode (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`), draft inside it. Otherwise present the draft inline under a clear `### Draft plan for review` heading. Iterate with the user.
    - **HTML path:** follow the **Canonical call sequence** in `skills/plan-html/SKILL.md` verbatim — it owns the guard, the fallback chain, and the stop-server obligation. Note its guard is load-bearing here: standalone mode runs in projects with no hivesmith checkout on disk, where the renderer's repo-relative paths do not resolve, and the sequence falls back to text rather than failing.
 
-9. **Gate — explicit user approval.** Native plan mode: call the runtime's exit-plan-mode action. HTML path: `<plan>.approved.json` existing *is* the approval. Otherwise: present the draft and ask a single yes/no/revise question. Iterate on `revise` until the user approves.
+9. **Gate — explicit user approval.** Native plan mode: call the runtime's exit-plan-mode action. HTML path: **`wait.sh` exit `0` is the approval** — block on it (canonical sequence step 5); exit `10` is a revise round, exit `11` loops. Never treat the mere existence of `<plan>.approved.json` as the signal you are waiting for: checking for it once, right after `start.sh`, always fails and ends the turn, and the operator's click then lands on nobody. Otherwise: present the draft and ask a single yes/no/revise question. Iterate on `revise` until the user approves.
 
 10. **On approval, write.**
 

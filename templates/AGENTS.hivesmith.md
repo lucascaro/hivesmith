@@ -37,7 +37,7 @@ Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → 
 
 The legacy `features/` layout is read with one-release fallback; new work lands in `docs/`.
 
-**Changelog:** user-visible changes go under `## [Unreleased]` in `CHANGELOG.md` via `/changelog-update`. `/release` stamps the date and cuts the tag — do not edit release dates by hand.
+**Changelog:** user-visible changes go under `## [Unreleased]` in `CHANGELOG.md` via `/changelog-update`. `/release` stamps the date and cuts the tag — do not edit release dates by hand. When a change is `type: fixed` **and** undoes a defect a recent merged PR introduced, record `regression_of: <PR>` in the changeset frontmatter — declared, never inferred from `git blame`. Omit it rather than guessing; absence is a meaningful state.
 
 **Build / test / lint commands** — `/feature-implement` expects all of these to pass before opening a PR:
 
