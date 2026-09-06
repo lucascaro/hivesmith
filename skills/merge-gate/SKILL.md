@@ -32,13 +32,17 @@ This skill owns Stage = `GATE`. Before doing any work:
 3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: GATE`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 4. **Resolve the PR state** from the plan's `PR:` header field: `gh pr view <pr-number> --json state -q .state`.
 
-   - **`OPEN` — the normal path.** Additionally require that the plan's `## PR convergence ledger` has at least one entry and that its **latest** entry shows review actually converged: `action: stop`, with `verdict: APPROVE` or `verdict: COMMENT`, and `threads_open: 0`. Those are exactly `/review-loop`'s own convergence conditions (its §2 step 5 stops on `APPROVE` with zero threads, and on `COMMENT` with strict off and zero threads) — the gate must not demand a stricter signal than the loop can produce, or the normal path would refuse every time. Refuse when the ledger is missing or empty, when the latest entry is `REQUEST_CHANGES`, when its `action` is `escalated:<reason>` or any form of `autofix+push` (the loop stopped mid-flight), or when `threads_open` is non-zero: tell the user to drive convergence with `/review-loop <pr-number>` first. The gate validates a PR that review already accepted; it is not a substitute for review.
+   - **`OPEN` — the normal path.** Additionally require that the plan's `## PR convergence ledger` has at least one entry and that its **latest** entry shows review actually converged: `action: stop`, with `verdict: APPROVE` or `verdict: COMMENT`, and `threads_open: 0`. Those are exactly `/review-loop`'s own convergence conditions (its §2 step 5 stops on `APPROVE` with zero threads, and on `COMMENT` with strict mode off, zero threads, and an empty `findings_hash` — i.e. no BLOCKING or IMPORTANT findings left) — the gate must not demand a stricter signal than the loop can produce, or the normal path would refuse every time.
+
+     **Do not add `findings_hash` to this guard's own acceptance test.** The loop enforces it going forward; the gate must keep accepting on `action: stop` + `verdict: APPROVE|COMMENT` + `threads_open: 0` alone, because ledgers written before that rule existed record `action: stop` with a *non-empty* hash (`docs/exec-plans/completed/067-wrap-graphify-pretooluse-nudge.md:200`, `docs/exec-plans/completed/036-convert-feature-qa-into-a-pre-merge-merge-gate.md:181`). Tightening here would retroactively refuse them. Refuse when the ledger is missing or empty, when the latest entry is `REQUEST_CHANGES`, when its `action` is `escalated:<reason>` or any form of `autofix+push` (the loop stopped mid-flight), or when `threads_open` is non-zero: tell the user to drive convergence with `/review-loop <pr-number>` first. The gate validates a PR that review already accepted; it is not a substitute for review.
    - **`MERGED` — the degraded recovery path.** The PR merged before the gate ran (e.g. merged by hand in another window, or a feature that predates this skill). Proceed, but with the differences noted inline below: the git range changes, and FAIL/NEEDS_FOLLOWUP file follow-up issues because the code has already shipped and cannot be fixed in the PR.
    - **`CLOSED` and not merged** — refuse. The feature was abandoned.
 
-5. **Check out the PR branch and bring it up to date** (`OPEN` path only). Confirm the working tree is on the branch named in the plan's `Branch:` field, that it is clean, and that it is current with `origin/<branch>`. The gate writes commits to this branch, so a stale or dirty tree would produce a bad commit. Refuse with a clear message rather than checking out over uncommitted work.
+5. **Read the plan's optional `Phase:` header field.** It is either absent / `—` (single-phase — everything below behaves exactly as it always has) or `N of M`. Parse `N` and `M` as integers; if the field is present but unparseable, refuse rather than guessing, since guessing wrong here is what writes a premature `DONE`. `N < M` is a **non-final phase** and changes only the PASS branch (step 7). `N == M` is the final phase and is treated as single-phase.
 
-6. If the spec has no `## Success criteria` (legacy specs predating this requirement), surface that and ask the user to fill them in before running the gate. A gate pass against an empty checklist is meaningless.
+6. **Check out the PR branch and bring it up to date** (`OPEN` path only). Confirm the working tree is on the branch named in the plan's `Branch:` field, that it is clean, and that it is current with `origin/<branch>`. The gate writes commits to this branch, so a stale or dirty tree would produce a bad commit. Refuse with a clear message rather than checking out over uncommitted work.
+
+7. If the spec has no `## Success criteria` (legacy specs predating this requirement), surface that and ask the user to fill them in before running the gate. A gate pass against an empty checklist is meaningless.
 
 ## Layout resolution
 
@@ -60,6 +64,8 @@ This skill owns Stage = `GATE`. Before doing any work:
 
    Three dimensions:
    - **Acceptance criteria** — exercises each Success criterion (read the diff, confirm the code actually delivers the observable signal; for behavioral signals, run a script or test that demonstrates it). Cite per-criterion evidence, one line per criterion.
+
+     **On a non-final phase** (`N < M` from step 5), tell the worker which phase is under test and pass it the plan's `## Approach` so it can tell deferred work from missing work. A criterion the plan assigns to a later phase is recorded `DEFERRED (phase > N)` with the reason, not `FAIL`. Note the limit honestly: with the declaration in the plan header only, that assignment is the worker's judgment, not a mechanism. It is bounded — a mislabelled criterion costs a wrong evidence line, never a wrong `DONE`, because `N < M` blocks the DONE branch outright regardless of how the dimensions land.
    - **Non-goals** — confirm the change did not bleed into out-of-scope areas named in the spec.
    - **Doc accuracy** — confirm README / CHANGELOG (or `.changesets/`) / `docs/` were updated to match user-visible behavior.
 
@@ -73,7 +79,7 @@ This skill owns Stage = `GATE`. Before doing any work:
 5. **Write the verdict to the plan.** Append one line to the plan's `## Gate verdict` section (append-only, never rewrite):
 
    ```
-   - **<YYYY-MM-DD>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; checks: <N passed / M failed / K followups>; followups: <#issues or "none">; one-line: <summary>.
+   - **<YYYY-MM-DD>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M, or `—` when the plan declares none>; checks: <N passed / M failed / K followups>; followups: <#issues or "none">; one-line: <summary>.
    ```
 
    Then append a per-dimension breakdown under that line as a nested bullet list (still append-only — date-stamp the block):
@@ -95,7 +101,8 @@ This skill owns Stage = `GATE`. Before doing any work:
      --field acceptance=<PASS|FAIL|NEEDS_FOLLOWUP> \
      --field non_goals=<PASS|FAIL|NEEDS_FOLLOWUP> \
      --field doc_accuracy=<PASS|FAIL|NEEDS_FOLLOWUP> \
-     --field followups=<comma-separated issue numbers, omit the flag when none>
+     --field followups=<comma-separated issue numbers, omit the flag when none> \
+     --field phase=<N/M, omit the flag when the plan declares no phase>
    ```
 
    **Regression declaration check (doc accuracy dimension).** If the PR adds a `.changesets/*.md` with `type: fixed` and **no** `regression_of:` field, record `regression_of: declared-absent` in the doc-accuracy evidence. This is **not a FAIL** — an explicit "nobody checked" is a distinct and useful state, and failing on it would only train agents to fill the field with a guess. If `regression_of` is present, sanity-check that the PR number it names exists and was merged before this branch.
@@ -107,7 +114,13 @@ This skill owns Stage = `GATE`. Before doing any work:
 
 7. **Branch on verdict:**
 
-   **On PASS** — write order matters: do all non-stage writes first, then the spec frontmatter `stage:` transition as the **last** write (idempotent on re-run after a partial-state crash):
+   **On PASS with a non-final phase** (`N < M` from the cold-start's `Phase:` step) — this branch exists so a deliberately phased feature cannot be marked finished on its first slice:
+   - Append the `## Gate verdict` entry as in step 5, with `phase: N/M`. That entry is the durable record that *this phase* gated; without it a later re-run cannot tell an ungated phase from a gated one.
+   - **Write nothing else.** No `Status: completed`, no `git mv` to `completed/`, no `Exec plan:` link rewrite, no `pr:`, no `shipped:`, no `stage_transition` event, and **no `stage: DONE`**. Stage stays `GATE`.
+   - **Still commit and push** (`git commit -m "chore: gate pass (phase N/M) for #<issue-number>"`, then `git push`). This is not optional: the cold-start guard above refuses a dirty tree, and `/review-loop` §4a commits on this same branch, so leaving the verdict append uncommitted breaks the next run of either.
+   - Report that the PR is ready to merge, that phase `N` of `M` has gated, and **how to start phase N+1** — it does not happen on its own, and nothing else in the pipeline will do it: reset the spec's frontmatter `stage:` to `IMPLEMENT`, bump the plan's `Phase:` to `N+1 of M`, and clear the plan's `PR:` and `Branch:` fields. Clearing those two matters — `/feature-loop`'s Phase 5 step 37 and this skill's own step 4 both resolve the plan's `PR:`, and a stale merged PR there sends the feature straight back to `GATE`.
+
+   **On PASS with a final phase** (`N == M`) **or no `Phase:` declared** — write order matters: do all non-stage writes first, then the spec frontmatter `stage:` transition as the **last** write (idempotent on re-run after a partial-state crash):
    - Set `Status:` to `completed` in the plan header. Do **not** write a `Stage:` line back into the plan — the plan no longer carries one; the spec's frontmatter `stage:` is the sole SoR.
    - Move the plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/` with `git mv` (legacy: `features/active/` → `features/completed/`). **Skip this when the plan is already in `completed/`** — a re-run after a crash mid-PASS re-enters here with the move already done, and that must be a no-op, not an error.
    - Update the spec's `Exec plan:` link to point at the `completed/` path.
@@ -142,6 +155,7 @@ This skill owns Stage = `GATE`. Before doing any work:
 - Never modify production code from this skill. If the gate reveals a bug on an open PR, report it so it is fixed in the PR — do not patch it inline, and do not file an issue for it.
 - Never merge from this skill. The gate reports readiness; the merge is a separate, human-confirmed step.
 - Each dimension worker must run in a fresh sub-agent so the orchestrator's context stays bounded regardless of how much output the checks produce.
+- **Never write `DONE` while the plan declares a non-final phase.** A `Phase: N of M` header with `N < M` blocks the DONE bookkeeping outright — no `stage: DONE`, no plan move, no `shipped:` — regardless of how the three dimensions land. Marking a one-slice-of-three feature complete also files away the plan that phases N+1..M still depend on.
 - The `## Gate verdict` section is append-only. Re-running `/merge-gate` adds a new entry; it never overwrites an old one. The latest entry is authoritative for Stage advancement.
 - If the spec has no Success criteria, refuse and ask the user to fill them in. A gate pass against an empty checklist is meaningless.
 

@@ -23,5 +23,5 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 ## Conventions
 
 - Stage is owned by the exec plan, not the spec — when stage changes, update this index from the plan.
-- A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `exec-plans/completed/` on merge; the spec stays put.
+- A spec is created in TRIAGE and lives forever (it is the historical record of *why we built it*). The exec plan moves to `exec-plans/completed/` on merge; the spec stays put. A plan declaring a non-final `Phase: N of M` stays in `active/` until its final phase gates.
 - `feature-next` reads from this file's Active table, ordered by priority.

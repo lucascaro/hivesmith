@@ -5,6 +5,12 @@
 - **Status:** active | completed
 - **PR:** —
 - **Branch:** —
+- **Phase:** —          <!-- optional: "N of M" when this plan's PR delivers one slice of a
+                             multi-phase feature. Absent (or "—") means single-phase, and the
+                             gate behaves as it always has. While N < M, /merge-gate records a
+                             per-phase PASS and refuses to write DONE. To start phase N+1:
+                             reset the spec's `stage:` to IMPLEMENT, bump this field, and clear
+                             `PR:`/`Branch:` above. -->
 
 <!--
 Stage is **not** carried here. The spec's YAML frontmatter `stage:` is the
@@ -72,4 +78,4 @@ this file or from the generated `docs/product-specs/index.md`.
 
 <Filled by `/merge-gate` before the PR merges. Append-only; one entry per gate run. Stage advances to DONE only when the latest entry is PASS.>
 
-- **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.
+- **<date>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M or —>; checks: <bullet summary>; followups: <issue numbers or "none">; one-line: <summary>.
