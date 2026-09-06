@@ -4,7 +4,7 @@ title: Plan approval gate + deterministic pipeline metrics
 type: enhancement
 complexity: L
 priority: P1
-stage: REVIEW
+stage: GATE
 pr: 70
 ---
 
