@@ -7,7 +7,7 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent AskUserQuestion
 
 # Merge Gate
 
-Validate feature **#$ARGUMENTS** (or the next feature in GATE stage if no argument given) against its spec's success criteria. This is the last gate before merge: only when the gate returns `PASS` does the plan advance to `DONE` and move to `completed/`, and only then should the PR be merged.
+Validate feature **#$ARGUMENTS** (or the next feature in GATE stage if no argument given) against its spec's success criteria. This is the last gate before merge: only when the gate returns `PASS` does the plan advance to `DONE` and move to `completed/`, and only then should the PR be merged. A plan declaring a non-final `Phase: N of M` (`N < M`) is the exception: the gate records a per-phase PASS and holds the spec at `GATE` instead.
 
 This skill runs on the **open PR branch**, after `/review-loop` has converged and before the merge. Running pre-merge is the point: a failure here is a fix in the same PR, not a follow-up issue filed against already-shipped code. All bookkeeping the gate writes rides along in the feature PR, so a feature ships in exactly one PR.
 
@@ -65,7 +65,7 @@ This skill owns Stage = `GATE`. Before doing any work:
    Three dimensions:
    - **Acceptance criteria** — exercises each Success criterion (read the diff, confirm the code actually delivers the observable signal; for behavioral signals, run a script or test that demonstrates it). Cite per-criterion evidence, one line per criterion.
 
-     **On a non-final phase** (`N < M` from the cold-start's `Phase:` step), tell the worker which phase is under test and pass it the plan's `## Approach` so it can tell deferred work from missing work. A criterion the plan assigns to a later phase is recorded `DEFERRED (phase > N)` with the reason, not `FAIL`. Note the limit honestly: with the declaration in the plan header only, that assignment is the worker's judgment, not a mechanism. It is bounded — a mislabelled criterion costs a wrong evidence line, never a wrong `DONE`, because `N < M` blocks the DONE branch outright regardless of how the dimensions land.
+     **On a non-final phase** (`N < M` from the cold-start's `Phase:` step), tell the worker which phase is under test and pass it the plan's `## Approach` so it can tell deferred work from missing work. A criterion the plan assigns to a later phase is recorded `DEFERRED (phase > N)` with the reason, not `FAIL`. **`DEFERRED` is a per-criterion state only — it never degrades the dimension's own verdict.** The worker's envelope verdict stays the three values below: the acceptance dimension returns `PASS` when every criterion that is *not* deferred passes. Getting this wrong is not cosmetic — a deferred criterion reported as `NEEDS_FOLLOWUP` would route a healthy phase gate into step 7's NEEDS_FOLLOWUP branch, so the phase PASS never reaches `## Gate verdict` at all, which is the record this whole branch exists to produce. Note the limit honestly: with the declaration in the plan header only, that assignment is the worker's judgment, not a mechanism. It is bounded — a mislabelled criterion costs a wrong evidence line, never a wrong `DONE`, because `N < M` blocks the DONE branch outright regardless of how the dimensions land.
    - **Non-goals** — confirm the change did not bleed into out-of-scope areas named in the spec.
    - **Doc accuracy** — confirm README / CHANGELOG (or `.changesets/`) / `docs/` were updated to match user-visible behavior.
 
@@ -79,7 +79,7 @@ This skill owns Stage = `GATE`. Before doing any work:
 5. **Write the verdict to the plan.** Append one line to the plan's `## Gate verdict` section (append-only, never rewrite):
 
    ```
-   - **<YYYY-MM-DD>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M, or `—` when the plan declares none>; checks: <N passed / M failed / K followups>; followups: <#issues or "none">; one-line: <summary>.
+   - **<YYYY-MM-DD>** — verdict: <PASS|FAIL|NEEDS_FOLLOWUP>; phase: <N/M, or `—` when the plan declares none>; checks: <N passed / M failed / K followups / D deferred — omit the deferred term when D is 0>; followups: <#issues or "none">; one-line: <summary>.
    ```
 
    Then append a per-dimension breakdown under that line as a nested bullet list (still append-only — date-stamp the block):
@@ -146,7 +146,9 @@ This skill owns Stage = `GATE`. Before doing any work:
      > "Gate returned NEEDS_FOLLOWUP. Advance to DONE and allow the merge, with follow-ups tracked separately?"
      > 1. Yes — advance (open follow-up issues and treat them as separate features)
      > 2. No — hold at GATE until the items are addressed on this branch
-   - On option 1, open a follow-up issue per item (`gh issue create --title "Gate follow-up for #<n>: <one-line>" ...`), record the numbers in the verdict line, then run the PASS branch above. On option 2, leave Stage at GATE and file nothing.
+
+     **On a non-final phase** (`N < M`), option 1 does **not** offer DONE — that is forbidden here regardless of verdict (see Rules). Word it as "record the phase PASS and allow the merge" instead, and keep option 2 as-is.
+   - On option 1, open a follow-up issue per item (`gh issue create --title "Gate follow-up for #<n>: <one-line>" ...`), record the numbers in the verdict line, then run **the PASS branch that matches the plan's phase** — the non-final-phase branch when `N < M` (verdict append with `phase: N/M`, commit, push, nothing else), the final-phase branch otherwise. On option 2, leave Stage at GATE and file nothing.
 
 8. **Report:** Print a summary — verdict, dimension breakdown, follow-up issue numbers if any, current Stage, and whether the PR is now ready to merge.
 

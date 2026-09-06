@@ -3,7 +3,7 @@
 How planning works in this repo.
 
 - **Lightweight ephemeral plans** — for small, single-PR changes. Live in the conversation; do not check in.
-- **Execution plans** — for any work that touches multiple files, takes more than one PR, or carries non-obvious decisions. Live under `docs/exec-plans/active/` and move to `docs/exec-plans/completed/` on merge.
+- **Execution plans** — for any work that touches multiple files, takes more than one PR, or carries non-obvious decisions. Live under `docs/exec-plans/active/` and move to `docs/exec-plans/completed/` on merge — except a plan declaring a non-final `Phase: N of M` (`N < M`), which stays in `active/` until its final phase gates.
 
 ## Exec plan rules
 
