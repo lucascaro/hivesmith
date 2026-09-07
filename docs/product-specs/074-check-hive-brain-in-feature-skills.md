@@ -5,12 +5,13 @@ type: enhancement
 complexity: S
 priority: P2
 pr: 75
-stage: GATE            # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
+shipped: 2026-09-06
+stage: DONE            # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
 ---
 
 # Check the hive brain in feature-implement and the other feature skills that skip it
 
-- **Exec plan:** [docs/exec-plans/active/074-check-hive-brain-in-feature-skills.md](../exec-plans/active/074-check-hive-brain-in-feature-skills.md)
+- **Exec plan:** [docs/exec-plans/completed/074-check-hive-brain-in-feature-skills.md](../exec-plans/completed/074-check-hive-brain-in-feature-skills.md)
 
 ## Problem
 

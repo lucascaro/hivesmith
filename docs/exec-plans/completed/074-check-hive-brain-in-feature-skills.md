@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/074-check-hive-brain-in-feature-skills.md](../../product-specs/074-check-hive-brain-in-feature-skills.md)
 - **Issue:** #74
-- **Status:** active
+- **Status:** completed
 - **PR:** [#75](https://github.com/lucascaro/hivesmith/pull/75)
 - **Branch:** `feature/74-check-hive-brain-in-feature-skills`
 - **Phase:** —
@@ -279,6 +279,7 @@ historical record of what that PR shipped; the release notes reading as a timeli
 
 - **2026-09-06** — "Learnings ledger" resolved to the hive brain, confirmed against `/feature-loop`'s Phase 3 usage (`brain-search --rank --limit 8`, then `brain-read` on ≤3 top hits). Why: it is the only ledger-like store in this repo and the one feature-loop already consults.
 - **2026-09-06** — Scope limited to `feature-implement`, `feature-triage`, `feature-new`; existing readers get consistency-only wording at most. Why: operator chose the smallest diff that closes the actual gap.
+- **2026-09-06** — Gate PASS on re-run. Both validators independently judged the criterion-5 reword honest bookkeeping rather than retroactive justification, citing that it is narrowly scoped to a verified defect, requires a Decision-log record plus a Verification assertion, and that both gate rounds flagged the mismatch instead of passing it silently.
 - **2026-09-06** — Gate FAIL round 1 recorded; fixes pushed to the same PR (the point of gating pre-merge). Re-running the gate once — no second retry.
 - **2026-09-06** — Gate round 1 FAIL (doc accuracy) / NEEDS_FOLLOWUP (acceptance): the plan's own Verification block was broken in two places. Step 4b grepped `already in context` against prose that reads "already in *your* context", so it failed on 2 of 3 files; step 9's bare `regen-generated --check` exits 1 on expected drift and, under `set -e`, aborted the block before steps 5-9 ran. Both fixed, and the Progress line claiming "all verification steps pass" corrected — it was not true as literally written.
 - **2026-09-06** — Success criterion 5 reworded. The `feature-loop` edit is a functional command fix (broken invocation + quoting), not the "consistency-only" wording change the criterion literally permitted. Both gate validators flagged the mismatch rather than passing it. Amending the criterion to describe what shipped is the right resolution — its intent was "don't break existing readers", which a disclosed defect fix serves — but the spec should say so instead of being quietly exceeded.
@@ -306,6 +307,12 @@ historical record of what that PR shipped; the release notes reading as a timeli
 - **2026-09-06 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 2 IMPORTANT + 1 MINOR; threads_open: 0; action: autofix+push; head_sha: 63e4ae6.
 
 ## Gate verdict
+
+- **2026-09-06** — verdict: PASS; phase: —; checks: 3 passed / 0 failed / 0 followups; followups: none; one-line: round-1's two Verification defects and the criterion-5 mismatch are all resolved, and the block now runs end to end under `set -e`.
+  - 2026-09-06 dimensions:
+    - acceptance — PASS — all six criteria re-checked from scratch; the repaired step 4b was confirmed **non-vacuous** by stripping the guard prose from a scratch copy and watching the grep fail; full Verification block exits 0.
+    - non-goals — PASS — carried from round 1, unaffected by the fixes (they touched only the plan, the spec's criterion 5 wording, and no skill files).
+    - doc accuracy — PASS — Verification block ran top to bottom under `set -e` with no abort (round-1's sole FAIL, cleared); step 9's substitution judged sound rather than a paper-over; roster, changeset and generated-file boundaries all re-verified.
 
 - **2026-09-06** — verdict: FAIL; phase: —; checks: 2 passed / 1 failed / 1 followups; followups: none (PR open, fixed in-place); one-line: shipped behavior is correct, but the plan's own Verification block was broken in two places and criterion 5 was exceeded without being amended.
   - 2026-09-06 dimensions:
