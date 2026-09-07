@@ -31,7 +31,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 2. **Read the spec** to understand the request.
 3. **Classify:**
    - Type: `bug` or `enhancement`
-   - Complexity: `S` (< 1 day, few files), `M` (1-3 days, moderate scope), `L` (3+ days, significant changes)
+   - Complexity: `S` (< 1 day, few files), `M` (1-3 days, moderate scope), `L` (3+ days, significant changes). This field also routes the depth of later stages — `S` runs light (main-thread research, at most one interrogation round; `/feature-loop` skips the second-opinion subagent for small non-user-visible plans), `M`/`L` run the full lane.
 4. **Quick codebase scan + prior lessons:** Do a brief search (Glob/Grep) related to the feature to inform the complexity estimate. Don't do deep research — that's the next stage.
 
    In the same step, check the hive brain: a prior lesson that a similar change was harder than it looked is exactly what a complexity estimate needs.

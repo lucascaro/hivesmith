@@ -34,7 +34,10 @@ seen the original request understands the job.>
 
 <The original ask, verbatim or close to it, plus what was ambiguous about it
 and how that ambiguity was resolved. This is what stops the executing agent
-from re-opening settled ground.>
+from re-opening settled ground. If the repo has an `AGENTS.md`, append a
+conventions card here: build, lint, and test commands verbatim plus the
+conventions this feature touches — the executor reads it instead of
+re-reading `AGENTS.md`.>
 
 ## Non-goals
 
