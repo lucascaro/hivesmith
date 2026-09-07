@@ -5,7 +5,7 @@ type: enhancement
 complexity: S
 priority: P2
 pr: 75
-stage: REVIEW          # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
+stage: GATE            # TRIAGE | RESEARCH | PLAN | IMPLEMENT | REVIEW | GATE | DONE | REJECTED
 ---
 
 # Check the hive brain in feature-implement and the other feature skills that skip it

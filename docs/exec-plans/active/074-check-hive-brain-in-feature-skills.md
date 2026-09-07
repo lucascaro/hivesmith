@@ -274,6 +274,7 @@ historical record of what that PR shipped; the release notes reading as a timeli
 
 - **2026-09-06** — "Learnings ledger" resolved to the hive brain, confirmed against `/feature-loop`'s Phase 3 usage (`brain-search --rank --limit 8`, then `brain-read` on ≤3 top hits). Why: it is the only ledger-like store in this repo and the one feature-loop already consults.
 - **2026-09-06** — Scope limited to `feature-implement`, `feature-triage`, `feature-new`; existing readers get consistency-only wording at most. Why: operator chose the smallest diff that closes the actual gap.
+- **2026-09-06** — Review round 2 MINOR: `brain-search` is AND across every term, so passing a full title returns zero hits. The placeholders now say "2-4 distinctive terms". Left alone: four sibling skills still hardcode `/hs-brain-promote` (`brain-garden:36`, `brain-ask:71`, `hivesmith-init:140`, `brain-promote:47`) — pre-existing, out of diff, wants its own sweep.
 - **2026-09-06** — Review round 1 (IMPORTANT ×2): `brain-read <path>` is not a supported invocation — `read.sh` takes only `--cwd/--budget/--files` and exits 64 on a positional (verified). Replaced with a direct `cat` of `$BRAIN_HOME/<rel-path>` in `feature-triage` **and** in `feature-loop:146`, where the pattern was copied from. Also quoted the `<terms>` placeholder in all three call sites — they come from untrusted issue text. Why `feature-loop` too: it is the same defect, one line, and leaving it means the next run re-copies it. Root-cause alternative (teach `read.sh` a positional path) rejected as a shared-helper CLI change needing tests, out of scope here.
 - **2026-09-06** — `feature-new` inlines its own triage steps (11-15) rather than invoking `/feature-triage`, so "carry hits forward to triage" points at its step 11, not the standalone skill. Why: discovered while implementing; the plan's cross-reference was wrong.
 - **2026-09-06** — Each lookup carries an explicit "skip if already in context" guard (operator feedback at the plan stop). Why: `/feature-loop` research → implement, and `feature-new` → triage, both run in one session; a second fetch of the same entries returns the same bytes and only spends budget.
@@ -293,6 +294,7 @@ historical record of what that PR shipped; the release notes reading as a timeli
 
 ## PR convergence ledger
 
+- **2026-09-06 iter 2** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 1ea9ddc.
 - **2026-09-06 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 2 IMPORTANT + 1 MINOR; threads_open: 0; action: autofix+push; head_sha: 63e4ae6.
 
 ## Gate verdict
