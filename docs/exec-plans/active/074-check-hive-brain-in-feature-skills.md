@@ -216,7 +216,13 @@ done
 #    makes this assert nothing.
 git fetch origin main --quiet
 git diff --quiet origin/main -- skills/feature-plan/SKILL.md skills/feature-research/SKILL.md \
-  skills/review-pr/SKILL.md skills/feature-loop/SKILL.md scripts/brain/
+  skills/review-pr/SKILL.md scripts/brain/
+# feature-loop is deliberately NOT in that list: review round 1 found its `brain-read <path>`
+# invocation is rejected by read.sh (exit 64) and its search terms are unquoted — the same two
+# defects this change introduced by copying from it. Fixed there too rather than shipping a known
+# -broken pattern. Assert the fix instead of asserting no-change:
+grep -q 'brain-search "<feature terms>"' skills/feature-loop/SKILL.md
+! grep -q 'brain-read <path>' skills/feature-loop/SKILL.md
 
 # 7. The three docs no longer claim the old roster (per-file, so one stale copy still fails).
 for f in AGENTS.md README.md templates/AGENTS.hivesmith.md; do
@@ -229,7 +235,7 @@ for f in AGENTS.md README.md templates/AGENTS.hivesmith.md; do
 done
 
 # 7b. No dangling step cross-reference after feature-implement's renumbering.
-if grep -n 'steps 9-11' skills/feature-implement/SKILL.md; then
+if grep -nE 'steps 9[-–]11' skills/feature-implement/SKILL.md; then
   echo "stale step cross-reference — renumber it"; exit 1
 fi
 
@@ -268,6 +274,7 @@ historical record of what that PR shipped; the release notes reading as a timeli
 
 - **2026-09-06** — "Learnings ledger" resolved to the hive brain, confirmed against `/feature-loop`'s Phase 3 usage (`brain-search --rank --limit 8`, then `brain-read` on ≤3 top hits). Why: it is the only ledger-like store in this repo and the one feature-loop already consults.
 - **2026-09-06** — Scope limited to `feature-implement`, `feature-triage`, `feature-new`; existing readers get consistency-only wording at most. Why: operator chose the smallest diff that closes the actual gap.
+- **2026-09-06** — Review round 1 (IMPORTANT ×2): `brain-read <path>` is not a supported invocation — `read.sh` takes only `--cwd/--budget/--files` and exits 64 on a positional (verified). Replaced with a direct `cat` of `$BRAIN_HOME/<rel-path>` in `feature-triage` **and** in `feature-loop:146`, where the pattern was copied from. Also quoted the `<terms>` placeholder in all three call sites — they come from untrusted issue text. Why `feature-loop` too: it is the same defect, one line, and leaving it means the next run re-copies it. Root-cause alternative (teach `read.sh` a positional path) rejected as a shared-helper CLI change needing tests, out of scope here.
 - **2026-09-06** — `feature-new` inlines its own triage steps (11-15) rather than invoking `/feature-triage`, so "carry hits forward to triage" points at its step 11, not the standalone skill. Why: discovered while implementing; the plan's cross-reference was wrong.
 - **2026-09-06** — Each lookup carries an explicit "skip if already in context" guard (operator feedback at the plan stop). Why: `/feature-loop` research → implement, and `feature-new` → triage, both run in one session; a second fetch of the same entries returns the same bytes and only spends budget.
 - **2026-09-06** — Normalize `/hs-brain-promote` → `/brain-promote` at `skills/feature-implement/SKILL.md:54`. Why: `install.sh:788` only rewrites the bare form, so the hardcoded one renders wrong under `--prefix ""`. Limited to this one file — the same bug at `skills/hivesmith-init/SKILL.md:140` and the `brain-*` skills is left alone, out of scope.
@@ -285,5 +292,7 @@ historical record of what that PR shipped; the release notes reading as a timeli
 <none>
 
 ## PR convergence ledger
+
+- **2026-09-06 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 2 IMPORTANT + 1 MINOR; threads_open: 0; action: autofix+push; head_sha: 63e4ae6.
 
 ## Gate verdict
