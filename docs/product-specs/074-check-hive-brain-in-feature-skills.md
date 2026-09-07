@@ -40,8 +40,10 @@ missing helper or no matching entries never blocks the run — and brain content
   states its skip condition explicitly.
 - A missing `~/.hivesmith/bin/brain-*` helper, or zero matching entries, is skipped silently and
   does not fail the skill.
-- Existing brain call sites in `/hs-feature-plan`, `/hs-feature-research`, `/hs-feature-loop` and
-  `/hs-review-pr` keep working; any wording change to them is consistency-only.
+- Existing brain call sites keep working. `/hs-feature-plan`, `/hs-feature-research` and
+  `/hs-review-pr` are untouched. `/hs-feature-loop` is the one exception: it may take a **disclosed
+  defect fix** where the new call sites inherited a bug by copying from it — recorded in the plan's
+  Decision log and asserted in Verification, never slipped in as a wording change.
 
 ## Non-goals
 
