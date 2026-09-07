@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/074-check-hive-brain-in-feature-skills.md](../../product-specs/074-check-hive-brain-in-feature-skills.md)
 - **Issue:** #74
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** [#75](https://github.com/lucascaro/hivesmith/pull/75)
+- **Branch:** `feature/74-check-hive-brain-in-feature-skills`
 - **Phase:** —
 
 ## Summary
