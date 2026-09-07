@@ -27,6 +27,14 @@ this file or from the generated `docs/product-specs/index.md`.
 
 <Files, modules, and existing patterns the work touches. Cite paths.>
 
+### Conventions card
+
+<Build, lint, and test commands from `AGENTS.md` verbatim, plus the conventions this feature touches (test strategy, doc rules, naming). Written by `/feature-research`; later stages and subagents read this instead of re-reading `AGENTS.md`.>
+
+### Prior lessons
+
+<Distilled hive-brain bullets relevant to this feature, or "none matched". Written by `/feature-research`; `/feature-implement` reads these instead of re-querying the brain.>
+
 ## Approach
 
 <The chosen design. Include the reason it was chosen over the obvious alternative.>
