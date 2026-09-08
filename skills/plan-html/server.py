@@ -28,6 +28,7 @@ import datetime
 import hmac
 import json
 import os
+import socketserver
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -131,16 +132,31 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("[%s] %s\n" % (self.log_date_time_string(), msg))
 
 
+class _Server(HTTPServer):
+    """HTTPServer without the reverse-DNS lookup in server_bind().
+
+    http.server.HTTPServer.server_bind() calls socket.getfqdn(host) after the
+    bind. That is a resolver round trip (mDNSResponder on macOS) inside the
+    constructor, before this process prints anything or writes the port file.
+    When the resolver is wedged it blocks for minutes and start.sh times out
+    with an empty log. The name is only used for CGI env vars we never emit.
+    """
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
 def _bind(port: int) -> HTTPServer:
     """Bind on 127.0.0.1:port; on EADDRINUSE for a non-zero port, fall back to 0."""
     try:
-        return HTTPServer(("127.0.0.1", port), Handler)
+        return _Server(("127.0.0.1", port), Handler)
     except OSError as exc:
         if port != 0 and getattr(exc, "errno", None) in (48, 98):  # EADDRINUSE (BSD, Linux)
             sys.stderr.write(
                 f"port {port} in use; falling back to OS-picked free port\n"
             )
-            return HTTPServer(("127.0.0.1", 0), Handler)
+            return _Server(("127.0.0.1", 0), Handler)
         raise
 
 
