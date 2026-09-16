@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/080-replace-auto-upgrade-cron-with-skill-entry-check.md](../../product-specs/080-replace-auto-upgrade-cron-with-skill-entry-check.md)
 - **Issue:** — (local-only, no GitHub issue)
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #83
+- **Branch:** feature/080-replace-auto-upgrade-cron-with-skill-entry-check
 - **Phase:** —
 
 <!--

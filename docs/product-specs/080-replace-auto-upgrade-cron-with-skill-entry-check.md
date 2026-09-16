@@ -3,7 +3,8 @@ title: Replace the auto-upgrade cron with an upgrade check at hivesmith skill en
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
+pr: 83
+stage: REVIEW
 ---
 
 # Replace the auto-upgrade cron with an upgrade check at hivesmith skill entry
