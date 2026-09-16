@@ -101,6 +101,13 @@ After the run in §2:
 - Gate 2 (triage classification) **did** fire. Triage is a real classification the operator sees.
 - The printed handoff names `/feature-loop <NNN>`, not `/feature-research <NNN>`.
 - `/brainstorm` itself never ran `gh issue create`.
+- An open question left by the step-4 stop rule lands in the spec's `## Notes`. `/brainstorm` writes
+  nothing itself, so an open question it only mentions in chat is lost.
+- **Legacy layout.** With `docs/product-specs/` absent and `features/active/` present, all four
+  sections still survive: `## Problem` becomes the feature file's `## Description`, and
+  `## Desired behavior` / `## Success criteria` / `## Non-goals` are appended as new sections.
+  `features/templates/FEATURE.md` has no headings for the last three, so "the template has no slot"
+  must not become "drop them" — `/merge-gate` validates `## Success criteria` in both layouts.
 
 ## 4. Issue policy paths
 
@@ -110,7 +117,7 @@ After the run in §2:
 | absent/`opt-out`, but the operator picks option 2 (*skip GitHub*) | **no issue created**; spec has **no** `issue:` key. The operator's gate answer overrides the policy default — `/feature-new` must not re-resolve the choice from the policy after its Gate 1 is skipped |
 | `create_issues = "opt-in"` | recommended option is *skip*; no issue; spec has **no** `issue:` key; number allocated locally |
 | `create_issues = "ask"` | no option marked recommended |
-| `create_issues = "always"` | the gate still presents the sections; GitHub creation is not re-asked |
+| `create_issues = "always"` | recommended option is *create*; the gate still presents the sections (it is the content gate, not the GitHub gate); GitHub creation is not re-asked. All four policy values map to a recommendation — an unmapped value leaves the only gate in the flow with none |
 
 ## 5. Decline path
 

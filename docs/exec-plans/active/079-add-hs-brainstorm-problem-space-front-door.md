@@ -380,6 +380,16 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-16** — Research recorded; stage → PLAN.
 - **2026-09-16** — Plan approved via `plan-html` after two second-opinion rounds; stage → IMPLEMENT.
 - **2026-09-16** — Implemented; all `AGENTS.md` checks green; PR #81 opened; stage → REVIEW.
+- **2026-09-16** — Review iter 3 (COMMENT, 3 IMPORTANT) cleared. All three are the same root cause:
+  the caller-supplied-sections contract enumerated only the happy path, so every sibling branch
+  dropped data silently. (a) step 7's recommendation mapping covered three of the policy's four
+  values — an `always` project fell through with no recommendation at the only gate in the flow;
+  (b) `/feature-new` step 9 scoped the contract under **Current layout**, so on the legacy
+  `features/active/` layout — which `/brainstorm`'s own Layout resolution supports — all four
+  sections landed nowhere, since `features/templates/FEATURE.md` has no headings for three of them;
+  (c) the step-4 stop rule told the skill to record open questions in `## Notes`, but the handoff
+  passed only the four sections, so `/feature-new` never received them. Fixed at five sites plus two
+  smoke assertions.
 - **2026-09-16** — Review iter 2 (COMMENT, 1 IMPORTANT, 3 MINOR) cleared: the delegation contract
   discarded the caller's "skip GitHub" answer, so under `opt-out` an operator who declined GitHub
   still got an issue — and under `ask`, `/brainstorm`'s gate is the only prompt in the flow, so

@@ -92,11 +92,11 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
    four** — `## Problem`, `## Desired behavior`, `## Success criteria`, `## Non-goals` — into the
    spec body verbatim, keeping the rest of the template as usual. This is the step that actually
    persists them; honouring the caller at step 2 alone would carry the Problem section and drop the
-   other three.
+   other three. If the caller also supplied open questions, write them under `## Notes`.
 
    **Do not edit `docs/product-specs/index.md`.** The index is generated from spec frontmatter by `scripts/regen-generated.sh` on every push to `main`. Editing it directly will fail the `block-generated-edits` CI check.
 
-   **Legacy layout (only when `docs/product-specs/` does not exist):** Create the feature file at `features/active/<filename>` using the bullet-line format (no frontmatter) and append to `features/BACKLOG.md` Active table.
+   **Legacy layout (only when `docs/product-specs/` does not exist):** Create the feature file at `features/active/<filename>` using the bullet-line format (no frontmatter) and append to `features/BACKLOG.md` Active table. **Caller-supplied sections apply here too:** `features/templates/FEATURE.md` has a `## Description` but no `## Desired behavior` / `## Success criteria` / `## Non-goals`, so write the caller's `## Problem` into `## Description` and append the other three as new `##` sections after it (plus `## Notes` for any open questions). Dropping them because the legacy template lacks the headings is the same silent loss this contract exists to prevent — `/merge-gate` validates against `## Success criteria` in both layouts.
 
 ### Phase 4: Triage
 
