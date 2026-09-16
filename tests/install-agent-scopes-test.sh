@@ -10,7 +10,8 @@
 # Runs real (non-dry-run) installs inside a scratch HOME and a scratch project.
 # HOME alone does not sandbox a --global install: it rm -rf's
 # $HIVESMITH_DIR/.rendered (derived from the script's own location) and rewrites
-# the invoking user's crontab (per-user, not HOME-scoped). The global case
+# the invoking user's crontab (per-user, not HOME-scoped: the legacy
+# auto-upgrade migration reads and may rewrite it). The global case
 # therefore runs against a scratch copy of the repo with a stub `crontab` on
 # PATH, so the real checkout, its rendered tree, and the real crontab are never
 # touched.
@@ -38,7 +39,7 @@ new_sandbox() {
 
 # Global installs reach outside HOME. Point install.sh at a scratch copy of the
 # repo (so $HIVESMITH_DIR/.rendered is disposable) and shadow `crontab` with a
-# no-op (so the auto-upgrade branch cannot read or rewrite the real one).
+# no-op (so the legacy auto-upgrade migration cannot read or rewrite the real one).
 isolate_global_side_effects() {
     mkdir -p "$SB/hs" "$SB/bin"
     cp -R "$HS/install.sh" "$HS/agents.json" "$HS/skills" "$HS/agents" "$HS/scripts" "$SB/hs/"
@@ -78,7 +79,7 @@ global_target_uses_skills_dir() {
     new_sandbox
     isolate_global_side_effects
     mkdir -p "$FAKE_HOME/.pi"          # detect_dir must exist for global detection
-    hs_install --global --agents pi --no-auto-upgrade
+    hs_install --global --agents pi
     local n; n="$(count_links "$FAKE_HOME/.pi/agent/skills")"
     if [ "$n" = "$SKILL_COUNT" ] && [ ! -e "$FAKE_HOME/.pi/skills" ]; then
         pass "$t"

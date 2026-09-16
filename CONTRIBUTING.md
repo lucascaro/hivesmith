@@ -27,7 +27,7 @@ Don't test against your real `$HOME` — use a throwaway one so you can repeat f
 TEST_HOME="$(mktemp -d)"
 mkdir -p "$TEST_HOME/.claude/skills"
 HOME="$TEST_HOME" HIVESMITH_DIR_CONFIG="$TEST_HOME/hivesmith.toml" \
-  ~/work/hivesmith/install.sh --prefix hs- --no-auto-update
+  ~/work/hivesmith/install.sh --prefix hs-
 ls "$TEST_HOME/.claude/skills"
 ```
 

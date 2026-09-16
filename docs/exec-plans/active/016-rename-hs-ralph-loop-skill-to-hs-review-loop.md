@@ -144,7 +144,7 @@ This is a documentation/rename change with no code logic. Validation is mechanic
 
 2. **Render correctness** (from AGENTS.md line 49 pattern, adapted):
    ```
-   HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update
+   HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs-
    test -f .rendered/hs-/skills/hs-review-loop/SKILL.md
    ! test -e .rendered/hs-/skills/hs-ralph-loop
    grep -q '/hs-review-loop' .rendered/hs-/skills/hs-feature-implement/SKILL.md
@@ -153,8 +153,8 @@ This is a documentation/rename change with no code logic. Validation is mechanic
 
 3. **Install smoke** (from AGENTS.md line 48):
    ```
-   HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-update --dry-run
-   ./install.sh --prefix "" --no-auto-update --dry-run
+   HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --dry-run
+   ./install.sh --prefix "" --dry-run
    ```
 
 4. **Shellcheck** (from AGENTS.md line 46) — unchanged set of shell scripts; should pass without modification but run to confirm no incidental breakage.
@@ -178,7 +178,7 @@ This is a documentation/rename change with no code logic. Validation is mechanic
 ! grep -rn 'ralph-loop' skills/ templates/ docs/ README.md AGENTS.md
 
 # render correctness for the renamed skill
-HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-upgrade
+HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs-
 grep -q '^name: hs-review-loop' .rendered/hs-/skills/hs-review-loop/SKILL.md
 
 # repo-wide gates

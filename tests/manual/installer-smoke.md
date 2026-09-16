@@ -1,7 +1,7 @@
 # Installer smoke test
 
 Manual checklist for `install.sh`. Run in an **isolated scratch environment** so
-the real global install and crontab are never touched.
+the real global install and crontab are never touched (a global install reads `crontab -l` to migrate away the legacy auto-upgrade entry; shadow `crontab` on `PATH` if that matters to you).
 
 ```bash
 SB=$(mktemp -d)
@@ -31,7 +31,7 @@ Each step lists the command and what to confirm.
    - `run --local --force` → WARN "overwriting (--force)", `release` is now a symlink.
 
 5. **`--status`** — `run --status`
-   - Shows both `global` and `local` sections with per-harness counts, prefix (if set), brain-bin, auto-upgrade. Exit 0.
+   - Shows both `global` and `local` sections with per-harness counts, prefix (if set), brain-bin, upgrade-check (`on` by default). Exit 0.
 
 6. **`--doctor` detects breakage** — narrow to local
    - Break a link: `rm ./.claude/skills/release && ln -s "$HS/skills/NOPE" ./.claude/skills/release` (dangling, owned).
@@ -46,7 +46,7 @@ Each step lists the command and what to confirm.
    - `run --uninstall --local` (no `--prefix`) → all `hs-*` links removed (ownership sweep).
 
 9. **Global round-trip** — `run --global`
-   - `$FAKE_HOME/.claude/skills` populated. (Skip `--uninstall --global` unless you want the cron/brain-bin paths exercised — it reads the real crontab.)
+   - `$FAKE_HOME/.claude/skills` populated. (Skip `--uninstall --global` unless you want the brain-bin/legacy-cron paths exercised — it reads the real crontab.)
 
 10. **Color + help**
     - Piped output (as above) has no ANSI. In a real terminal, headings/tags are colored; `--no-color` or `NO_COLOR=1` disables it.

@@ -11,7 +11,7 @@ Run after changing any of those three `SKILL.md` files.
 set -euo pipefail
 # Scope the scratch HOME to the install itself. A `trap 'HOME=...' EXIT` would be a
 # no-op — the assignment lands in a shell that is already exiting.
-( export HOME=$(mktemp -d); mkdir -p "$HOME/.claude"; ./install.sh --prefix hs- --no-auto-upgrade )
+( export HOME=$(mktemp -d); mkdir -p "$HOME/.claude"; ./install.sh --prefix hs- )
 
 R=.rendered/hs-/skills
 
