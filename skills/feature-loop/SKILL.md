@@ -109,12 +109,13 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 
 ## Phase 1: New issue (description input only)
 
-3a. **Refuse an under-specified description.** Before anything else, judge whether the description names a **concrete observable change** — something a stranger could later check shipped. "Add a `--json` flag to `hs-metric`" does; "make the loop better", "improve onboarding", "fix the plan thing" do not. When it does not, say so plainly and ask once, with AskUserQuestion:
-    > "This description doesn't name a concrete observable change, so Phase 1 would write a spec with thin `## Success criteria` and empty `## Non-goals` — which `/merge-gate` later validates against."
-    1. Run `/brainstorm` first — interrogate the problem, then come back with a spec number
-    2. Proceed anyway — I know what I want
+**Before step 4 — refuse an under-specified description.** (Stated outside the numbered list on purpose: the Phase step numbers are global across this skill and must not be renumbered.) Judge whether the description names a **concrete observable change** — something a stranger could later check shipped. "Add a `--json` flag to `hs-metric`" does; "make the loop better", "improve onboarding", "fix the plan thing" do not. When it does not, say so plainly and ask once, with AskUserQuestion:
+> "This description doesn't name a concrete observable change, so Phase 1 would write a spec with thin `## Success criteria` and empty `## Non-goals` — which `/merge-gate` later validates against."
 
-    On option 1, stop and tell the operator to run `/brainstorm "<description>"`. On option 2, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
+1. Run `/brainstorm` first — interrogate the problem, then come back with a spec number
+2. Proceed anyway — I know what I want
+
+On option 1, stop and tell the operator to run `/brainstorm "<description>"`. On option 2, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
 
 4. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `always`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
 5. Draft the issue from the description:

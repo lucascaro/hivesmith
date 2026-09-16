@@ -87,6 +87,8 @@ This is **not** `/feature-plan` with different questions. The two skills work in
 
 8. **Hand the approved sections to `/feature-new`.** Do not create the issue or write the spec yourself — `/feature-new` owns the `[github] create_issues` policy, `gh issue create`, local number allocation, the spec write, and triage. Pass it the title, the four sections, and the fact that **the sections and the create-vs-skip choice were already gated here**, so it skips its own Gate 1 and writes your sections verbatim rather than re-drafting a `## Description`. Its triage gate still runs — that classification is a real one the operator should see.
 
+   **Mechanism:** invoke `/feature-new` directly, in this thread, the same way `/feature-loop` invokes `/review-loop` and `/merge-gate`. Not via a sub-agent: `/feature-new`'s triage gate needs `AskUserQuestion`, and a sub-agent cannot prompt the operator. This is why `allowed-tools` above carries no `Agent` — there is nothing to delegate — and why it carries `AskUserQuestion`, which the gate in step 7 needs directly.
+
 9. **Report and hand off.** Print the issue number and URL (or "no GitHub issue — local-only"), the spec path, and the next command — **`/feature-loop <NNN>`**, overriding the `/feature-research` reminder `/feature-new` prints by default. Then stop. This skill does not enter the pipeline.
 
 ## Red flags
@@ -109,7 +111,7 @@ These thoughts mean you are about to do the wrong skill's job:
 - **Nothing is written before the gate.** No spec, no issue, no `gh` mutation of any kind.
 - **Problem-space only.** No file lists, no approaches, no test names, no estimates.
 - **Three rounds maximum, four questions per round, batched.** Never one question at a time.
-- **Never write the spec or create the issue directly** — `/feature-new` owns both, and a second copy of the `[github] create_issues` policy will drift from the first.
+- **Never write the spec or create the issue directly** — `/feature-new` owns both, and a second copy of the `[github] create_issues` policy will drift from the first. Hand off by invoking `/feature-new` in this thread, never through a sub-agent: its triage gate has to reach the operator.
 - **Duplicates stop the run.** Point at the existing spec instead.
 - **"No" and "that's four features" are real outcomes.** Do not manufacture a spec to have produced something.
 - **The handoff is `/feature-loop <NNN>`.** This skill does not run the pipeline.

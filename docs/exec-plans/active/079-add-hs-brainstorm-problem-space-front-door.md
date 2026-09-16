@@ -278,7 +278,13 @@ grep -q '/hs-feature-new'                   "$R/hs-brainstorm/SKILL.md"
 grep -q '/hs-brainstorm'                    "$R/hs-feature-loop/SKILL.md"
 grep -q '/hs-brainstorm'                    "$R/hs-feature-next/SKILL.md"
 
-# 4. Both AGENTS copies carry the same pipeline arrow (fails on a half-done edit)
+# 4. All THREE pipeline-arrow copies name the skill, and the two sharing a format
+#    stay byte-identical. templates/AGENTS.md uses a `- **Feature pipeline** —` bullet
+#    (hivesmith-init copies it verbatim into a project with no AGENTS.md), so a check
+#    anchored on `^**Feature pipeline:**` structurally cannot see it.
+for f in AGENTS.md templates/AGENTS.hivesmith.md templates/AGENTS.md; do
+  grep -q '/brainstorm' "$f" || { echo "FAIL: no /brainstorm in $f"; exit 1; }
+done
 diff <(grep '^\*\*Feature pipeline:\*\*' AGENTS.md) \
      <(grep '^\*\*Feature pipeline:\*\*' templates/AGENTS.hivesmith.md)
 
@@ -293,8 +299,6 @@ test "$(grep -c 'two approval gates' skills/feature-loop/SKILL.md)" -eq 3
 # 6b. The docs actually gained the skill (#4 only proves the two arrow lines match each other,
 #     so an edit touching neither would still pass it)
 grep -q 'brainstorm' README.md
-grep -q 'brainstorm' AGENTS.md
-grep -q 'brainstorm' templates/AGENTS.hivesmith.md
 
 # 7. Changeset is valid, not merely present
 C=.changesets/077-add-brainstorm-skill.md
@@ -346,6 +350,11 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 
 ## Decision log
 
+- **2026-09-16** — The `/feature-new` handoff is a direct in-thread slash invocation, not a
+  sub-agent. Why: `/feature-new`'s triage gate needs `AskUserQuestion` and a sub-agent cannot prompt
+  the operator. Precedent: `/feature-loop` invokes `/review-loop` (`:295`) and `/merge-gate` (`:302`)
+  the same way, and no skill in the repo lists `Skill` in `allowed-tools`. Raised by review iter 1.
+
 - **2026-09-15** — `/brainstorm` is standalone and pre-pipeline; `/feature-loop` never invokes it.
   Why: the loop's "pauses exactly twice" contract is load-bearing, and an auto-invoked interactive
   stage would break it. Operator choice.
@@ -371,6 +380,10 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-16** — Research recorded; stage → PLAN.
 - **2026-09-16** — Plan approved via `plan-html` after two second-opinion rounds; stage → IMPLEMENT.
 - **2026-09-16** — Implemented; all `AGENTS.md` checks green; PR #81 opened; stage → REVIEW.
+- **2026-09-16** — Review iter 1 (COMMENT, 2 IMPORTANT) cleared: declared the `/feature-new`
+  handoff mechanism in `skills/brainstorm/SKILL.md`, and added `/brainstorm` to the **third**
+  pipeline-arrow copy at `templates/AGENTS.md:49`, which Verification #4 structurally could not
+  see. Verification #4 replaced with a three-file content assertion.
 
 ## Open questions
 

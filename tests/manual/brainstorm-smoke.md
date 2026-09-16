@@ -9,9 +9,9 @@ Run after changing any of those three `SKILL.md` files.
 
 ```bash
 set -euo pipefail
-HOME_BAK="$HOME"; trap 'HOME="$HOME_BAK"' EXIT
-HOME=$(mktemp -d); mkdir -p "$HOME/.claude"
-./install.sh --prefix hs- --no-auto-upgrade
+# Scope the scratch HOME to the install itself. A `trap 'HOME=...' EXIT` would be a
+# no-op — the assignment lands in a shell that is already exiting.
+( export HOME=$(mktemp -d); mkdir -p "$HOME/.claude"; ./install.sh --prefix hs- --no-auto-upgrade )
 
 R=.rendered/hs-/skills
 
@@ -54,6 +54,22 @@ must name the rendered `/hs-` paths it asserts on, exactly as `plan-lane-smoke.m
 ! grep -rn '/hs-[a-z]' skills/feature-new/SKILL.md skills/feature-loop/SKILL.md \
       skills/feature-next/SKILL.md | grep -v 'hs-metric'
 echo "step 1b OK"
+```
+
+All **three** pipeline-arrow copies name the skill. `AGENTS.md` and
+`templates/AGENTS.hivesmith.md` use a `**Feature pipeline:**` heading; `templates/AGENTS.md`
+(copied verbatim into a project by `/hivesmith-init` when it has no `AGENTS.md`) uses a
+`- **Feature pipeline** —` bullet, so a format-anchored check silently misses it:
+
+```bash
+for f in AGENTS.md templates/AGENTS.hivesmith.md templates/AGENTS.md; do
+  grep -q '/brainstorm' "$f" || { echo "FAIL: no /brainstorm in $f"; exit 1; }
+  grep -qE '^[-*[:space:]]*\*\*Feature pipeline' "$f" || { echo "FAIL: no pipeline arrow in $f"; exit 1; }
+done
+# the two that share a format must stay byte-identical
+diff <(grep '^\*\*Feature pipeline:\*\*' AGENTS.md) \
+     <(grep '^\*\*Feature pipeline:\*\*' templates/AGENTS.hivesmith.md)
+echo "step 1c OK"
 ```
 
 ## 2. Vague idea, end to end (the actual point)
