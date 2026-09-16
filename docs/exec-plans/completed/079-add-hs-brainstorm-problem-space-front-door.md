@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/079-add-hs-brainstorm-problem-space-front-door.md](../../product-specs/079-add-hs-brainstorm-problem-space-front-door.md)
 - **Issue:** #79
-- **Status:** active
+- **Status:** completed
 - **PR:** #81
 - **Branch:** `feature/79-add-hs-brainstorm-problem-space-front-door`
 - **Phase:** —
@@ -414,6 +414,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
   (c) the step-4 stop rule told the skill to record open questions in `## Notes`, but the handoff
   passed only the four sections, so `/feature-new` never received them. Fixed at five sites plus two
   smoke assertions.
+- **2026-09-16** — Merge gate PASS (acceptance 8/8, non-goals 5/5, doc accuracy); stage → DONE.
 - **2026-09-16** — Review loop converged at iteration 6 (APPROVE, empty findings hash) after the operator raised the budget from 5. Six iterations, five of which found real defects; stage → GATE.
 - **2026-09-16** — Review iter 2 (COMMENT, 1 IMPORTANT, 3 MINOR) cleared: the delegation contract
   discarded the caller's "skip GitHub" answer, so under `opt-out` an operator who declined GitHub
@@ -477,3 +478,9 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 ## Gate verdict
 
 <Filled by `/merge-gate` before the PR merges. Append-only.>
+
+- **2026-09-16** — verdict: PASS; phase: —; checks: 19 passed / 0 failed / 0 followups; followups: none; one-line: all 8 success criteria delivered, all 5 non-goals respected, docs accurate across all four pipeline entry-point lists.
+  - 2026-09-16 dimensions:
+    - acceptance — PASS — 8/8 criteria; smoke §1 run verbatim against a scratch-HOME prefixed install printed `step 1 OK`; `/feature-new` honours caller-supplied sections at steps 2, 3–4, 9 (current and legacy layout) and 18; `two approval gates` ×3; `/feature-new` is the sole `feature-*` skill without `disable-model-invocation`, per GP#4's documented exception.
+    - non-goals — PASS — 5/5; no solution-space instructions, no companion assets, no three-path classifier, `/feature-loop` names and stops rather than invoking, no design-doc artifact. The validator's scope-bleed flag (a `plan-html` DNS fix and changeset 076 appearing in the diff) was a **false positive from a stale local `main` ref** (`8848c51` vs `origin/main` `fb56439`): against `origin/main` the diff is 14 files with no `plan-html` path, matching GitHub's own file list for PR #81.
+    - doc accuracy — PASS — changeset 077 valid and a fresh slot, covering both user-visible changes; README row accurate; all four entry-point lists name `/brainstorm`, the two sharing a heading byte-identical; no stale "pauses twice" claims; GP#4 exception coherent with `/feature-new`'s frontmatter comment. `CHANGELOG.md` and `docs/product-specs/index.md` untouched against `origin/main` (the validator's CHANGELOG diff traced to `0e25ad8`, already on `origin/main` — same stale-ref artifact). `regression_of`: N/A, changeset is `type: added`.

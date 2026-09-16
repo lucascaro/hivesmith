@@ -5,12 +5,13 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 81
-stage: GATE
+shipped: 2026-09-16
+stage: DONE
 ---
 
 # Add /hs-brainstorm — a problem-space front door to the feature pipeline
 
-- **Exec plan:** [docs/exec-plans/active/079-add-hs-brainstorm-problem-space-front-door.md](../exec-plans/active/079-add-hs-brainstorm-problem-space-front-door.md)
+- **Exec plan:** [docs/exec-plans/completed/079-add-hs-brainstorm-problem-space-front-door.md](../exec-plans/completed/079-add-hs-brainstorm-problem-space-front-door.md)
 
 ## Problem
 
