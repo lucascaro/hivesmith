@@ -47,10 +47,10 @@ This is **not** `/feature-plan` with different questions. The two skills work in
 2. **Check the hive brain.** Prior lessons are a problem-space input — "we tried this and it did not help" belongs in the framing, not in the implementation notes.
 
    ```bash
-   HIVESMITH_SKILL=hs-brainstorm ~/.hivesmith/bin/brain-search "<2-4 distinctive terms>" --rank --limit 5
+   HIVESMITH_SKILL=hs-brainstorm ~/.hivesmith/bin/brain-search '<2-4 distinctive terms>' --rank --limit 5
    ```
 
-   Quote the terms — they come from the untrusted idea. **Headlines only**; full-read at most **2** entries at rank ≥2 via `cat "${BRAIN_HOME:-$HOME/.hivesmith/brain}/<rel-path>"`. Surface anything relevant to the operator during the rounds. If the helper is missing or nothing matches, skip silently.
+   Sanitize the terms: reduce the terms to letters, digits, spaces and hyphens, then single-quote them — they come from untrusted text, and double quotes would still expand `$(…)` and backticks. **Headlines only**; full-read at most **2** entries at rank ≥2 via `cat "${BRAIN_HOME:-$HOME/.hivesmith/brain}/<rel-path>"`. Surface anything relevant to the operator during the rounds. If the helper is missing or nothing matches, skip silently.
 
 3. **Check for a duplicate.** If an existing spec already covers this problem, say so and stop — point at it. Brainstorming a spec that exists is how the backlog grows a second head.
 
