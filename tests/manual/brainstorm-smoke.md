@@ -37,9 +37,15 @@ lacks '(^|[^-])/feature-loop\b'        "$R/hs-brainstorm/SKILL.md"
 # key on /feature-new made step 8's handoff impossible, with no fallback, silently.
 lacks '^disable-model-invocation'      "$R/hs-feature-new/SKILL.md"
 has   'skill-to-skill callee'          "$R/hs-feature-new/SKILL.md"
-# ...and every OTHER feature-* skill must still carry it (GP#4's rule, not its exception)
-for f in triage research plan implement ingest next loop; do
-  has '^disable-model-invocation: true' "$R/hs-feature-$f/SKILL.md"
+# ...and every OTHER feature-* skill must still carry it (GP#4's rule, not its exception).
+# Derived from the glob GP#4 states the rule over, not a hand-typed list: a fixed list
+# silently stops covering the next feature-* skill someone adds.
+# `if`, not `[ … ] && continue`: under `set -e` a standalone false test exits the
+# shell — the same trap the `lacks` helper above exists to dodge.
+for f in "$R"/hs-feature-*/SKILL.md; do
+  if [ "$f" != "$R/hs-feature-new/SKILL.md" ]; then
+    has '^disable-model-invocation: true' "$f"
+  fi
 done
 
 # the pipeline points back at it

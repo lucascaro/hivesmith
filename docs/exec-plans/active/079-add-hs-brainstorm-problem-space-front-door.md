@@ -267,9 +267,13 @@ Run under **bash**, not fish — `diff <(…) <(…)` is a bash process substitu
 ! grep -q '^disable-model-invocation' skills/feature-new/SKILL.md
 grep -q 'skill-to-skill callee' skills/feature-new/SKILL.md
 grep -q 'Skill-to-skill callee exception' golden-principles.md
-# every OTHER feature-* skill still carries it (GP#4's rule, not its exception)
-for f in triage research plan implement ingest next loop; do
-  grep -q '^disable-model-invocation: true' "skills/feature-$f/SKILL.md" || { echo "FAIL: $f"; exit 1; }
+# every OTHER feature-* skill still carries it (GP#4's rule, not its exception).
+# Globbed, not enumerated: a fixed list leaves feature-plan-review, feature-plan-handoff
+# and feature-populate-backlog unguarded, and every future feature-* skill after them.
+for f in skills/feature-*/SKILL.md; do
+  if [ "$f" != skills/feature-new/SKILL.md ]; then
+    grep -q '^disable-model-invocation: true' "$f" || { echo "FAIL: $f"; exit 1; }
+  fi
 done
 
 # 2. Frontmatter (golden principle #4) — mechanical, not eyeball
