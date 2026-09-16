@@ -130,7 +130,7 @@ On the first local install it detects which harness dirs already exist in the pr
 ~/.hivesmith/install.sh --local --agents claude,codex
 ```
 
-Local scope keeps its **own** config file, `./.hivesmith.toml` (override with `HIVESMITH_LOCAL_CONFIG`), holding the remembered `agents = [...]`, any local `prefix`, and `disable`. It never reads or writes the global `~/.hivesmith.toml`. The daily auto-upgrade cron is global-only, so `--auto-upgrade` is rejected with `--local`. (The brain helper scripts still live at the global `~/.hivesmith/bin` — they're referenced by absolute path — and a local uninstall never touches them or the cron.)
+Local scope keeps its **own** config file, `./.hivesmith.toml` (override with `HIVESMITH_LOCAL_CONFIG`), holding the remembered `agents = [...]`, any local `prefix`, and `disable`. It never reads or writes the global `~/.hivesmith.toml`. The upgrade-check opt-out is global-only, so `--upgrade-check` / `--no-upgrade-check` are rejected with `--local`. (The brain helper scripts and `hs-upgrade-check` still live at the global `~/.hivesmith/bin` — they're referenced by absolute path — and a local uninstall never touches them.)
 
 > Contributors dogfooding a checkout should still use `scripts/dev-link-local.sh` (bare skill names, no prefix) — that's a separate developer tool, not the same as `--local`.
 
@@ -145,7 +145,7 @@ If a real file or a foreign symlink is sitting where a skill link should go, the
 
 ### Inspect & validate (`--status`, `--doctor`)
 
-`--status` prints a read-only summary of what's installed — per harness link counts, resolved prefix, brain-bin health, and auto-upgrade state — for both global and local scopes (narrow with `--global`/`--local`):
+`--status` prints a read-only summary of what's installed — per harness link counts, resolved prefix, brain-bin health, and upgrade-check state (and a warning, a `--doctor` failure, if a legacy auto-upgrade cron is still installed) — for both global and local scopes (narrow with `--global`/`--local`):
 
 ```bash
 ~/.hivesmith/install.sh --status
@@ -165,7 +165,22 @@ Output is colored when writing to a terminal; color is disabled automatically wh
 ~/.hivesmith/install.sh --update
 ```
 
-Runs `git pull --ff-only` in `~/.hivesmith`, then re-runs symlink reconciliation. Auto-upgrade is **opt-in** — pass `--auto-upgrade` to install a daily cron; the choice is remembered in `~/.hivesmith.toml` so subsequent runs honor it without re-passing the flag. `--no-auto-upgrade` opts back out (and removes any existing cron). `--no-auto-update` is a deprecated alias.
+Runs `git pull --ff-only` in the clone, then re-runs itself from the freshly pulled `install.sh` to re-render and re-link.
+
+### Upgrade check
+
+You rarely need to run that by hand. A few front-door skills — `/brainstorm`, `/feature-loop`, `/feature-next`, `/pr-queue` and `/review-pr` — start by running `~/.hivesmith/bin/hs-upgrade-check`. When the clone is behind its upstream, the skill asks before doing anything else:
+
+- **Upgrade now** — runs `install.sh --update`, then stops so you can reload or restart the session and invoke the skill again on the new version.
+- **Ask me later** — no more prompts until tomorrow.
+- **Not until the next upstream change** — no more prompts until upstream moves past the commit you declined.
+- **Never ask again** — writes `upgrade_check = false` to `~/.hivesmith.toml`.
+
+The check never waits on the network: it answers from the last fetch and, at most every 6 hours, starts a non-interactive `git fetch` in the background. It stays silent offline, on a branch with no upstream, in CI (`CI` set), and when `HIVESMITH_UPGRADE_CHECK=0`. Skills skip it when they can't ask you (print mode, subagents, unattended runs) or were handed off from another skill.
+
+It is **on by default**. Opt out with `install.sh --no-upgrade-check` (same effect as "Never ask again"); re-enable with `install.sh --upgrade-check`. The opt-out survives re-installs and uninstalls.
+
+The daily auto-upgrade cron this replaces is gone: the next global `install.sh` run removes an existing hivesmith crontab entry and the old `auto_upgrade` key, and `--auto-upgrade` / `--no-auto-upgrade` / `--no-auto-update` now exit with an error pointing here.
 
 ## Per-skill opt-out
 
@@ -225,7 +240,7 @@ This splits each `features/<state>/<NNN>-*.md` file into a product spec (`docs/p
 ~/.hivesmith/install.sh --uninstall --local    # current project only
 ```
 
-Removes every hivesmith symlink from the targeted scope's agent directories (ownership-checked, so it also clears prefixed links without re-passing `--prefix`). A global uninstall additionally removes the rendered-prefix tree, the auto-upgrade cron, and the `~/.hivesmith/bin` brain helpers; a local uninstall touches none of those. The `~/.hivesmith` clone is preserved; `rm -rf ~/.hivesmith` to remove it entirely.
+Removes every hivesmith symlink from the targeted scope's agent directories (ownership-checked, so it also clears prefixed links without re-passing `--prefix`). A global uninstall additionally removes the rendered-prefix tree, the `~/.hivesmith/bin` helpers (including `hs-upgrade-check`), the upgrade-check state in `~/.hivesmith/upgrade-check/`, and any legacy auto-upgrade cron; it keeps an `upgrade_check = false` opt-out so a reinstall stays quiet. A local uninstall touches none of those. The `~/.hivesmith` clone is preserved; `rm -rf ~/.hivesmith` to remove it entirely.
 
 ## Contributing
 

@@ -16,7 +16,8 @@ RENDER_ROOT="$HIVESMITH_DIR/.rendered"
 # local: ./.hivesmith.toml).
 
 MODE="install"
-AUTO_UPGRADE_CLI=""   # "" | "1" | "0" — set only when the user passed a flag
+ORIG_ARGS=("$@")      # replayed by the post-pull re-exec in --update
+UPGRADE_CHECK_CLI=""  # "" | "1" | "0" — set only when the user passed a flag
 DRY_RUN=0
 PREFIX_CLI=""
 PREFIX_CLI_SET=0
@@ -87,8 +88,9 @@ Modifiers:
                                  should go). Only deletes inside the target dir.
   --prefix hs-                   namespace every skill (e.g. /hs-release).
   --prefix ""                    clear a stored prefix.
-  --auto-upgrade                 opt in to a daily auto-upgrade cron (global only)
-  --no-auto-upgrade              opt out (also removes an existing cron entry)
+  --upgrade-check                re-enable the upgrade check entry skills run
+                                 (on by default; global only)
+  --no-upgrade-check             opt out: entry skills never ask to upgrade
   --dry-run                      print what would happen, change nothing
   --no-color                     disable ANSI color (also off when not a TTY
                                  or when NO_COLOR is set)
@@ -98,7 +100,8 @@ Config:
   Global scope reads/writes ~/.hivesmith.toml (override: HIVESMITH_DIR_CONFIG).
   Local scope reads/writes ./.hivesmith.toml (override: HIVESMITH_LOCAL_CONFIG)
   and never touches the global config. Keys: prefix, disable = [...],
-  agents = [...], auto_upgrade (global only), and [agents.<name>] only = [...].
+  agents = [...], upgrade_check = false (global only), and
+  [agents.<name>] only = [...].
 EOF
 }
 
@@ -119,11 +122,11 @@ while [[ $# -gt 0 ]]; do
             AGENTS_CLI="${1#--agents=}"; AGENTS_CLI_SET=1
             [[ -n "$AGENTS_CLI" ]] || { echo "Error: --agents requires a non-empty value (e.g. --agents=claude,codex)" >&2; exit 1; }
             shift ;;
-        --auto-upgrade) AUTO_UPGRADE_CLI=1; shift ;;
-        --no-auto-upgrade) AUTO_UPGRADE_CLI=0; shift ;;
-        --no-auto-update)
-            printf 'install: --no-auto-update is deprecated; use --no-auto-upgrade. Persisting auto_upgrade=false.\n' >&2
-            AUTO_UPGRADE_CLI=0; shift ;;
+        --upgrade-check) UPGRADE_CHECK_CLI=1; shift ;;
+        --no-upgrade-check) UPGRADE_CHECK_CLI=0; shift ;;
+        --auto-upgrade|--no-auto-upgrade|--no-auto-update)
+            err "$1 was removed: the daily auto-upgrade cron is replaced by an upgrade check that hivesmith entry skills run (on by default). Opt out with --no-upgrade-check."
+            exit 1 ;;
         --dry-run) DRY_RUN=1; shift ;;
         --prefix) PREFIX_CLI="${2-}"; PREFIX_CLI_SET=1; shift 2 ;;
         --prefix=*) PREFIX_CLI="${1#--prefix=}"; PREFIX_CLI_SET=1; shift ;;
@@ -138,8 +141,8 @@ setup_colors
 # Scope decides target dirs (home vs cwd) and which config file we read/write.
 if [[ "$SCOPE" == "local" ]]; then
     CONFIG="${HIVESMITH_LOCAL_CONFIG:-$PWD/.hivesmith.toml}"
-    if [[ -n "$AUTO_UPGRADE_CLI" ]]; then
-        err "--auto-upgrade/--no-auto-upgrade is global-only (cron is a global side effect); not valid with --local."
+    if [[ -n "$UPGRADE_CHECK_CLI" ]]; then
+        err "--upgrade-check/--no-upgrade-check is global-only (the helper and its state are machine-wide); not valid with --local."
         exit 1
     fi
 else
@@ -151,7 +154,7 @@ fi
 #   prefix = "hs-"
 #   disable = ["a", "b"]        # skill names and/or subagent names
 #   agents = ["claude", ...]    # local scope: remembered harness selection
-#   auto_upgrade = true         # global scope only
+#   upgrade_check = false       # global scope only; absent = on
 #   [agents.<name>]
 #   only = ["x", "y"]           # skills only — does not apply to subagents
 #
@@ -163,7 +166,7 @@ fi
 
 DISABLE_GLOBAL=""
 PREFIX_CONFIG=""
-AUTO_UPGRADE_CONFIG=""   # "" | "1" | "0" — only set if the key is present
+UPGRADE_CHECK_CONFIG=""  # "0" when upgrade_check = false is present, else ""
 AGENTS_CONFIG=""         # space-separated harness names (local scope selection)
 AGENTS_CONFIG_SET=0      # 1 if an `agents = [...]` key was present
 AGENT_ONLY_TABLE=""  # pipe-delimited records: "|name:val1 val2|name:val3|"
@@ -193,11 +196,8 @@ if [[ -f "$CONFIG" ]]; then
         if [[ -z "$current_agent" && "$line" =~ ^prefix[[:space:]]*=[[:space:]]*\"([^\"]*)\" ]]; then
             PREFIX_CONFIG="${BASH_REMATCH[1]}"
         fi
-        if [[ -z "$current_agent" && "$line" =~ ^auto_upgrade[[:space:]]*=[[:space:]]*(true|false) ]]; then
-            case "${BASH_REMATCH[1]}" in
-                true)  AUTO_UPGRADE_CONFIG=1 ;;
-                false) AUTO_UPGRADE_CONFIG=0 ;;
-            esac
+        if [[ -z "$current_agent" && "$line" =~ ^upgrade_check[[:space:]]*=[[:space:]]*false ]]; then
+            UPGRADE_CHECK_CONFIG=0
         fi
         if [[ -z "$current_agent" && "$line" =~ ^agents[[:space:]]*=[[:space:]]*\[(.*)\] ]]; then
             AGENTS_CONFIG="$(echo "${BASH_REMATCH[1]}" | tr -d '",' )"
@@ -269,45 +269,38 @@ if [[ "$PREFIX_CLI_SET" == "1" && "$MODE" != "uninstall" ]]; then
     fi
 fi
 
-# ---- Resolve effective auto-upgrade --------------------------------------
-# Tri-state resolution (first match wins):
-#   1. --auto-upgrade / --no-auto-upgrade on this run
-#   2. auto_upgrade key in ~/.hivesmith.toml
-#   3. Implicit opt-in migration: existing cron already installed
-#   4. Default: off (opt-in)
-# $AUTO_UPGRADE is the resolved 0/1 flag. $AUTO_UPGRADE_PERSIST, if set,
-# is what to write back to the config this run.
-
-CRON_GREP='hivesmith/install.sh --update\|hivesmith .*install.sh.* --update'
-has_hivesmith_cron() { crontab -l 2>/dev/null | grep -q "$CRON_GREP"; }
-
-AUTO_UPGRADE=0
-AUTO_UPGRADE_PERSIST=""
-if [[ -n "$AUTO_UPGRADE_CLI" ]]; then
-    AUTO_UPGRADE="$AUTO_UPGRADE_CLI"
-    AUTO_UPGRADE_PERSIST="$AUTO_UPGRADE_CLI"
-elif [[ -n "$AUTO_UPGRADE_CONFIG" ]]; then
-    AUTO_UPGRADE="$AUTO_UPGRADE_CONFIG"
-elif has_hivesmith_cron; then
-    AUTO_UPGRADE=1
-    AUTO_UPGRADE_PERSIST=1
-fi
-
-write_config_auto_upgrade() {
-    # Upsert or remove the top-level auto_upgrade key in $CONFIG.
-    # Arg: "true" | "false" | "" (remove).
-    local value="$1"
-    if [[ -n "$value" ]]; then upsert_config_key auto_upgrade "auto_upgrade = $value"
-    else upsert_config_key auto_upgrade ""; fi
-}
-
-if [[ -n "$AUTO_UPGRADE_PERSIST" && "$MODE" != "uninstall" ]]; then
-    if [[ "$AUTO_UPGRADE_PERSIST" == "1" ]]; then
-        write_config_auto_upgrade "true"
+# ---- Upgrade check opt-out + legacy cron ---------------------------------
+# The upgrade check itself lives in scripts/upgrade/check.sh (linked as
+# ~/.hivesmith/bin/hs-upgrade-check) and runs only when an entry skill calls it.
+# install.sh owns just the opt-out key: absent = on, `upgrade_check = false` =
+# off. --upgrade-check removes the key rather than writing `true`, so "on" has
+# exactly one representation.
+if [[ -n "$UPGRADE_CHECK_CLI" && "$MODE" != "uninstall" ]]; then
+    if [[ "$UPGRADE_CHECK_CLI" == "0" ]]; then
+        upsert_config_key upgrade_check "upgrade_check = false"
+        UPGRADE_CHECK_CONFIG=0
     else
-        write_config_auto_upgrade "false"
+        upsert_config_key upgrade_check ""
+        UPGRADE_CHECK_CONFIG=""
     fi
 fi
+
+# The daily cron this check replaced. Kept only to migrate it away (install,
+# update) and to clean it up (uninstall).
+CRON_GREP='hivesmith/install.sh --update\|hivesmith .*install.sh.* --update'
+has_hivesmith_cron() { crontab -l 2>/dev/null | grep -q "$CRON_GREP"; }
+remove_hivesmith_cron() {
+    if [[ "$DRY_RUN" == "1" ]]; then
+        say "DRY: remove hivesmith crontab entry"
+        return 0
+    fi
+    # `|| true`: grep -v exits 1 when our line was the only one, which under
+    # pipefail would abort the script after crontab had already been emptied.
+    { crontab -l 2>/dev/null | grep -v "$CRON_GREP" || true; } | crontab -
+}
+has_legacy_auto_upgrade_key() {
+    [[ -f "$CONFIG" ]] && grep -q '^[[:space:]]*auto_upgrade[[:space:]]*=' "$CONFIG"
+}
 
 in_list() {
     local needle="$1"; shift
@@ -607,7 +600,7 @@ inspect_scope() {  # $1 = scope
         }
     done
 
-    # Global-only extras: brain-bin health + auto-upgrade/cron state.
+    # Global-only extras: brain-bin health + upgrade-check state.
     if [[ "$scope" == "global" ]]; then
         local bin="$HOME/.hivesmith/bin" bok=0 bbroken=0
         if [[ -d "$bin" ]]; then
@@ -622,8 +615,17 @@ inspect_scope() {  # $1 = scope
         else
             say "  brain-bin: not present ($bin)"
         fi
-        if has_hivesmith_cron; then say "  auto-upgrade: cron installed"
-        else say "  auto-upgrade: off"; fi
+        if [[ "$UPGRADE_CHECK_CONFIG" == "0" ]]; then
+            say "  upgrade-check: off (upgrade_check = false in $CONFIG; re-enable: install.sh --upgrade-check)"
+        elif [[ "${HIVESMITH_UPGRADE_CHECK:-}" == "0" || -n "${CI:-}" ]]; then
+            say "  upgrade-check: disabled in this shell (HIVESMITH_UPGRADE_CHECK=0 or CI set)"
+        else
+            say "  upgrade-check: on (entry skills ask when this clone is behind upstream)"
+        fi
+        if has_hivesmith_cron; then
+            warn "legacy auto-upgrade cron is still installed — re-run install.sh to remove it"
+            [[ "$MODE" == "doctor" ]] && DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS + 1))
+        fi
         # Telemetry is reported, never installed here. These hooks fire in every
         # Claude Code session on the machine, including repos that have nothing
         # to do with hivesmith, so wiring them as a side effect of installing a
@@ -672,7 +674,17 @@ fi
 
 if [[ "$MODE" == "update" ]]; then
     say "Updating hivesmith at $HIVESMITH_DIR..."
-    run git -C "$HIVESMITH_DIR" pull --ff-only
+    if [[ -z "${HIVESMITH_UPDATE_REEXEC:-}" ]]; then
+        run git -C "$HIVESMITH_DIR" pull --ff-only
+        # Without this, the rest of the run (render, links, legacy migration)
+        # would be the *pre-pull* install.sh: `git pull` writes a new inode, so
+        # bash keeps reading the old file. Re-exec so the code that was just
+        # pulled does its own reconcile. This `if` compound was parsed whole
+        # before it ran, so exec'ing from inside it is safe.
+        if [[ "$DRY_RUN" != "1" ]]; then
+            HIVESMITH_UPDATE_REEXEC=1 exec bash "$HIVESMITH_DIR/install.sh" "${ORIG_ARGS[@]}"
+        fi
+    fi
     # Re-enumerate skills in case git pull added/removed some
     SKILLS=()
     for dir in "$HIVESMITH_DIR"/skills/*/; do
@@ -720,28 +732,29 @@ if [[ "$MODE" == "uninstall" ]]; then
             esac
         done
     done
-    # Global-only side effects: the rendered tree, auto-upgrade cron, and the
-    # auto_upgrade config key all belong to the global install. A local uninstall
-    # must not touch them (it would break a coexisting global install).
+    # Global-only side effects: the rendered tree, the upgrade-check helper and
+    # its state, and any legacy auto-upgrade cron/key all belong to the global
+    # install. A local uninstall must not touch them (it would break a coexisting
+    # global install). The `upgrade_check = false` opt-out is deliberately kept:
+    # a reinstall must not start asking an operator who said "never".
     if [[ "$SCOPE" == "global" ]]; then
         if [[ -d "$RENDER_ROOT" ]]; then
             run rm -rf "$RENDER_ROOT"
         fi
         if has_hivesmith_cron; then
-            if [[ "$DRY_RUN" == "1" ]]; then
-                say "DRY: remove hivesmith crontab entry"
-            else
-                (crontab -l | grep -v "$CRON_GREP") | crontab -
-            fi
+            remove_hivesmith_cron
         fi
-        if [[ -f "$CONFIG" ]] && grep -q '^[[:space:]]*auto_upgrade[[:space:]]*=' "$CONFIG"; then
-            write_config_auto_upgrade ""
+        if has_legacy_auto_upgrade_key; then
+            upsert_config_key auto_upgrade ""
+        fi
+        if [[ -d "$HOME/.hivesmith/upgrade-check" ]]; then
+            run rm -rf "$HOME/.hivesmith/upgrade-check"
         fi
         # Brain helper symlinks live under ~/.hivesmith/bin (global, absolute-path
         # referenced by skills). Remove the ones we own; drop the dir if empty.
         BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
         if [[ -d "$BRAIN_BIN_DIR" ]]; then
-            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden hs-metric; do
+            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden hs-metric hs-upgrade-check; do
                 link="$BRAIN_BIN_DIR/$link_name"
                 if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$HIVESMITH_DIR/"* ]]; then
                     run rm -f "$link"
@@ -1079,6 +1092,8 @@ if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
         # calls it, so it carries the same consent posture as brain-append.
         # The name is prefix-independent because the bin dir is.
         "scripts/metrics/emit.sh:hs-metric"
+        # Same posture: entry skills call it; nothing runs it on a schedule.
+        "scripts/upgrade/check.sh:hs-upgrade-check"
     )
     for pair in "${brain_links[@]}"; do
         src_rel="${pair%%:*}"
@@ -1097,40 +1112,18 @@ if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
     done
 fi
 
-# ---- Auto-upgrade --------------------------------------------------------
-# Global-only: the daily cron runs the global install. Local scope never
-# manages cron (and rejects --auto-upgrade at parse time).
+# ---- Legacy auto-upgrade migration ---------------------------------------
+# The opt-in daily cron and its auto_upgrade key were replaced by the
+# entry-skill upgrade check. Remove both wherever a global install/update runs.
 
-if [[ "$MODE" == "install" && "$SCOPE" == "global" ]]; then
-    if [[ "$AUTO_UPGRADE" == "1" ]]; then
-        if has_hivesmith_cron; then
-            :  # already present — nothing to do
-        else
-            say "Installing daily auto-upgrade cron..."
-            tmp="$(mktemp)"
-            crontab -l 2>/dev/null > "$tmp" || true
-            # Prefix is persisted in config so we don't need it on the cron line,
-            # but being explicit guards against config drift.
-            if [[ -n "$PREFIX" ]]; then
-                echo "17 4 * * * $HIVESMITH_DIR/install.sh --update --prefix \"$PREFIX\" >/dev/null 2>&1" >> "$tmp"
-            else
-                echo "17 4 * * * $HIVESMITH_DIR/install.sh --update >/dev/null 2>&1" >> "$tmp"
-            fi
-            run crontab "$tmp"
-            rm -f "$tmp"
-        fi
-    else
-        # Opted out (or default). Remove any existing cron entry.
-        if has_hivesmith_cron; then
-            say "Removing existing auto-upgrade cron (opted out)."
-            if [[ "$DRY_RUN" == "1" ]]; then
-                say "DRY: remove hivesmith crontab entry"
-            else
-                (crontab -l | grep -v "$CRON_GREP") | crontab -
-            fi
-        elif [[ -z "$AUTO_UPGRADE_CLI" && -z "$AUTO_UPGRADE_CONFIG" ]]; then
-            say "Auto-upgrade is opt-in. Pass --auto-upgrade to enable a daily cron."
-        fi
+if [[ ( "$MODE" == "install" || "$MODE" == "update" ) && "$SCOPE" == "global" ]]; then
+    if has_hivesmith_cron; then
+        say "Removing legacy auto-upgrade cron (replaced by the entry-skill upgrade check)."
+        remove_hivesmith_cron
+    fi
+    if has_legacy_auto_upgrade_key; then
+        say "Removing legacy auto_upgrade key from $CONFIG."
+        upsert_config_key auto_upgrade ""
     fi
 fi
 

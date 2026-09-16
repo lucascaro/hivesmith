@@ -9,7 +9,7 @@ Run after changing any of the three `SKILL.md` files or `skills/feature-plan/pla
 set -euo pipefail
 HOME_BAK="$HOME"; trap 'HOME="$HOME_BAK"' EXIT
 HOME=$(mktemp -d); mkdir -p "$HOME/.claude"
-./install.sh --prefix hs- --no-auto-upgrade
+./install.sh --prefix hs-
 
 R=.rendered/hs-/skills
 

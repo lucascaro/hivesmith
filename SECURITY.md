@@ -26,4 +26,4 @@ Out of scope:
 
 - Behavior of AI agents (Claude, Codex, etc.) themselves.
 - Content a user writes in their own project's files after scaffolding.
-- Third-party tools the installer invokes (`git`, `python3`, `crontab`).
+- Third-party tools the installer and its helpers invoke (`git`, `python3`, and `crontab`, which is read only to remove the legacy auto-upgrade entry).

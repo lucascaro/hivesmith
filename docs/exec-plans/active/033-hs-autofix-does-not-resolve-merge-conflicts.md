@@ -97,7 +97,7 @@ grep -q 'git merge --abort' skills/autofix/SKILL.md
 grep -q 'MERGE_HEAD' skills/autofix/SKILL.md
 
 # install still smoke-passes with the edited skill
-HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --no-auto-upgrade --dry-run
+HOME=$(mktemp -d) && mkdir -p "$HOME/.claude" && ./install.sh --prefix hs- --dry-run
 
 shellcheck install.sh
 awk '/^## \[Unreleased\]/{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md | grep -q .
