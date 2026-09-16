@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/079-add-hs-brainstorm-problem-space-front-door.md](../../product-specs/079-add-hs-brainstorm-problem-space-front-door.md)
 - **Issue:** #79
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #81
+- **Branch:** `feature/79-add-hs-brainstorm-problem-space-front-door`
 - **Phase:** —
 
 ## Summary
@@ -370,6 +370,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-15** — Spec written, triaged `enhancement` / `M` / `P2`, stage → RESEARCH.
 - **2026-09-16** — Research recorded; stage → PLAN.
 - **2026-09-16** — Plan approved via `plan-html` after two second-opinion rounds; stage → IMPLEMENT.
+- **2026-09-16** — Implemented; all `AGENTS.md` checks green; PR #81 opened; stage → REVIEW.
 
 ## Open questions
 

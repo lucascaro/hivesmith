@@ -4,7 +4,8 @@ title: Add /hs-brainstorm — a problem-space front door to the feature pipeline
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
+pr: 81
+stage: REVIEW
 ---
 
 # Add /hs-brainstorm — a problem-space front door to the feature pipeline
