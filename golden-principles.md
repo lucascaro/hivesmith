@@ -50,7 +50,9 @@ Keep this file short. Five to ten principles is the right size — more becomes 
 
 **Why:** the harness loads skills from frontmatter. Missing keys produce surprising runtime behavior — a skill silently model-invocable when it shouldn't be, no argument hint shown to the user, no tool restriction applied.
 
-**Detection:** parse YAML frontmatter from each `skills/*/SKILL.md`. Required everywhere: `name`, `description`. Required for pipeline skills (`skills/feature-*/SKILL.md`): `disable-model-invocation: true`. Required when the skill accepts arguments: `argument-hint`. Recommended (warn, don't block): `allowed-tools`.
+**Detection:** parse YAML frontmatter from each `skills/*/SKILL.md`. Required everywhere: `name`, `description`. Required for pipeline skills (`skills/feature-*/SKILL.md`): `disable-model-invocation: true` — **except for skill-to-skill callees** (see below). Required when the skill accepts arguments: `argument-hint`. Recommended (warn, don't block): `allowed-tools`.
+
+**Skill-to-skill callee exception.** `disable-model-invocation: true` blocks the *model* from invoking a skill; only a human typing the slash command can. A skill that another skill is designed to invoke therefore must **not** carry it, or the invocation is impossible and the caller dead-ends. Today that is `skills/feature-new/SKILL.md`, invoked by `/brainstorm` at its step 8 to hand over operator-gated spec sections. Such a skill carries a frontmatter comment naming its caller and the reason, so the omission reads as deliberate rather than forgotten. The tradeoff is real and accepted: the callee becomes model-invocable from every context, not only from its intended caller. Before adding a skill to this exception, check whether the data can cross a human-typed command instead — if it can, prefer that and keep the key.
 
 **Fix shape:** add the missing key with a value cribbed from the closest sibling skill of the same class. Do not invent semantics — if no sibling has the key, escalate to a human.
 

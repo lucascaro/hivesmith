@@ -1,0 +1,8 @@
+---
+issue: 79
+type: added
+bump: minor
+pr: 81
+---
+- **`/brainstorm` — a problem-space front door to the feature pipeline.** Nothing before `/feature-new` asked whether an idea was worth building, so the spec sections `/merge-gate` later validates a PR against — `## Success criteria` and `## Non-goals` — arrived thin or empty. The new skill interrogates the *problem* in at most three batched rounds (never the implementation: no file lists, no approaches, no test names — those stay owned by `/feature-research` and `/feature-plan`), drafts all four narrative spec sections, gates them with the operator, then hands them to `/feature-new`, which keeps its single implementation of the `[github] create_issues` policy. "Not worth building" and "that's four features, not one" are first-class outcomes. `/feature-loop` now refuses a description that names no concrete observable change and points here; that refusal approves nothing, so the loop still has exactly two approval gates.
+- **`/feature-new` is now invocable by another skill; golden principle #4 gains a skill-to-skill callee exception.** `disable-model-invocation: true` blocks the *model* from invoking a skill at all, so `/brainstorm`'s handoff could not reach `/feature-new` — the run dead-ended after the approval gate and the operator's gated spec sections were lost, with no fallback. The key is dropped from `/feature-new` alone, with a frontmatter comment naming its caller, and GP#4 now documents the exception, its tradeoff (the callee becomes model-invocable from every context) and the preference for a human-typed handoff where the data can cross one. Every other `feature-*` skill keeps the key, and both the smoke doc and the exec plan's verification assert that.

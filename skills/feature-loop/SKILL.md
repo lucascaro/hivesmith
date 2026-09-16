@@ -14,12 +14,12 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
 
 ## The two stops
 
-The loop pauses for the operator exactly twice on a normal run:
+The loop pauses for the operator at two approval gates on a normal run:
 
 1. **Plan approval** (Phase 4) — the only point where a wrong answer is expensive and the human is better informed than the loop. The draft carries a reviewer subagent's second opinion inline (or the recorded skip, in the fast lane — see **Lanes**).
 2. **Merge** (Phase 8) — irreversible and outward-facing. Never automatic, under any signal.
 
-Two non-gate interactions gather input without approving anything: the clarifying rounds in Phase 1Q and Phase 3Q. Both are skipped when resuming an existing feature. A third stop appears only for projects whose `[github] create_issues` policy is `ask` (see Phase 1).
+Several interactions gather input or refuse work **without approving anything**, and none of them is a third approval gate: the clarifying rounds in Phase 1Q and Phase 3Q (both skipped when resuming an existing feature), and the under-specified-description refusal at the top of Phase 1. One further prompt appears only for projects whose `[github] create_issues` policy is `ask` (see Phase 1).
 
 Everything else runs unattended: triage is auto-classified, research runs on its own, and push / PR / review-loop / merge-gate proceed without asking.
 
@@ -37,7 +37,7 @@ Triage (Phase 2) writes `complexity:` — that field selects the lane for the re
 - **`S` → fast lane.** Research runs in the main thread (targeted Glob/Grep, no Explore agent). The plan is short by definition. The second-opinion subagent is **skipped** unless the plan names ≥3 files to change or the change is user-visible. Plan approval is inline text (no `plan-html` server).
 - **`M`/`L` → full lane.** Everything runs as documented below: Explore agents, second opinion, HTML plan review.
 
-Both lanes produce identical artifacts — same plan sections, same `## Second opinion` section (recording the skip when it happens), same stage transitions, same metrics events. A fast-lane run is resumable and gate-identical to a full-lane run; the only difference is how much independent scrutiny the plan got before approval. The two stops are the same in both lanes.
+Both lanes produce identical artifacts — same plan sections, same `## Second opinion` section (recording the skip when it happens), same stage transitions, same metrics events. A fast-lane run is resumable and gate-identical to a full-lane run; the only difference is how much independent scrutiny the plan got before approval. The two approval gates are the same in both lanes.
 
 ## Non-final phases (`Phase: N of M`, `N < M`)
 
@@ -108,6 +108,14 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
    - `DONE` → check the spec's `pr:`. If it names a PR still in state `OPEN`, the gate passed but the merge has not happened yet (the merge stop was declined, or the run was interrupted after the gate) — resume at Phase 8's merge stop to finish it. Only report completed and stop when the PR is `MERGED`, or when there is no `pr:` at all.
 
 ## Phase 1: New issue (description input only)
+
+**Before step 4 — refuse an under-specified description.** (Stated outside the numbered list on purpose: the Phase step numbers are global across this skill and must not be renumbered.) Judge whether the description names a **concrete observable change** — something a stranger could later check shipped. "Add a `--json` flag to `hs-metric`" does; "make the loop better", "improve onboarding", "fix the plan thing" do not. When it does not, say so plainly and ask once, with AskUserQuestion:
+> "This description doesn't name a concrete observable change, so Phase 1 would write a spec with thin `## Success criteria` and empty `## Non-goals` — which `/merge-gate` later validates against."
+
+- *Brainstorm first* — interrogate the problem with `/brainstorm`, then come back with a spec number
+- *Proceed anyway* — I know what I want
+
+(Bulleted, not numbered: the step numbers in this file are global, and a `1.`/`2.` list here would read as steps 1 and 2.) On *brainstorm first*, stop and tell the operator to run `/brainstorm "<description>"`. On *proceed anyway*, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
 
 4. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `always`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
 5. Draft the issue from the description:
@@ -344,7 +352,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 
 ## Rules
 
-- **The loop pauses twice: plan approval and merge.** Everything else proceeds on its own. A third pause exists only under the `ask` issue-creation policy, and the two clarifying rounds gather input without approving anything.
+- **The loop pauses at two approval gates: plan approval and merge.** Everything else proceeds on its own. One further prompt exists under the `ask` issue-creation policy; the two clarifying rounds and the Phase 1 under-specified refusal gather input or stop the run without approving anything.
 - **The merge is never automatic.** No combination of signals authorizes `gh pr merge` without a human answering the merge stop.
 - **One feature at a time.** Do not process multiple features in a single run.
 - **Stalls get one bounded retry, then stop.** See **Stall handling**. Never advance a stage on weak signal, and never retry a retry.

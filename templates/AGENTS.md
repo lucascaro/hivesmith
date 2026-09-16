@@ -46,7 +46,7 @@ All of these must pass before a PR merges. `/feature-implement` runs them.
 
 This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills:
 
-- **Feature pipeline** — `/feature-next` → (`/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/review-loop`
+- **Feature pipeline** — `/feature-next` → (`/brainstorm` or `/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/review-loop`. `/brainstorm` is the pre-pipeline problem-space stage: it interrogates the problem behind a vague idea and drafts the spec's narrative sections before any issue exists.
 - **PR convergence** — `/review-loop` drives review-respond-iterate on any PR until findings clear or it escalates.
 - **Doc gardening** — `/doc-garden` scans `docs/` for staleness and opens fix-up PRs.
 - **Golden-principle GC** — `/gc-sweep` reads `golden-principles.md` and opens small refactor PRs for deviations.
