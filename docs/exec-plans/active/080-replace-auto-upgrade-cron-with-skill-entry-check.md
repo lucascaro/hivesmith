@@ -239,4 +239,7 @@ Plus `tests/manual/upgrade-check-smoke.md` walked once by hand in Claude Code, i
 
 ## PR convergence ledger
 
+- **2026-09-16 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: e1d9c9439dc67e928d752cc8f939b0ad1e0792d6b24eee34d610aad0aac11949; threads_open: 0; action: autofix+push; head_sha: 62e527e.
+- **2026-09-16 iter 2** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 62e527e.
+
 ## Gate verdict

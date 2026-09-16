@@ -4,7 +4,7 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 83
-stage: REVIEW
+stage: GATE
 ---
 
 # Replace the auto-upgrade cron with an upgrade check at hivesmith skill entry
