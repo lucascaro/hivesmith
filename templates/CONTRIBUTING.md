@@ -20,7 +20,7 @@ See `AGENTS.md` → "Build / Test / Lint Commands". All commands must pass befor
 This project uses the [hivesmith](https://github.com/lucascaro/hivesmith) feature pipeline. From inside your AI coding agent (Claude Code, Codex, Gemini, Copilot, Factory):
 
 1. `/feature-next` — see the current pipeline state and next recommended action
-2. `/feature-new <description>` or `/feature-ingest <issue#>` — add a new item
+2. `/brainstorm [idea]` (when the idea is still vague) or `/feature-new <description>` or `/feature-ingest <issue#>` — add a new item
 3. `/feature-triage [#]` → `/feature-research [#]` → `/feature-plan [#]` → `/feature-implement [#]`
 4. `/changelog-update` — scaffold a `.changesets/<NNN>-<slug>.md` for any user-visible change
 5. `/review-pr <#>` — deep parallel review before merge

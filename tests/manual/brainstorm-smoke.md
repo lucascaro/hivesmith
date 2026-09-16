@@ -107,6 +107,7 @@ After the run in §2:
 | `.hivesmith/config.toml` | Expected |
 |---|---|
 | absent, or `create_issues = "opt-out"` | recommended option is *create*; issue created; spec has `issue: <n>` |
+| absent/`opt-out`, but the operator picks option 2 (*skip GitHub*) | **no issue created**; spec has **no** `issue:` key. The operator's gate answer overrides the policy default — `/feature-new` must not re-resolve the choice from the policy after its Gate 1 is skipped |
 | `create_issues = "opt-in"` | recommended option is *skip*; no issue; spec has **no** `issue:` key; number allocated locally |
 | `create_issues = "ask"` | no option marked recommended |
 | `create_issues = "always"` | the gate still presents the sections; GitHub creation is not re-asked |

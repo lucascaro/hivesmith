@@ -40,8 +40,11 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 
 3. **[Gate 1 — confirm before creating issue]** When the caller states that the sections **and**
    the create-vs-skip choice were already gated (see step 2), skip this gate entirely — asking again
-   is the same question twice. The policy still decides create vs. local number; only the prompt is
-   skipped. When the policy is `always`, skip the prompt entirely: proceed straight to step 4 and create the GitHub issue. The operator can still cancel before Gate 2 (triage). Otherwise, present the draft title and body and use AskUserQuestion to ask "Create this GitHub issue?", where the *recommended* option depends on the policy:
+   is the same question twice. The caller passes its resolved choice (*create* or *local-only*), and
+   **that choice stands in for the operator's Gate 1 answer at step 4** — it is not re-derived from
+   the policy, which the caller already consulted to pick its recommendation. Under `ask` the
+   caller's gate is the only prompt there is, so discarding its answer would leave nothing deciding.
+   The policy supplies the default only when the caller passes no choice. When the policy is `always`, skip the prompt entirely: proceed straight to step 4 and create the GitHub issue. The operator can still cancel before Gate 2 (triage). Otherwise, present the draft title and body and use AskUserQuestion to ask "Create this GitHub issue?", where the *recommended* option depends on the policy:
    - `opt-out` → Recommended: "Create the issue as shown"
    - `opt-in` → Recommended: "Skip GitHub, write spec locally only"
    - `ask` → no recommendation
@@ -56,9 +59,9 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 
 ### Phase 2: Create the issue (or allocate a local number)
 
-4. **If the user chose "Create the issue":** run `gh issue create --title "..." --body "..."` and capture the issue number from the output. Continue with step 5.
+4. **If the user chose "Create the issue"** (or a caller passed *create* in place of Gate 1)**:** run `gh issue create --title "..." --body "..."` and capture the issue number from the output. Continue with step 5.
 
-   **If the user chose "Skip GitHub":** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Skip step 5 (do not run `gh issue view`); use the drafted title/body verbatim. Note in your local state that no GitHub issue exists for this feature.
+   **If the user chose "Skip GitHub"** (or a caller passed *local-only*)**:** allocate the next available number locally — scan all `<NNN>-*.md` files in `docs/product-specs/`, `docs/exec-plans/{active,completed}/` (and legacy `features/{active,completed}/`), take the max numeric prefix and add 1. Skip step 5 (do not run `gh issue view`); use the drafted title/body verbatim. Note in your local state that no GitHub issue exists for this feature.
 
 ### Phase 3: Ingest into feature pipeline
 
@@ -124,7 +127,7 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 ## Rules
 - Always show the proposed issue contents at Gate 1; whether GitHub creation is the recommended default is governed by `.hivesmith/config.toml`'s `[github] create_issues` value (`opt-out` / `always` / `opt-in` / `ask`; default `opt-out` when missing). When the value is `always`, Gate 1 is skipped entirely and the issue is auto-created.
 - Always show triage classification and get user confirmation before writing changes. This gate runs even for a caller that already gated its own content — triage is a classification the operator should see.
-- **Caller-supplied spec sections are written verbatim.** When another skill supplies drafted `## Problem` / `## Desired behavior` / `## Success criteria` / `## Non-goals` and states they were already gated, use them at steps 2 and 9, skip Gate 1, and honour the caller's handoff line at step 18. Never re-draft over them.
+- **Caller-supplied spec sections are written verbatim.** When another skill supplies drafted `## Problem` / `## Desired behavior` / `## Success criteria` / `## Non-goals` and states they were already gated, use them at steps 2 and 9, skip Gate 1, take the caller's create-vs-skip choice as the Gate 1 answer at step 4, and honour the caller's handoff line at step 18. Never re-draft over them, and never override the caller's GitHub choice with the policy default.
 - Single feature at a time.
 - Follow existing filename conventions (3-digit zero-pad, slugified title, max 50 chars).
 - If no argument is provided, ask the user to describe the feature before proceeding.
