@@ -17,6 +17,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
+| #78 | /pr-queue — triage, explain, approve, land an inbound PR queue | #80 | 2026-09-16 | [078-pr-queue-inbound-triage-and-landing](078-pr-queue-inbound-triage-and-landing.md) |
 | #71 | /hs-merge-gate over-advances a multi-phase spec to DONE on its first phase's gate | #72 | 2026-09-06 | [071-hs-merge-gate-over-advances-a-multi-phase-spec](071-hs-merge-gate-over-advances-a-multi-phase-spec.md) |
 | #74 | Check the hive brain in feature-implement and the other feature skills that skip it | #75 | 2026-09-06 | [074-check-hive-brain-in-feature-skills](074-check-hive-brain-in-feature-skills.md) |
 | #69 | Plan approval gate + deterministic pipeline metrics | #70 | 2026-09-05 | [069-plan-approval-gate-and-pipeline-metrics](069-plan-approval-gate-and-pipeline-metrics.md) |
