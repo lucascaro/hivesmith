@@ -4,12 +4,13 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 83
-stage: GATE
+shipped: 2026-09-16
+stage: DONE
 ---
 
 # Replace the auto-upgrade cron with an upgrade check at hivesmith skill entry
 
-- **Exec plan:** [docs/exec-plans/active/080-replace-auto-upgrade-cron-with-skill-entry-check.md](../exec-plans/active/080-replace-auto-upgrade-cron-with-skill-entry-check.md) (or completed/)
+- **Exec plan:** [docs/exec-plans/completed/080-replace-auto-upgrade-cron-with-skill-entry-check.md](../exec-plans/completed/080-replace-auto-upgrade-cron-with-skill-entry-check.md) (or completed/)
 
 ## Problem
 

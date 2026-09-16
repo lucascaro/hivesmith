@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/080-replace-auto-upgrade-cron-with-skill-entry-check.md](../../product-specs/080-replace-auto-upgrade-cron-with-skill-entry-check.md)
 - **Issue:** — (local-only, no GitHub issue)
-- **Status:** active
+- **Status:** completed
 - **PR:** #83
 - **Branch:** feature/080-replace-auto-upgrade-cron-with-skill-entry-check
 - **Phase:** —
@@ -227,6 +227,8 @@ Plus `tests/manual/upgrade-check-smoke.md` walked once by hand in Claude Code, i
 - **2026-09-16** — Spec created via /brainstorm (local-only), revised to skill-entry mechanism; research complete.
 - **2026-09-16** — Plan approved (2 second-opinion rounds, 1 HTML revise round, approved in chat after page timeout).
 - **2026-09-16** — Implemented on `feature/080-replace-auto-upgrade-cron-with-skill-entry-check`: helper (24 cases), installer suite (9 cases), preamble sync, docs/CI. Mutation-checked both suites (re-exec, lock, BatchMode, backgrounding, snooze clearing, opt-out write, cron `|| true`, main-wrapper, upstream guard). All AGENTS.md checks pass locally; manual harness smoke (`tests/manual/upgrade-check-smoke.md`) not yet walked.
+- **2026-09-16** — Gate NEEDS_FOLLOWUP; operator chose to advance with follow-up tracked as local spec 081 (manual harness smoke + 2 MINOR review findings).
+- **2026-09-16** — Gate NEEDS_FOLLOWUP (original entry); live-harness check of the entry-skill prompt and its skip rules (manual smoke not yet walked).
 
 ## Open questions
 
@@ -243,3 +245,9 @@ Plus `tests/manual/upgrade-check-smoke.md` walked once by hand in Claude Code, i
 - **2026-09-16 iter 2** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: 62e527e.
 
 ## Gate verdict
+
+- **2026-09-16** — verdict: NEEDS_FOLLOWUP; phase: —; checks: 10 passed / 0 failed / 2 followups; followups: spec 081 (local); one-line: code, tests (25+9+4 cases), docs and non-goals all pass; the two model-behavior criteria (prompt before work; callees/subagents/unattended/print mode never prompt) are implemented as preamble instructions but unverified in a live harness until tests/manual/upgrade-check-smoke.md is walked.
+  - 2026-09-16 dimensions:
+    - acceptance — NEEDS_FOLLOWUP — 10/12 criteria proven by automated suites; criteria 1 and 3 verified at instruction+mechanism level only (no harness signal to test mechanically)
+    - non-goals — PASS — no templates/init changes, no hooks, no unattended mutation (background fetch updates remote-tracking refs only), no hot reload
+    - doc accuracy — PASS — README/AGENTS/CONTRIBUTING/SECURITY/--help/changeset match code; GP6 lists mirrored; remaining old-flag mentions intentional
