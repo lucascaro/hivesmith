@@ -5,7 +5,7 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 80
-stage: REVIEW
+stage: GATE
 ---
 
 # /pr-queue — triage, explain, approve, land an inbound PR queue

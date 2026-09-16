@@ -97,6 +97,16 @@ fix and lets the operator open it.
 - Golden principle 5's detection grep matches the `~/.hivesmith/bin/hs-metric` binary path, which
   the principle's own text exempts. Every skill that emits metrics trips it. Worth either amending
   the principle or narrowing the grep; out of scope here.
+- **`hold_reason` and `escalate_reason` are schema-free text, and slugging them is prompt discipline
+  rather than enforcement.** `emit.sh` enum-validates every other `pr_triaged` / `pr_landed` field,
+  but these two accept anything; `report.py` prints `hold_reason` raw to the maintainer's terminal,
+  so a forged report line or an ANSI escape sourced from a contributor's PR body is reachable in
+  principle. Reviewed and **deliberately not fixed** (2026-09-16): both this skill and `review-loop`
+  instruct slugging at the call site, every value ever recorded complies, and enforcing the regex
+  would tighten a contract shared with `review-loop` for a path with no observed failure. The
+  argument against that decision is that a schema is a contract and compliance was inferred from one
+  machine's history, not proven across every call site. Revisit if a call site is ever found
+  emitting raw text.
 - This skill ships with no graded fixture harness of the kind `skills/review-pr/fixtures/` provides.
   Its mechanical parts (schema, frontmatter, routing predicates) are covered by the exec plan's
   verification block; its judgment is not.

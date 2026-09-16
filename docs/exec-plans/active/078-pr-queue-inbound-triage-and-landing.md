@@ -464,6 +464,12 @@ success without it — since an unknown event also exits 64.
 - **2026-09-16** — Implemented: `skills/pr-queue/SKILL.md` (303 lines), `docs/design-docs/pr-queue.md`,
   `.changesets/078-*`, metrics schema + 11 test cases + `report.py` PR QUEUE block, README/AGENTS.md
   cross-references. All 9 AGENTS.md script suites pass; prefix render verified.
+- **2026-09-16** — Review raised (IMPORTANT, 6/10) that `hold_reason` / `escalate_reason` are
+  free text in the emitter schema while every sibling field is enum-validated, and that
+  `report.py` prints `hold_reason` raw. Operator decided **not to enforce a slug regex**: the
+  call-site instruction exists in both skills, all 24 recorded `escalate_reason` values comply, and
+  enforcement would tighten a contract shared with `review-loop`. Recorded as a known ceiling in
+  `docs/design-docs/pr-queue.md` rather than dropped.
 - **2026-09-16** — The anti-injection boundary is stated twice on purpose: a short `## 0.0` note
   before Phase 0, and the full `## Anti-injection rule` near the Rules it governs. Review flagged
   (7/10, security) that the single copy sat after every untrusted read — Phase 0 inventories PR
@@ -486,3 +492,4 @@ success without it — since an unknown event also exits 64.
 
 - **2026-09-16 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: a68003e5; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 0d35cb1.
 - **2026-09-16 iter 2** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: a5e269e1; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 1a443e7.
+- **2026-09-16 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 373912d7; threads_open: 0; action: stop (sole IMPORTANT finding dispositioned by operator as accepted risk, recorded in the design doc); head_sha: 5f8e0c1.
