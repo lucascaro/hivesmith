@@ -139,6 +139,52 @@ before="$(lines)"
 # second-opinion vocabulary just because the field has the same name.
 reject test_enums_are_per_event 64 --event review_iteration --field feature=1 --field pr=2 --field iter=1 --field verdict=approve --field findings_count=0 --field threads_open=0 --field action=stop
 
+# --- PR queue events --------------------------------------------------------
+# /pr-queue triages contributor PRs, which have no spec behind them. Its two
+# events are keyed by `pr` and carry no `feature` — see the SCHEMA comment in
+# emit.sh. Feature 078.
+accept test_pr_triaged_minimal_is_accepted \
+  --event pr_triaged --field pr=412 --field premise=SPECULATIVE \
+  --field recommendation=HOLD_FOR_AUTHOR
+accept test_pr_triaged_full_is_accepted \
+  --event pr_triaged --field pr=412 --field premise=SPECULATIVE \
+  --field recommendation=HOLD_FOR_AUTHOR --field real_lines=50 \
+  --field reported_lines=7631 --field mechanical=crlf-conversion \
+  --field ci_class=MECHANICAL --field base_behind=4 --field is_fork=true
+# A feature, docs or dependency PR has no bug to reproduce. Without this value
+# the "SPECULATIVE defaults to hold" rule would hold every non-bug PR.
+accept test_pr_triaged_accepts_not_a_bug \
+  --event pr_triaged --field pr=414 --field premise=NOT_A_BUG \
+  --field recommendation=MERGE
+before="$(lines)"
+
+# The load-bearing case: `feature` must be rejected outright. Queue throughput
+# and feature throughput share a stream but must never share a denominator, and
+# once contributor PRs are counted as features nothing downstream can separate
+# them again.
+reject test_pr_triaged_rejects_feature_field 64 --event pr_triaged --field pr=1 --field premise=PLAUSIBLE --field recommendation=MERGE --field feature=078
+reject test_pr_triaged_rejects_unknown_premise 64 --event pr_triaged --field pr=1 --field premise=MAYBE --field recommendation=MERGE
+reject test_pr_triaged_rejects_unknown_ci_class 64 --event pr_triaged --field pr=1 --field premise=PLAUSIBLE --field recommendation=MERGE --field ci_class=RED
+
+accept test_pr_landed_minimal_is_accepted \
+  --event pr_landed --field pr=405 --field disposition=merged --field sha=f867293
+accept test_pr_landed_accepts_hold_reason \
+  --event pr_landed --field pr=413 --field disposition=held \
+  --field hold_reason=speculative-premise
+# The merge-queue path: gh pr merge enqueues rather than merges, so there is no
+# SHA to record. `sha` is optional precisely so this call site need not invent one.
+accept test_pr_landed_accepts_enqueued \
+  --event pr_landed --field pr=406 --field disposition=enqueued
+# The stacked-cascade path: a held or closed base PR removes its dependents from
+# the run without any outward-facing write.
+accept test_pr_landed_accepts_skipped \
+  --event pr_landed --field pr=413 --field disposition=skipped \
+  --field hold_reason=base-pr-held
+before="$(lines)"
+
+reject test_pr_landed_rejects_unknown_disposition 64 --event pr_landed --field pr=1 --field disposition=landed
+reject test_pr_landed_rejects_feature_field 64 --event pr_landed --field pr=1 --field disposition=merged --field feature=078
+
 # --- backfill marking -------------------------------------------------------
 out="$("$TOOL" --event gate_verdict --field feature=011 --field verdict=PASS \
         --field acceptance=PASS --field non_goals=PASS --field doc_accuracy=PASS \

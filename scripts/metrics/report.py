@@ -23,7 +23,7 @@ because a number that travels without its caveat eventually arrives without it.
 Backfilled rows are counted separately and never enter a duration statistic --
 the markdown they came from has dates, not clocks.
 
-RESULT: PASS features=<n> live=<n> backfilled=<n>
+RESULT: PASS features=<n> live=<n> backfilled=<n> [queue=<n>]
 """
 from __future__ import annotations
 
@@ -102,8 +102,15 @@ def main() -> int:
         by[e.get("event", "?")].append(e)
     features = {e.get("feature") for e in ev if e.get("feature")}
 
+    # `live` counts feature-pipeline rows only. PR-queue events describe
+    # contributor PRs, not this project's features, and printing them inside a
+    # count that sits next to `features=` reads as feature activity.
+    queue_events = by["pr_triaged"] + by["pr_landed"]
+    live_feature = [e for e in live if e.get("event") not in ("pr_triaged", "pr_landed")]
+    queue_note = f"  queue={len(queue_events)}" if queue_events else ""
     print(f"PIPELINE   {args.since or 'all time'} → now      "
-          f"features={len(features)}  live={len(live)}  backfilled={len(back)}")
+          f"features={len(features)}  live={len(live_feature)}  "
+          f"backfilled={len(back)}{queue_note}")
     if not ev:
         print(f"  no events at {args.events}")
         print("  This is the local tier. It is written by hs-metric during pipeline runs")
@@ -129,6 +136,37 @@ def main() -> int:
             print(f" {stage:<18} {moves[stage]:>5}   {rel or ''}")
         for retry, n in stalls.most_common():
             print(f"   stall: {retry} × {n}")
+
+    # ---- PR queue -----------------------------------------------------------
+    # Keyed on `pr`, never on `feature`. Nothing in this block touches
+    # `features`, `fnum` or `iters` — that is what keeps contributor PRs out of
+    # feature throughput. The header string is load-bearing: feature 078's
+    # verification greps for it.
+    if by["pr_triaged"] or by["pr_landed"]:
+        print()
+        print(" PR QUEUE")
+        premises = Counter(e.get("premise", "?") for e in by["pr_triaged"])
+        recs = Counter(e.get("recommendation", "?") for e in by["pr_triaged"])
+        dispositions = Counter(e.get("disposition", "?") for e in by["pr_landed"])
+        if premises:
+            print("   premise:      " +
+                  ", ".join(f"{k} × {n}" for k, n in premises.most_common()))
+        if recs:
+            print("   recommended:  " +
+                  ", ".join(f"{k} × {n}" for k, n in recs.most_common()))
+        if dispositions:
+            print("   landed as:    " +
+                  ", ".join(f"{k} × {n}" for k, n in dispositions.most_common()))
+        holds = Counter(e["hold_reason"] for e in by["pr_landed"] if e.get("hold_reason"))
+        for reason, n in holds.most_common():
+            print(f"   hold: {reason} × {n}")
+        # A PR triaged but never landed is an unfinished queue run, which is the
+        # question this pair of events exists to answer.
+        triaged = {e.get("pr") for e in by["pr_triaged"] if e.get("pr") is not None}
+        landed = {e.get("pr") for e in by["pr_landed"] if e.get("pr") is not None}
+        if triaged - landed:
+            open_prs = ", ".join(f"#{n}" for n in sorted(triaged - landed))
+            print(f"   triaged, not landed: {open_prs}")
 
     # ---- trends -------------------------------------------------------------
     # Ordered by feature number, not by row order. Backfilled rows all carry
@@ -216,14 +254,17 @@ def main() -> int:
 
     if args.json:
         args.json.write_text(json.dumps(
-            {"features": sorted(x for x in features if x), "live": len(live),
+            {"features": sorted(x for x in features if x),
+             "live": len(live_feature), "queue": len(queue_events),
              "backfilled": len(back),
              "counts": {k: len(v) for k, v in by.items()}}, indent=2))
 
     if r.returncode != 0:
         print("\nRESULT: FAIL reason=regressions-failed")
         return 1
-    print(f"\nRESULT: PASS features={len(features)} live={len(live)} backfilled={len(back)}")
+    queue_suffix = f" queue={len(queue_events)}" if queue_events else ""
+    print(f"\nRESULT: PASS features={len(features)} live={len(live_feature)} "
+          f"backfilled={len(back)}{queue_suffix}")
     return 0
 
 

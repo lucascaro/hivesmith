@@ -15,6 +15,7 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 - **PR convergence** — `/review-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
 - **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs; `/code-garden` runs a daily one-category code-hygiene sweep and opens at most one small PR per run.
 - **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-new` / `feature-triage` / `feature-research` / `feature-plan` / `feature-implement` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `review-loop`. Each read is best-effort and skipped when the same entries are already in context from an earlier step in the run. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
+- **An inbound PR queue** — `/pr-queue` is the maintainer-side counterpart to the feature pipeline. It orders the open PRs by dependency and readiness, triages each one read-only (premise first: is the bug real and can it even occur here), explains it in terms of what a user would notice, and gates every action on your decision. A fork or a protected branch is reviewed read-only; only a branch you can push to may go through `/review-loop`.
 - **A size-adaptive PR review** — `/review-pr` reviews the diff against four dimensions (correctness, safety, security, performance/UX/consistency) and then investigates what the diff reaches outside itself. It runs as one linear pass on an ordinary PR and splits the diff review across parallel agents only on a large one, where a single reader measurably degrades.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
@@ -56,6 +57,7 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 
 | Skill | What it does |
 |---|---|
+| `/pr-queue` | Triage, explain, approve and land a queue of inbound PRs — premise check first, one decision per PR |
 | `/review-pr <#>` | Deep PR review — linear two-pass, fans out only on large diffs (used by `/review-loop`) |
 | `/autofix [#]` | Apply safe fixes from review findings, CI failures, or PR comments (used by `/review-loop`) |
 | `/changelog-update` | Add an `[Unreleased]` entry to `CHANGELOG.md` |
@@ -100,7 +102,7 @@ This symlinks each skill into every detected agent's skills directory (`~/.claud
 
 > **pi note.** pi's project skill directory is `./.pi/skills` — not `./.pi/agent/skills` — so a `--local` install targets that path (declared as `local_skills_dir` in `agents.json`). pi only loads **project** skills once you have trusted the project. If you already point pi's `settings.json` `skills` array at another harness's directory (e.g. `~/.claude/skills`), drop that entry after installing, or the same hivesmith skills will be discovered from two roots.
 
-It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/merge-gate` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` for its two fan-out paths — splitting the diff review on a large PR, and escalating a single oversized out-of-diff investigation — and reviews everything else inline. Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
+It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/merge-gate` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` for its two fan-out paths — splitting the diff review on a large PR, and escalating a single oversized out-of-diff investigation — and reviews everything else inline; `/pr-queue` dispatches one `hs-reviewer` per PR for its read-only triage. Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
 
 ### Namespaced install (`--prefix`)
 

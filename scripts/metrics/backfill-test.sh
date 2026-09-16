@@ -189,6 +189,51 @@ check test_second_opinion_block_appears     "SECOND OPINION"          "$so_out"
 check test_second_opinion_disclaimer_inline "PREVENTED anything"      "$so_out"
 check test_second_opinion_reports_yield     "must_fix 4 raised, 3 applied" "$so_out"
 
+# ---- report.py PR queue block ---------------------------------------------
+# /pr-queue's events are keyed by `pr` and carry NO `feature`. That absence is
+# the isolation mechanism (report.py builds its feature denominator from rows
+# that have a feature), so the gate has to assert both halves: the block
+# renders, AND the queue rows do not inflate feature throughput. Feature 078.
+#
+# This block exists because the first defect found in that PR was in exactly
+# the part of report.py nothing re-checked: stdout counted queue rows apart
+# from `live=` while the --json payload still folded them in.
+PRQ="$HIVESMITH_HOME/prqueue.jsonl"
+: > "$PRQ"
+for spec in "412 SPECULATIVE HOLD_FOR_AUTHOR" "405 REPRODUCED MERGE"; do
+  read -r pr premise rec <<< "$spec"
+  "$EMIT" --event pr_triaged --field "pr=$pr" --field "premise=$premise" \
+    --field "recommendation=$rec" --dry-run >> "$PRQ" 2>/dev/null
+done
+"$EMIT" --event pr_landed --field pr=405 --field disposition=merged \
+  --field sha=f867293 --dry-run >> "$PRQ" 2>/dev/null
+"$EMIT" --event pr_landed --field pr=413 --field disposition=skipped \
+  --field hold_reason=base-pr-held --dry-run >> "$PRQ" 2>/dev/null
+
+prq_out="$(python3 "$REPORT" --repo . --events "$PRQ" 2>&1)"
+check   test_pr_queue_block_renders        "PR QUEUE"              "$prq_out"
+check   test_pr_queue_reports_premise      "SPECULATIVE"           "$prq_out"
+check   test_pr_queue_reports_disposition  "merged"                "$prq_out"
+check   test_pr_queue_reports_hold_reason  "base-pr-held"          "$prq_out"
+# #412 was triaged and never landed; #405 was both. Only #412 is outstanding.
+check   test_pr_queue_flags_not_landed     "triaged, not landed: #412" "$prq_out"
+# The load-bearing assertion: four queue rows, zero features.
+check   test_pr_queue_does_not_inflate_features "features=0"       "$prq_out"
+check   test_pr_queue_counted_separately    "queue=4"              "$prq_out"
+
+# A stream with no queue rows must render no PR QUEUE block at all — the
+# section is guarded, not unconditional.
+nocheck test_pr_queue_absent_without_events "PR QUEUE"             "$out"
+
+# stdout and --json must agree on what `live` means. They disagreed once: the
+# stdout counter was narrowed to exclude queue rows and the JSON payload was
+# not, so one field name meant two things depending on output channel.
+PRQ_JSON="$HIVESMITH_HOME/prqueue.json"
+python3 "$REPORT" --repo . --events "$PRQ" --json "$PRQ_JSON" >/dev/null 2>&1
+json_out="$(cat "$PRQ_JSON" 2>/dev/null)"
+check   test_pr_queue_json_live_excludes_queue  '"live": 0'        "$json_out"
+check   test_pr_queue_json_reports_queue        '"queue": 4'       "$json_out"
+
 # ---- report.py stage/stall attribution ------------------------------------
 # The bug this guards: attributing a stall by matching the stage name against
 # the retry slug counted a PLAN stall ("plan-revise-rerun") under REVIEW too,
