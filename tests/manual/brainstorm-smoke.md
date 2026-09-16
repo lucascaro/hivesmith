@@ -32,6 +32,16 @@ has   '/hs-feature-loop'               "$R/hs-brainstorm/SKILL.md"
 lacks '(^|[^-])/feature-new\b'         "$R/hs-brainstorm/SKILL.md"
 lacks '(^|[^-])/feature-loop\b'        "$R/hs-brainstorm/SKILL.md"
 
+# The callee must be INVOCABLE. /brainstorm asserts disable-model-invocation on
+# ITSELF (above), but the bug that shipped in review iter 4 was the opposite: the
+# key on /feature-new made step 8's handoff impossible, with no fallback, silently.
+lacks '^disable-model-invocation'      "$R/hs-feature-new/SKILL.md"
+has   'skill-to-skill callee'          "$R/hs-feature-new/SKILL.md"
+# ...and every OTHER feature-* skill must still carry it (GP#4's rule, not its exception)
+for f in triage research plan implement ingest next loop; do
+  has '^disable-model-invocation: true' "$R/hs-feature-$f/SKILL.md"
+done
+
 # the pipeline points back at it
 has '/hs-brainstorm'                   "$R/hs-feature-loop/SKILL.md"
 has '/hs-brainstorm'                   "$R/hs-feature-next/SKILL.md"

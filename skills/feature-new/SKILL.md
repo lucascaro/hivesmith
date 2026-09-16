@@ -1,7 +1,9 @@
 ---
 name: feature-new
 description: Create a GitHub issue and run it through ingest + triage
-disable-model-invocation: true
+# Deliberately NOT disable-model-invocation. This skill is a skill-to-skill callee:
+# /brainstorm hands it operator-gated spec sections (see step 2), and the key would
+# make that invocation impossible. Golden principle #4 carves this case out.
 argument-hint: "[description]"
 allowed-tools: Read Glob Grep Edit Write Bash
 ---

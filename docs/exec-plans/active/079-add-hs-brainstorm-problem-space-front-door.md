@@ -261,6 +261,17 @@ Run under **bash**, not fish — `diff <(…) <(…)` is a bash process substitu
 ! grep -rn '/hs-[a-z]' skills/feature-new/SKILL.md skills/feature-loop/SKILL.md \
       skills/feature-next/SKILL.md | grep -v 'hs-metric'
 
+# 2a. The callee must be INVOCABLE — the iter-4 BLOCKING regression guard.
+#     /feature-new is GP#4's skill-to-skill callee exception; restoring the key
+#     breaks /brainstorm step 8 silently and loses the operator's gated sections.
+! grep -q '^disable-model-invocation' skills/feature-new/SKILL.md
+grep -q 'skill-to-skill callee' skills/feature-new/SKILL.md
+grep -q 'Skill-to-skill callee exception' golden-principles.md
+# every OTHER feature-* skill still carries it (GP#4's rule, not its exception)
+for f in triage research plan implement ingest next loop; do
+  grep -q '^disable-model-invocation: true' "skills/feature-$f/SKILL.md" || { echo "FAIL: $f"; exit 1; }
+done
+
 # 2. Frontmatter (golden principle #4) — mechanical, not eyeball
 grep -q '^name: brainstorm$'                  skills/brainstorm/SKILL.md
 grep -q '^description: '                      skills/brainstorm/SKILL.md
@@ -350,6 +361,15 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 
 ## Decision log
 
+- **2026-09-16** — `/feature-new` drops `disable-model-invocation: true`, and golden principle #4
+  gains a **skill-to-skill callee** exception to permit it. Why: the key blocks *model* invocation
+  entirely, so `/brainstorm` step 8 could not reach `/feature-new` at all — the handoff dead-ended
+  after the approval gate with no fallback, losing the operator's four gated sections. Operator
+  decision, made against a stated tradeoff: `/feature-new` is now model-invocable from every
+  context, not only from `/brainstorm`. Rejected alternatives: a handoff file plus a human-typed
+  `/feature-new --from <path>` (keeps the key, costs one operator action); inlining the spec write
+  in `/brainstorm` (a third copy of the `[github] create_issues` policy, forbidden by this skill's
+  own Rules). Raised by review iter 4 as BLOCKING; autofix correctly refused it as RISKY.
 - **2026-09-16** — The `/feature-new` handoff is a direct in-thread slash invocation, not a
   sub-agent. Why: `/feature-new`'s triage gate needs `AskUserQuestion` and a sub-agent cannot prompt
   the operator. Precedent: `/feature-loop` invokes `/review-loop` (`:295`) and `/merge-gate` (`:302`)
@@ -404,18 +424,14 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 
 ## Open questions
 
-- **BLOCKING, awaiting an architectural decision (review iter 4).** Step 8's handoff invokes
-  `/feature-new`, which carries `disable-model-invocation: true` — so the model cannot invoke it;
-  only a human typing the slash command can. The precedent cited in the iter-1 fix does not
-  transfer: `/feature-loop` invokes `/review-loop`, `/merge-gate` and `/changelog-update`, and
-  **none** of those three carries the key, while **all twelve** `feature-*` skills do. With no
-  `Write`/`Edit` in `/brainstorm`'s `allowed-tools`, a failed invocation has no fallback — the run
-  dead-ends after the approval gate and the operator's four gated sections are lost, which is the
-  exact loss the contract exists to prevent. Every candidate fix collides with a decision already
-  made (golden principle #4 mandates the key on `feature-*`; the single-policy-implementation rule
-  forbids `/brainstorm` writing the spec itself; a printed suggestion cannot carry the gated
-  sections across a user-typed command). Escalated to the operator; the loop stopped at iteration 4
-  of 5 without a brain entry, per the review-loop rules.
+- **RESOLVED (review iter 4).** Step 8's handoff could not reach `/feature-new`, which carried
+  `disable-model-invocation: true` — the key blocks *model* invocation entirely, and `/brainstorm`
+  has no `Write` fallback, so the run dead-ended after the approval gate and lost the operator's
+  four gated sections. Resolved by operator decision: the key is dropped from `/feature-new` and
+  golden principle #4 gains a skill-to-skill callee exception documenting the case, the tradeoff,
+  and the preference for a human-typed handoff where one is possible. Guarded by a smoke §1
+  assertion and Verification #2a, which also assert that every *other* `feature-*` skill still
+  carries the key.
 - **Incidental, unrelated to this PR:** `hs-metric` rejects an `autofix_applied` emission from a run
   that applied zero fixes — `field checks="SKIP" not in {FAIL, PASS}`. The schema has no value for
   "no checks ran". Worth its own issue; the worker correctly declined to emit a false `PASS`.
@@ -449,6 +465,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-16 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 12999fb2c8633c0cf304dc06a6fff740f32c72a91c2c862b2a7d575cb1c660f2; threads_open: 0; action: autofix+push; head_sha: 514ef9c.
 - **2026-09-16 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0444abe8c7853973676b77bc37aef9a1a0d1cd05427be68a2efefcf09441ffd1; threads_open: 0; action: autofix+push; head_sha: 368965a.
 - **2026-09-16 iter 4** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b83bb2b46d82a39ad93fa42b2b00e186cb5d4d1e2a9ee160579171c9fcabdf62; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 25524e6.
+- **2026-09-16 iter 4 (resolved)** — operator chose to drop `disable-model-invocation` from `/feature-new` and amend golden principle #4 with a skill-to-skill callee exception. Fix pushed; loop re-entered at iteration 5.
 
 ## Gate verdict
 
