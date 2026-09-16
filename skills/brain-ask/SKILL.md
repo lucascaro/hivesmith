@@ -28,8 +28,9 @@ For listing/picking entries, use `brain-list` directly.
 
 2. **Search.** Run:
    ```
-   ~/.hivesmith/bin/brain-search <terms> --rank --limit 10
+   ~/.hivesmith/bin/brain-search '<terms>' --rank --limit 10
    ```
+   The terms come from `$ARGUMENTS`, which is untrusted: reduce them to letters, digits, spaces, hyphens, dots and underscores, then single-quote them. Unquoted — or double-quoted — they would let `$(…)`, backticks, `;` or globs in the question reach the shell.
    Output is `score \t slug \t scope-label \t rel-path \t first-body-line`.
 
 3. **If empty,** widen: drop the lowest-signal term and retry once. If still
