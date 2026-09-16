@@ -5,12 +5,13 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 80
-stage: GATE
+shipped: 2026-09-16
+stage: DONE
 ---
 
 # /pr-queue — triage, explain, approve, land an inbound PR queue
 
-- **Exec plan:** [docs/exec-plans/active/078-pr-queue-inbound-triage-and-landing.md](../exec-plans/active/078-pr-queue-inbound-triage-and-landing.md)
+- **Exec plan:** [docs/exec-plans/completed/078-pr-queue-inbound-triage-and-landing.md](../exec-plans/completed/078-pr-queue-inbound-triage-and-landing.md)
 
 ## Problem
 
