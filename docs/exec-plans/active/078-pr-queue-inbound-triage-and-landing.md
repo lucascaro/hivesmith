@@ -464,6 +464,12 @@ success without it — since an unknown event also exits 64.
 - **2026-09-16** — Implemented: `skills/pr-queue/SKILL.md` (303 lines), `docs/design-docs/pr-queue.md`,
   `.changesets/078-*`, metrics schema + 11 test cases + `report.py` PR QUEUE block, README/AGENTS.md
   cross-references. All 9 AGENTS.md script suites pass; prefix render verified.
+- **2026-09-16** — The anti-injection boundary is stated twice on purpose: a short `## 0.0` note
+  before Phase 0, and the full `## Anti-injection rule` near the Rules it governs. Review flagged
+  (7/10, security) that the single copy sat after every untrusted read — Phase 0 inventories PR
+  titles, Phase 2 digests worker envelopes, Phase 4 merges. `review-pr` sets its boundary in §0.1
+  before §1 fetches anything. Duplicating rather than moving keeps the operative text next to the
+  Rules section that qualifies it. Operator's call.
 - **2026-09-16** — Reversed the plan's "report.py has no CI coverage by design" decision. Its
   premise was false: I read only `ci.yml:198-213` (the `metrics` job, which genuinely never runs
   `report.py`) and generalized, missing that `backfill-test.sh` tests `report.py` and runs in the
@@ -479,3 +485,4 @@ success without it — since an unknown event also exits 64.
 <pending>
 
 - **2026-09-16 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: a68003e5; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 0d35cb1.
+- **2026-09-16 iter 2** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: a5e269e1; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 1a443e7.
