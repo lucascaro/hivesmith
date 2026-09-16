@@ -83,8 +83,11 @@ PR-keyed events so queue throughput is measurable without polluting feature thro
 - **No wall-clock budgets exist anywhere in this toolbox.** Bounding is expressed as iteration caps,
   size thresholds, and a propagated `escalate_reason`. The source spec's "hard time budget" language
   has no precedent to build on and must be re-expressed in those terms.
-- `report.py` has **no CI coverage** (`ci.yml:198-213` runs only `regressions.py` + harvest), so
-  `emit-test.sh` is the only automated gate on the metrics change.
+- ~~`report.py` has **no CI coverage**~~ — **wrong, corrected during review.** The `metrics` job
+  (`ci.yml:198-213`) indeed runs only `regressions.py` + harvest, which is where this claim came
+  from, but `scripts/metrics/backfill-test.sh` exercises `report.py` directly (`:24`, `:176`) and
+  runs in the `script-suites` job (`ci.yml:191`). `report.py` **is** covered in CI, and the new
+  `PR QUEUE` block belongs in that suite.
 
 ### Prior lessons
 
@@ -302,8 +305,15 @@ waiting. Thresholds carry a `ponytail:` comment admitting they are uncalibrated,
   stacked-cascade path.
 - `test_pr_landed_rejects_unknown_disposition` — `disposition=landed` exits 64.
 
-No test framework beyond the file's own helpers. `report.py` has no CI coverage by design
-(`ci.yml:198-213` never runs it), so its block is verified by the manual command in Verification.
+No test framework beyond the file's own helpers.
+
+`scripts/metrics/backfill-test.sh` — **10 cases for the `PR QUEUE` block**, added during review after
+the premise behind "verify it manually" turned out to be false (see Research). They assert the block
+renders, reports premise / disposition / hold reason / triaged-but-not-landed, is absent on a stream
+with no queue rows, and — load-bearing — that four queue rows leave `features=0` while
+`queue=4`, in **both** stdout and the `--json` payload. Mutation-tested: folding queue rows back
+into the JSON `live` count fails `test_pr_queue_json_live_excludes_queue`, and drifting the header
+string fails `test_pr_queue_block_renders`.
 
 ## Verification
 
@@ -454,6 +464,11 @@ success without it — since an unknown event also exits 64.
 - **2026-09-16** — Implemented: `skills/pr-queue/SKILL.md` (303 lines), `docs/design-docs/pr-queue.md`,
   `.changesets/078-*`, metrics schema + 11 test cases + `report.py` PR QUEUE block, README/AGENTS.md
   cross-references. All 9 AGENTS.md script suites pass; prefix render verified.
+- **2026-09-16** — Reversed the plan's "report.py has no CI coverage by design" decision. Its
+  premise was false: I read only `ci.yml:198-213` (the `metrics` job, which genuinely never runs
+  `report.py`) and generalized, missing that `backfill-test.sh` tests `report.py` and runs in the
+  `script-suites` job. The review found its one real defect in exactly that unguarded block, so the
+  manual verification step became 10 CI cases instead. Operator approved the reversal.
 - **2026-09-16** — Verification check 3 corrected during implementation: GP5's literal grep matches
   the `~/.hivesmith/bin/hs-metric` binary path, which GP5's own text exempts and which every
   metrics-emitting skill contains. The check now excludes it; the real invariant is no
@@ -462,3 +477,5 @@ success without it — since an unknown event also exits 64.
 ## Open questions
 
 <pending>
+
+- **2026-09-16 iter 1** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: a68003e5; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 0d35cb1.

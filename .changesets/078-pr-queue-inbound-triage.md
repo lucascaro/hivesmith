@@ -15,4 +15,4 @@ pr: 80
   mechanism, including merge queues, and never deletes a fork's branch.
 - **Pipeline metrics gain `pr_triaged` and `pr_landed`.** Keyed by PR number and carrying no
   `feature` field, so queue throughput is measurable without ever mixing contributor PRs into this
-  project's feature counts. `report.py` gains a `PR QUEUE` section.
+  project's feature counts. `report.py` gains a `PR QUEUE` section, gated by 10 new cases in `scripts/metrics/backfill-test.sh`.
