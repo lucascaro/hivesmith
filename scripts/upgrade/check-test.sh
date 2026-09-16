@@ -395,6 +395,19 @@ sync_rewrites_drifted_block_and_is_idempotent() {
     rm -rf "$SB"
 }
 
+sync_refuses_missing_end_marker() {
+    local t=sync_refuses_missing_end_marker
+    sync_fixture
+    local f="$SB/skills/alpha/SKILL.md"
+    printf -- '---\nname: alpha\n---\n\n<!-- BEGIN hivesmith upgrade-check -->\nold\n\n## Steps\n\n1. Work.\n' > "$f"
+    local before; before="$(cat "$f")"
+    local rc=0 err
+    err="$(bash "$SB/scripts/upgrade/sync-preamble.sh" --root "$SB" 2>&1 >/dev/null)" || rc=$?
+    if [[ "$rc" == 2 && "$err" == *"without a matching END marker"* && "$(cat "$f")" == "$before" ]]; then pass "$t"
+    else fail "$t" "rc=$rc err='$err'"; fi
+    rm -rf "$SB"
+}
+
 # ---------------------------------------------------------------------------
 
 current_clone_is_silent
@@ -421,6 +434,7 @@ upgrade_survives_self_rewrite
 entry_skills_carry_canonical_preamble
 sync_inserts_block_when_markers_missing
 sync_rewrites_drifted_block_and_is_idempotent
+sync_refuses_missing_end_marker
 
 if [[ "$FAILED" == 0 ]]; then
     echo "RESULT: PASS suite=upgrade-check cases=$CASES"

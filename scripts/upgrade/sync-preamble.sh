@@ -51,7 +51,12 @@ for name in "${ENTRY_SKILLS[@]}"; do
             /^<!-- BEGIN hivesmith upgrade-check/ { while ((getline l < blockfile) > 0) print l; skip = 1; next }
             skip && /^<!-- END hivesmith upgrade-check -->$/ { skip = 0; next }
             !skip { print }
-        ' "$skill" > "$expected"
+            END { if (skip) exit 3 }
+        ' "$skill" > "$expected" || {
+            # No END marker: writing would drop everything after BEGIN.
+            echo "sync-preamble: ${skill#"$ROOT"/} has a BEGIN marker without a matching END marker — fix it by hand" >&2
+            exit 2
+        }
     else
         # Insert before the first level-2 heading that follows the frontmatter.
         awk -v blockfile="$block" '
