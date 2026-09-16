@@ -37,7 +37,7 @@ Feature Pipeline Status
    - If there are RESEARCH-stage items → "Run `/feature-research <number>` to research"
    - If there are TRIAGE-stage items → "Run `/feature-triage <number>` to triage"
    - If there are un-ingested issues → "Run `/feature-ingest <number>` to ingest"
-   - Otherwise → "Pipeline is clear. No pending work."
+   - Otherwise → "Pipeline is clear. Run `/brainstorm` to develop the next idea, or `/feature-new` if you already know what to build."
 
    For REVIEW-stage items, also surface the PR number (from the plan header's `PR:` field) so the user can act on it directly.
 

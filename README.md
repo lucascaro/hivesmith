@@ -28,6 +28,7 @@ Invokable as `/feature-*`, `/review-loop`, etc.:
 
 | Skill | What it does |
 |---|---|
+| `/brainstorm [idea]` | Turn a vague idea into a spec worth planning against — interrogates the problem (not the implementation), drafts Problem / Desired behavior / Success criteria / Non-goals, then hands off to `/feature-new`. Pre-pipeline; `/feature-loop` points here when a description names no concrete observable change |
 | `/feature-next` | Show pipeline status and recommend the next action |
 | `/feature-ingest <#>` | Ingest a GitHub issue into `docs/product-specs/` |
 | `/feature-triage [#]` | Classify type, complexity, and priority |
