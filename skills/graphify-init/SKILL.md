@@ -41,7 +41,7 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 4. **Run the setup** with the working directory set to the project root. Invoke `graphify-setup.sh` **from this skill's own directory** (or by its absolute path) — an installed skill lives under `~/.claude/skills/<prefix>graphify-init/`, so a repo-relative `skills/graphify-init/...` path only resolves inside a hivesmith checkout, which is the one project that least needs this skill.
 
    ```bash
-   "$(dirname "$0")/graphify-setup.sh"   # or: ~/.claude/skills/hs-graphify-init/graphify-setup.sh
+   "$(dirname "$0")/graphify-setup.sh"   # or: ~/.claude/skills/<prefix>graphify-init/graphify-setup.sh  (<prefix> is empty on a default install)
    ```
 
    Pass through the user's arguments:

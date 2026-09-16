@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # graphify-refresh.sh — debounced, AST-only graphify refresh for agent edits.
 #
-# Installed by `/hs-graphify-init` as a Claude Code PostToolUse hook on
+# Installed by `/graphify-init` as a Claude Code PostToolUse hook on
 # Edit|Write|MultiEdit. Three invariants, in priority order:
 #
 #   1. Never blocks.       The rebuild is detached; this script returns at once.

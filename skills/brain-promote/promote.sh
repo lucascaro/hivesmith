@@ -118,7 +118,7 @@ if scope == 'ecosystem' and not saw_eco:
     out.append(f'ecosystem: {ecosystem}')
 new_fm = '\n'.join(out)
 today = datetime.date.today().isoformat()
-note = f'\n- {today} — Promoted to {scope} via /hs-brain-promote.\n'
+note = f'\n- {today} — Promoted to {scope} via /brain-promote.\n'
 if '## Decision log' in body:
     body = body.replace('## Decision log', '## Decision log' + note, 1)
 else:

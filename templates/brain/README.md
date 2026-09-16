@@ -26,9 +26,9 @@ For browsing and querying directly:
 
 User-facing skills:
 
-- `/hs-brain-ask <question>` — natural-language Q&A. Searches the brain and answers with citations.
-- `/hs-brain-promote [<slug>]` — broaden an entry's scope (project → user / ecosystem / universal). The only path that broadens scope. With no slug, presents a picker.
-- `/hs-brain-garden` — regenerate `INDEX.md`, archive entries past `valid_until`, validate `graph_nodes:` references against per-project `graphify-out/graph.json`, surface promotion candidates.
+- `/brain-ask <question>` — natural-language Q&A. Searches the brain and answers with citations.
+- `/brain-promote [<slug>]` — broaden an entry's scope (project → user / ecosystem / universal). The only path that broadens scope. With no slug, presents a picker.
+- `/brain-garden` — regenerate `INDEX.md`, archive entries past `valid_until`, validate `graph_nodes:` references against per-project `graphify-out/graph.json`, surface promotion candidates.
 
 ## Trust boundary
 

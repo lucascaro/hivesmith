@@ -186,7 +186,7 @@ if (( stale_graph_count > 0 )); then
     printf 'Stale graph_nodes: %d\n' "$stale_graph_count"
 fi
 if [ "${#promotion_candidates[@]}" -gt 0 ]; then
-    printf 'Promotion candidates (consider /hs-brain-promote <slug>):\n'
+    printf 'Promotion candidates (consider /brain-promote <slug>):\n'
     for c in "${promotion_candidates[@]}"; do printf '  - %s\n' "$c"; done
 fi
 if [ "${#dedupe_pairs[@]}" -gt 0 ]; then
