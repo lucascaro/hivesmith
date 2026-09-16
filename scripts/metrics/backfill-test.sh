@@ -201,9 +201,9 @@ check test_second_opinion_reports_yield     "must_fix 4 raised, 3 applied" "$so_
 PRQ="$HIVESMITH_HOME/prqueue.jsonl"
 : > "$PRQ"
 for spec in "412 SPECULATIVE HOLD_FOR_AUTHOR" "405 REPRODUCED MERGE"; do
-  set -- $spec
-  "$EMIT" --event pr_triaged --field "pr=$1" --field "premise=$2" \
-    --field "recommendation=$3" --dry-run >> "$PRQ" 2>/dev/null
+  read -r pr premise rec <<< "$spec"
+  "$EMIT" --event pr_triaged --field "pr=$pr" --field "premise=$premise" \
+    --field "recommendation=$rec" --dry-run >> "$PRQ" 2>/dev/null
 done
 "$EMIT" --event pr_landed --field pr=405 --field disposition=merged \
   --field sha=f867293 --dry-run >> "$PRQ" 2>/dev/null
