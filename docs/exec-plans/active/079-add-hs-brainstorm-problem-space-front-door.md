@@ -404,6 +404,22 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 
 ## Open questions
 
+- **BLOCKING, awaiting an architectural decision (review iter 4).** Step 8's handoff invokes
+  `/feature-new`, which carries `disable-model-invocation: true` — so the model cannot invoke it;
+  only a human typing the slash command can. The precedent cited in the iter-1 fix does not
+  transfer: `/feature-loop` invokes `/review-loop`, `/merge-gate` and `/changelog-update`, and
+  **none** of those three carries the key, while **all twelve** `feature-*` skills do. With no
+  `Write`/`Edit` in `/brainstorm`'s `allowed-tools`, a failed invocation has no fallback — the run
+  dead-ends after the approval gate and the operator's four gated sections are lost, which is the
+  exact loss the contract exists to prevent. Every candidate fix collides with a decision already
+  made (golden principle #4 mandates the key on `feature-*`; the single-policy-implementation rule
+  forbids `/brainstorm` writing the spec itself; a printed suggestion cannot carry the gated
+  sections across a user-typed command). Escalated to the operator; the loop stopped at iteration 4
+  of 5 without a brain entry, per the review-loop rules.
+- **Incidental, unrelated to this PR:** `hs-metric` rejects an `autofix_applied` emission from a run
+  that applied zero fixes — `field checks="SKIP" not in {FAIL, PASS}`. The schema has no value for
+  "no checks ran". Worth its own issue; the worker correctly declined to emit a false `PASS`.
+
 - **Risk: `/brainstorm` drifts into solution space.** Same model runs both skills and the pull is
   strong. Mitigated by the explicit stop rule, the contrast table, and a red-flag row; detected by
   smoke §2. Residual risk accepted — prompt discipline, not a mechanism.
@@ -432,6 +448,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-16 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 6763e88a0a776cb39dc0ae9d2d91d94946b96a748cb9d404fe13dd78ec515d55; threads_open: 0; action: autofix+push; head_sha: 8333a1b.
 - **2026-09-16 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 12999fb2c8633c0cf304dc06a6fff740f32c72a91c2c862b2a7d575cb1c660f2; threads_open: 0; action: autofix+push; head_sha: 514ef9c.
 - **2026-09-16 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0444abe8c7853973676b77bc37aef9a1a0d1cd05427be68a2efefcf09441ffd1; threads_open: 0; action: autofix+push; head_sha: 368965a.
+- **2026-09-16 iter 4** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b83bb2b46d82a39ad93fa42b2b00e186cb5d4d1e2a9ee160579171c9fcabdf62; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 25524e6.
 
 ## Gate verdict
 
