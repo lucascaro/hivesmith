@@ -92,8 +92,10 @@ Worker prompt (self-contained — the worker has no view of this conversation):
 > security finding.
 >
 > Work this checklist **in order**. On `premise: SPECULATIVE` stop the *deep* investigation
-> immediately — but still complete steps 2, 3, 4 and 7, because the maintainer's hold-or-close
-> decision needs them and cannot be made from the premise alone.
+> immediately — but still complete steps 2, 3, 4, 7, 8 and 10, because the maintainer's
+> hold-or-close decision needs them and cannot be made from the premise alone, and because the
+> envelope's `threads_open`, `is_fork` and `can_push` are required for every PR regardless of
+> premise — Phase 4 routes execution on `can_push` even when the operator overrides a hold.
 >
 > 1. **Premise — the highest-value step, and it runs first.** What bug does this claim to fix? Is
 >    there an issue, a reproducer, or a test that fails *before* the change? Can the triggering
@@ -175,7 +177,7 @@ Worker prompt (self-contained — the worker has no view of this conversation):
 Emit one event per triaged PR (slug every value first — see **Rules**):
 
 ```bash
-HIVESMITH_SKILL=pr-queue ~/.hivesmith/bin/hs-metric --event pr_triaged \
+HIVESMITH_SKILL=hs-pr-queue ~/.hivesmith/bin/hs-metric --event pr_triaged \
   --field pr=<n> --field premise=<REPRODUCED|PLAUSIBLE|SPECULATIVE|NOT_A_BUG> \
   --field recommendation=<MERGE|FIX_THEN_MERGE|HOLD_FOR_AUTHOR|CLOSE> \
   --field real_lines=<n> --field reported_lines=<n> \
@@ -252,7 +254,7 @@ Per approved PR:
      pass `--delete-branch` — the queue owns the branch.
 6. Emit one event per PR that leaves the queue:
    ```bash
-   HIVESMITH_SKILL=pr-queue ~/.hivesmith/bin/hs-metric --event pr_landed \
+   HIVESMITH_SKILL=hs-pr-queue ~/.hivesmith/bin/hs-metric --event pr_landed \
      --field pr=<n> --field disposition=<merged|enqueued|held|closed|skipped> \
      --field hold_reason=<slug> --field autofix=<true|false> --field sha=<short-sha>
    ```
