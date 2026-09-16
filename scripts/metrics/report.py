@@ -254,7 +254,8 @@ def main() -> int:
 
     if args.json:
         args.json.write_text(json.dumps(
-            {"features": sorted(x for x in features if x), "live": len(live),
+            {"features": sorted(x for x in features if x),
+             "live": len(live_feature), "queue": len(queue_events),
              "backfilled": len(back),
              "counts": {k: len(v) for k, v in by.items()}}, indent=2))
 

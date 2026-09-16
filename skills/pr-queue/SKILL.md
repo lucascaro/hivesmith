@@ -155,7 +155,7 @@ Worker prompt (self-contained — the worker has no view of this conversation):
 >   "premise_evidence": "one line",
 >   "real_change": {"files": 5, "added": 50, "removed": 9},
 >   "reported_change": {"files": 13, "added": 7631, "removed": 7590},
->   "mechanical_causes": ["crlf-conversion", "generated-file-touched"],
+>   "mechanical_causes": ["crlf-conversion", "generated-file"],
 >   "base_behind_by": 4,
 >   "ci": [{"check": "...", "class": "MECHANICAL | SUBSTANTIVE", "line": "shortest decisive line"}],
 >   "claims": [{"claim": "...", "status": "HOLDS | FAILS | UNVERIFIABLE", "where": "path:line"}],
