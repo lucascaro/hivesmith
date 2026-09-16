@@ -380,6 +380,13 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-16** — Research recorded; stage → PLAN.
 - **2026-09-16** — Plan approved via `plan-html` after two second-opinion rounds; stage → IMPLEMENT.
 - **2026-09-16** — Implemented; all `AGENTS.md` checks green; PR #81 opened; stage → REVIEW.
+- **2026-09-16** — Review iter 2 (COMMENT, 1 IMPORTANT, 3 MINOR) cleared: the delegation contract
+  discarded the caller's "skip GitHub" answer, so under `opt-out` an operator who declined GitHub
+  still got an issue — and under `ask`, `/brainstorm`'s gate is the only prompt in the flow, so
+  nothing decided at all. Fixed at three sites plus a smoke §4 assertion. Also added `/brainstorm`
+  to a **fourth** entry-point list at `templates/CONTRIBUTING.md:22`. One MINOR deliberately left:
+  the "quote the terms" guidance overstates what double quotes prevent, but it is verbatim
+  repo-wide (`feature-new:37`, `feature-plan:54`) — a `/gc-sweep` item, not a #81 item.
 - **2026-09-16** — Review iter 1 (COMMENT, 2 IMPORTANT) cleared: declared the `/feature-new`
   handoff mechanism in `skills/brainstorm/SKILL.md`, and added `/brainstorm` to the **third**
   pipeline-arrow copy at `templates/AGENTS.md:49`, which Verification #4 structurally could not
@@ -413,6 +420,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 <Append-only. One entry per `/review-loop` iteration.>
 
 - **2026-09-16 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 6763e88a0a776cb39dc0ae9d2d91d94946b96a748cb9d404fe13dd78ec515d55; threads_open: 0; action: autofix+push; head_sha: 8333a1b.
+- **2026-09-16 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 12999fb2c8633c0cf304dc06a6fff740f32c72a91c2c862b2a7d575cb1c660f2; threads_open: 0; action: autofix+push; head_sha: 514ef9c.
 
 ## Gate verdict
 
