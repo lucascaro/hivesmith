@@ -1,0 +1,7 @@
+---
+type: fixed
+bump: patch
+---
+- **Brain lookups no longer let untrusted text run shell commands.** Eight skills told the agent to "quote the terms" from issue or idea text before passing them to `brain-search`, and showed the command with double quotes — which do not stop `$(…)` or backticks from executing. Every call site now says to reduce the terms to letters, digits, spaces and hyphens and wrap them in single quotes. Search results are unaffected: `brain-search` matches literal whitespace-separated terms. Affects `/feature-new`, `/feature-implement`, `/feature-triage`, `/feature-research`, `/feature-plan`, `/feature-loop`, `/brainstorm` and `/pr-queue`.
+- **Skills stop pointing at commands that don't exist on a default install.** `/brain-promote`, `/brain-garden`, `/brain-ask`, `/hivesmith-init`, `/graphify-init` and the brain templates hardcoded `/hs-`-prefixed command names, but the install prefix is empty by default. They now use bare names, which the installer re-prefixes in `SKILL.md` when `--prefix` is set. Golden principle #5's check, which could never pass because it matched the `hs-metric` emitter path, now matches only real skill names and runs in CI.
+- **`hs-metric` accepts `checks=SKIP` on `autofix_applied`.** An `/autofix` run that applied no fixes never reaches its checks step, and the emitter rejected the honest value — forcing the event to be dropped or recorded as a false `PASS`.
