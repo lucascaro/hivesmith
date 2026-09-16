@@ -12,6 +12,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 | P2 | #32 | Decentralize indices and changelog to eliminate merge conflicts | IMPLEMENT | [032-decentralize-indices-and-changelog](032-decentralize-indices-and-changelog.md) |
 | P2 | #35 | Make plan-html the default in feature-loop and add per-section feedback boxes | REVIEW | [035-plan-html-default-and-per-section-feedback](035-plan-html-default-and-per-section-feedback.md) |
 | P2 | #— | hs-autofix does not resolve merge conflicts | REVIEW | [033-hs-autofix-does-not-resolve-merge-conflicts](033-hs-autofix-does-not-resolve-merge-conflicts.md) |
+| — | — | Verify the entry-skill upgrade check in a live harness | TRIAGE | [081-walk-upgrade-check-harness-smoke](081-walk-upgrade-check-harness-smoke.md) |
 
 ## Completed
 
@@ -19,6 +20,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 |-------|-------|----|---------|------|
 | #78 | /pr-queue — triage, explain, approve, land an inbound PR queue | #80 | 2026-09-16 | [078-pr-queue-inbound-triage-and-landing](078-pr-queue-inbound-triage-and-landing.md) |
 | #79 | Add /hs-brainstorm — a problem-space front door to the feature pipeline | #81 | 2026-09-16 | [079-add-hs-brainstorm-problem-space-front-door](079-add-hs-brainstorm-problem-space-front-door.md) |
+| — | Replace the auto-upgrade cron with an upgrade check at hivesmith skill entry | #83 | 2026-09-16 | [080-replace-auto-upgrade-cron-with-skill-entry-check](080-replace-auto-upgrade-cron-with-skill-entry-check.md) |
 | #71 | /hs-merge-gate over-advances a multi-phase spec to DONE on its first phase's gate | #72 | 2026-09-06 | [071-hs-merge-gate-over-advances-a-multi-phase-spec](071-hs-merge-gate-over-advances-a-multi-phase-spec.md) |
 | #74 | Check the hive brain in feature-implement and the other feature skills that skip it | #75 | 2026-09-06 | [074-check-hive-brain-in-feature-skills](074-check-hive-brain-in-feature-skills.md) |
 | #69 | Plan approval gate + deterministic pipeline metrics | #70 | 2026-09-05 | [069-plan-approval-gate-and-pipeline-metrics](069-plan-approval-gate-and-pipeline-metrics.md) |
