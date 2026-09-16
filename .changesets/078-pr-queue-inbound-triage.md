@@ -2,6 +2,7 @@
 type: added
 bump: minor
 issue: 78
+pr: 80
 ---
 
 - **`/pr-queue` — triage, explain, approve and land an inbound PR queue.** Orders open PRs by

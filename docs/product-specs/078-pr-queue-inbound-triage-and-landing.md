@@ -4,7 +4,8 @@ title: "/pr-queue — triage, explain, approve, land an inbound PR queue"
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
+pr: 80
+stage: REVIEW
 ---
 
 # /pr-queue — triage, explain, approve, land an inbound PR queue

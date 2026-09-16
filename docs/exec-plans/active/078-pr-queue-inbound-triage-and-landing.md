@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/078-pr-queue-inbound-triage-and-landing.md](../../product-specs/078-pr-queue-inbound-triage-and-landing.md)
 - **Issue:** #78
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #80
+- **Branch:** `feature/78-pr-queue-inbound-triage`
 - **Phase:** —
 
 ## Summary
