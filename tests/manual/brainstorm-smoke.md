@@ -59,16 +59,15 @@ lacks 'The loop pauses twice: plan approval and merge' "$R/hs-feature-loop/SKILL
 echo "step 1 OK"
 ```
 
-Source-tree checks (golden principle #5). The unfiltered repo-wide form can never pass —
-`~/.hivesmith/bin/hs-metric` is a legitimate `/hs-` path and appears 9 times in
-`skills/feature-loop/SKILL.md` alone — so assert zero on the new surface and zero
-**non-emitter** hits on the edited files. `tests/` is out of GP#5's scope by design — a smoke doc
-must name the rendered `/hs-` paths it asserts on, exactly as `plan-lane-smoke.md` does:
+Source-tree checks (golden principle #5), using GP#5's own detection: it matches only real
+skill names, so the legitimate `~/.hivesmith/bin/hs-metric` paths do not trip it. `tests/` is out
+of GP#5's scope by design — a smoke doc must name the rendered `/hs-` paths it asserts on, exactly
+as `plan-lane-smoke.md` does:
 
 ```bash
-! grep -rn '/hs-[a-z]' skills/brainstorm templates/AGENTS.hivesmith.md
-! grep -rn '/hs-[a-z]' skills/feature-new/SKILL.md skills/feature-loop/SKILL.md \
-      skills/feature-next/SKILL.md | grep -v 'hs-metric'
+names=$(for d in skills/*/; do basename "$d"; done | paste -sd'|' -)
+! grep -rnE "/hs-($names)([^a-z0-9-]|\$)" skills/brainstorm skills/feature-new/SKILL.md \
+      skills/feature-loop/SKILL.md skills/feature-next/SKILL.md templates/AGENTS.hivesmith.md
 echo "step 1b OK"
 ```
 

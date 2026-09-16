@@ -36,7 +36,8 @@ catch. Hence `lacks`, which exits explicitly.
 Then, from the source tree — golden principle #5, no rendered prefix in source:
 
 ```bash
-! grep -rn '/hs-[a-z]' skills/feature-plan skills/feature-plan-review skills/feature-plan-handoff
+names=$(for d in skills/*/; do basename "$d"; done | paste -sd'|' -)
+! grep -rnE "/hs-($names)([^a-z0-9-]|\$)" skills/feature-plan skills/feature-plan-review skills/feature-plan-handoff
 ```
 
 ## 2. Free-form end-to-end

@@ -83,6 +83,13 @@ reject test_gate_verdict_rejects_unknown_phase_typo 64 --event gate_verdict --fi
 reject test_missing_required_field_fails_64 64 --event second_opinion --field feature=069 --field verdict=revise
 reject test_unknown_field_fails_64 64 --event stall --field feature=1 --field retry=gate-fail-rerun --field stage=GATE --field rationale=prose
 reject test_non_integer_int_fails_64 64 --event second_opinion --field feature=1 --field verdict=approve --field confidence=high --field must_fix_count=1 --field applied_count=1 --field round=1 --field duration_s=1
+# A zero-fix autofix run never reaches its checks step; it must still be
+# recordable, and recordable as SKIP rather than a false PASS.
+b4="$(lines)"
+"$TOOL" --event autofix_applied --field feature=079 --field pr=81 --field safe=0 --field risky=1 --field deferred=0 --field checks=SKIP >/dev/null 2>&1; rc=$?
+if [[ "$rc" == 0 && "$(lines)" == "$((b4+1))" ]]; then ok test_autofix_checks_skip_is_accepted; else bad test_autofix_checks_skip_is_accepted "rc=$rc lines=$(lines) before=$b4"; fi
+before="$(lines)"
+reject test_autofix_checks_rejects_unknown_value 64 --event autofix_applied --field feature=1 --field pr=1 --field safe=0 --field risky=0 --field deferred=0 --field checks=SKIPPED
 reject test_bad_enum_fails_64 64 --event second_opinion --field feature=1 --field verdict=ok --field confidence=8 --field must_fix_count=1 --field applied_count=1 --field round=1 --field duration_s=1
 reject test_out_of_range_confidence_fails_64 64 --event second_opinion --field feature=1 --field verdict=approve --field confidence=42 --field must_fix_count=1 --field applied_count=1 --field round=1 --field duration_s=1
 reject test_malformed_field_fails_64 64 --event feature_done --field feature

@@ -44,7 +44,7 @@ Without an explicit gate, lessons learned in one repo can leak into prompts for 
    The helper does:
    - `git mv` from current path to new path under the target scope.
    - Update `scope:` (and `ecosystem:` / `repo:` accordingly) in front-matter.
-   - Append a Decision-log line in the entry body: `- <date> — Promoted from <old-scope> to <new-scope> via /hs-brain-promote.`
+   - Append a Decision-log line in the entry body: `- <date> — Promoted from <old-scope> to <new-scope> via /brain-promote.`
    - Commit with message `brain: promote <slug> (<old> → <new>)`.
 
 6. **Regenerate the index** by calling `~/.hivesmith/bin/brain-garden --regen-index-only` (cheap, cache-friendly).

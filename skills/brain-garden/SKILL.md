@@ -33,7 +33,7 @@ The gardener does the cheap, deterministic upkeep so the rest of the system does
    - `confidence ≥ 0.7`
    - Entry has no project-specific tokens in its body (`repo`, `branch`, `pr` mentioned).
    - Entry's tags are also present in entries from other projects.
-   List slugs and a one-line excuse for each. Suggest `/hs-brain-promote <slug>`.
+   List slugs and a one-line excuse for each. Suggest `/brain-promote <slug>`.
 
 5. **Surface dedupe candidates.** Pairs of entries within the same scope where:
    - Slugs have ≤3 edits Levenshtein, OR
@@ -47,7 +47,7 @@ The gardener does the cheap, deterministic upkeep so the rest of the system does
 ## Modes
 
 - *Default:* run steps 1–5, print report. No mutations beyond INDEX regen and (with `--apply`) expired-entry archiving.
-- *`--regen-index-only`:* run step 1, exit. Used by `/hs-brain-promote` and other write paths.
+- *`--regen-index-only`:* run step 1, exit. Used by `/brain-promote` and other write paths.
 - *`--report`:* run steps 1, 3, 4, 5. Skip step 2 (no archival). Print only.
 - *`--apply`:* run all steps, including archival. Promotion + dedupe still surfaced as candidates only.
 

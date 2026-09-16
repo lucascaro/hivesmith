@@ -93,6 +93,16 @@ jobs:
           grep -q '/hs-feature-plan' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"
           if grep -q '/feature-plan\b' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-feature-research/SKILL.md"; then exit 1; fi
           grep -q 'scripts/release.sh' "$HIVESMITH_DIR/.rendered/hs-/skills/hs-release/SKILL.md"
+      - name: No hardcoded prefix in source (golden principle 5)
+        run: |
+          names=$(for d in skills/*/; do basename "$d"; done | paste -sd'|' -)
+          rc=0
+          grep -rnE "/hs-($names)([^a-z0-9-]|\$)" skills/ templates/ || rc=$?
+          case "$rc" in
+            1) ;;  # no matches: pass
+            0) echo "::error::hardcoded /hs- skill reference in source; use the bare /skill-name (golden-principles.md #5)"; exit 1 ;;
+            *) echo "::error::grep failed (rc=$rc); golden principle 5 check did not run"; exit "$rc" ;;
+          esac
 
   subagent-linking:
     runs-on: ubuntu-latest

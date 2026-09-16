@@ -122,9 +122,9 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    ```
    This creates `~/.hivesmith/brain/` (a git repo), seeded from `templates/brain/`. It's idempotent — safe to call on re-runs and existing brains.
 
-8. **Offer graphify wiring.** Ask whether to run `/hs-graphify-init`, which wires graphify into this project so its code knowledge graph maintains itself: a shared extraction cache across worktrees, worktree-aware git hooks, and a debounced auto-refresh after edits. Brain entries can `[[wikilink]]` graphify nodes for code-structure context, and those references stay rot-free while the graph auto-updates. Do not run it unprompted — it installs git hooks and an editor hook. Print:
+8. **Offer graphify wiring.** Ask whether to run `/graphify-init`, which wires graphify into this project so its code knowledge graph maintains itself: a shared extraction cache across worktrees, worktree-aware git hooks, and a debounced auto-refresh after edits. Brain entries can `[[wikilink]]` graphify nodes for code-structure context, and those references stay rot-free while the graph auto-updates. Do not run it unprompted — it installs git hooks and an editor hook. Print:
    ```
-   Tip: run /hs-graphify-init to wire graphify into this project — shared
+   Tip: run /graphify-init to wire graphify into this project — shared
         extraction cache across worktrees, auto-refreshing code map, and
         [[wikilink]]-able nodes for brain entries.
         Needs graphify installed: https://github.com/Graphify-Labs/graphify
@@ -137,7 +137,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - Edit `DESIGN.md` to document domains, layers, and cross-cutting concerns.
    - Edit `scripts/release.sh` to set `PROJECT`, `REPO`, and `BUILD_CMD` at the top.
    - Edit `.hivesmith/config.toml` to change the GitHub issue creation policy later: `"opt-out"` (create by default), `"always"` (create without asking), `"opt-in"` (keep specs local by default), or `"ask"` (prompt every time).
-   - The hive brain at `~/.hivesmith/brain/` will accumulate cross-project lessons. Use `/hs-brain-promote` to broaden a project lesson, `/hs-brain-garden` to tidy.
+   - The hive brain at `~/.hivesmith/brain/` will accumulate cross-project lessons. Use `/brain-promote` to broaden a project lesson, `/brain-garden` to tidy.
    - Run `/feature-next` to verify the pipeline is wired up.
 
 10. **Migration mode (`--migrate`).** If invoked with `--migrate`, AND `features/active/` or `features/completed/` exists with at least one `*.md` file:

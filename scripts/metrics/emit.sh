@@ -133,7 +133,9 @@ ENUM = {
     ("gate_verdict", "acceptance"):  DIMENSION,
     ("gate_verdict", "non_goals"):   DIMENSION,
     ("gate_verdict", "doc_accuracy"): DIMENSION,
-    ("autofix_applied", "checks"):   {"PASS", "FAIL"},
+    # SKIP = autofix step 10 did not run: no AGENTS.md, or nothing was applied.
+    # Distinct from omitting the field, which reads as "not recorded".
+    ("autofix_applied", "checks"):   {"PASS", "FAIL", "SKIP"},
     ("stage_transition", "from"):    STAGES,
     ("stage_transition", "to"):      STAGES,
     ("plan_approved", "via"):        {"html", "native-plan-mode", "chat"},

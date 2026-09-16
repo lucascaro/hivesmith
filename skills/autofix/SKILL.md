@@ -226,7 +226,7 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
 
 ## Phase 5 — Verify
 
-10. **Run all checks** defined in `AGENTS.md` (build + lint + test). If `AGENTS.md` is absent, skip this step.
+10. **Run all checks** defined in `AGENTS.md` (build + lint + test). Skip this step when `AGENTS.md` is absent **or the run applied no fixes** — nothing changed on disk, so re-running the checks proves nothing CI has not already proven. Report `Checks: SKIP` either way.
 
 11. **Report results:**
 
@@ -238,7 +238,7 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
       - Fixed:                  N (commit SHAs)
       - Resolved with rationale: M (reasons listed)
       - Still open:             K (URLs — these block /review-loop convergence)
-    - Checks: PASS / FAIL
+    - Checks: PASS / FAIL / SKIP
     - Remaining: any items still needing manual attention
     ```
 
@@ -249,8 +249,10 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
       --field feature=<NNN> --field pr=<n> \
       --field safe=<N> --field risky=<M> --field deferred=<over-the-20-cap count> \
       --field threads_fixed=<N> --field threads_resolved=<M> --field threads_open=<post> \
-      --field checks=<PASS|FAIL>
+      --field checks=<PASS|FAIL|SKIP>
     ```
+
+    `checks=SKIP` means step 10 was skipped under its own rule: `AGENTS.md` is absent, or the run applied no fixes (every finding RISKY, deferred, or already resolved). Emit `SKIP` rather than omitting the field — omission reads as "not recorded" — and never a `PASS` for checks that did not run.
 
     This is **measurement only**. Do not rewire `/review-loop`'s parse of the summary block below to read this event instead: that path already cross-checks itself against GraphQL, which is the correct source of truth, and adding a control-flow dependency on a new file would buy no correctness and one new failure mode.
 

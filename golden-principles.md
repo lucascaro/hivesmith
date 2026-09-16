@@ -58,13 +58,22 @@ Keep this file short. Five to ten principles is the right size — more becomes 
 
 ---
 
-## 5. Source SKILL.md files use bare slash-command names; no rendered prefix in source
+## 5. Source files use bare slash-command names; no rendered prefix in source
 
-**Why:** `install.sh` rewrites `/skill-name` → `/<prefix>skill-name` at render time so the same source supports both prefixed and unprefixed installs. A hardcoded `/hs-foo` in source breaks the unprefixed install path and double-prefixes the prefixed path.
+**Why:** `install.sh` rewrites `/skill-name` → `/<prefix>skill-name` at render time so the same source supports both prefixed and unprefixed installs. A hardcoded `/hs-foo` in source breaks the unprefixed install path — which is the **default**, since the prefix is empty unless `--prefix` is passed — and double-prefixes the prefixed path.
 
-**Detection:** `grep -rn '/hs-[a-z]' skills/ templates/` should return zero hits. The rendered tree (`.rendered/`) is gitignored and is not in scope.
+The rewrite only touches `SKILL.md`. Scripts (`.sh`, `.py`) and `templates/` are copied verbatim, so a bare `/foo` there is not re-prefixed on a prefixed install. Use bare names there anyway: they are correct for the default install, a hardcoded `/hs-foo` is correct for neither, and the prefixed-install gap is a known limitation of the renderer rather than something to paper over per file. For an install *path* rather than a command (`~/.claude/skills/<name>/…`), write `<prefix>` explicitly — the rewrite never matches a `/` that follows a path segment.
 
-**Fix shape:** replace `/hs-foo` with `/foo`. If the reference is genuinely to an external (non-hivesmith) command that happens to start with `hs-`, leave it and add a one-line comment explaining why the rewrite shouldn't apply.
+**Detection:** match only real skill names, so the `hs-` namespace's other legitimate uses — the `~/.hivesmith/bin/hs-metric` emitter, the `hs-reviewer` / `hs-validator` subagents, `HIVESMITH_SKILL=hs-*` telemetry tags, `/tmp/hs-*` scratch files — do not match:
+
+```bash
+names=$(for d in skills/*/; do basename "$d"; done | paste -sd'|' -)
+! grep -rnE "/hs-($names)([^a-z0-9-]|\$)" skills/ templates/
+```
+
+Zero hits is the pass condition, and CI's `render-correctness` job enforces it. The rendered tree (`.rendered/`) is gitignored and is not in scope. (An earlier detection, `grep -rn '/hs-[a-z]' skills/ templates/`, could never return zero: it matched every `hs-metric` path.)
+
+**Fix shape:** replace `/hs-foo` with `/foo`. If the reference is genuinely to an external (non-hivesmith) command whose name collides with a skill, leave it and add a one-line comment explaining why the rewrite shouldn't apply.
 
 ---
 

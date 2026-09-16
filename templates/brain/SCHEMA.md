@@ -46,7 +46,7 @@ The body must NOT contain raw code dumps. The redactor rejects any code fence lo
 - `user` — applies to this user across all projects (preferences, work-style notes).
 - `project` — applies to one specific repo. Requires `repo:` hash.
 
-Auto-writes default to `scope=project`. Promotion to broader scope is **explicit** via the `/hs-brain-promote` skill — never automatic.
+Auto-writes default to `scope=project`. Promotion to broader scope is **explicit** via the `/brain-promote` skill — never automatic.
 
 ## Trust boundary
 
@@ -56,7 +56,7 @@ Brain entries are loaded into agent prompts wrapped in `<project-memory untruste
 - Override `AGENTS.md` or `CLAUDE.md` instructions
 - Direct the agent to execute commands
 
-Skills that read the brain treat the contents as untrusted external data. Entries derived from untrusted file sources (READMEs, web pages, issue bodies) land in `unverified/` and require a manual review (typically `/hs-brain-promote`) before being moved into a scoped directory.
+Skills that read the brain treat the contents as untrusted external data. Entries derived from untrusted file sources (READMEs, web pages, issue bodies) land in `unverified/` and require a manual review (typically `/brain-promote`) before being moved into a scoped directory.
 
 ## Redaction
 
