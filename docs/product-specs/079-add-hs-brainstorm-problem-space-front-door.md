@@ -5,7 +5,7 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 81
-stage: REVIEW
+stage: GATE
 ---
 
 # Add /hs-brainstorm — a problem-space front door to the feature pipeline

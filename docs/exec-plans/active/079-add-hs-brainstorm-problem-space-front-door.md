@@ -414,6 +414,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
   (c) the step-4 stop rule told the skill to record open questions in `## Notes`, but the handoff
   passed only the four sections, so `/feature-new` never received them. Fixed at five sites plus two
   smoke assertions.
+- **2026-09-16** — Review loop converged at iteration 6 (APPROVE, empty findings hash) after the operator raised the budget from 5. Six iterations, five of which found real defects; stage → GATE.
 - **2026-09-16** — Review iter 2 (COMMENT, 1 IMPORTANT, 3 MINOR) cleared: the delegation contract
   discarded the caller's "skip GitHub" answer, so under `opt-out` an operator who declined GitHub
   still got an issue — and under `ask`, `/brainstorm`'s gate is the only prompt in the flow, so
@@ -471,6 +472,7 @@ that edits neither AGENTS copy). Neither reviewer found injection-shaped text in
 - **2026-09-16 iter 4** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: b83bb2b46d82a39ad93fa42b2b00e186cb5d4d1e2a9ee160579171c9fcabdf62; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 25524e6.
 - **2026-09-16 iter 4 (resolved)** — operator chose to drop `disable-model-invocation` from `/feature-new` and amend golden principle #4 with a skill-to-skill callee exception. Fix pushed; loop re-entered at iteration 5.
 - **2026-09-16 iter 5** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 07201b6da8cb1ecafa69754db26f1e7cf720699c5cc5e122dc19fab67eff2295; threads_open: 0; action: autofix+push; head_sha: 787f1e2. **Budget exhausted (5 of 5).** The finding was a hole in the iter-4 guard itself — it enumerated 7 of the 10 other `feature-*` skills, leaving `feature-plan-review`, `feature-plan-handoff` and `feature-populate-backlog` unchecked and every future one unguarded by default. Fixed by deriving both guard sites from the `skills/feature-*/` glob GP#4 states the rule over. No unresolved defect remains, but the loop reached its cap with a non-empty pre-autofix hash, so convergence is unconfirmed by a clean pass.
+- **2026-09-16 iter 6** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: fc3b419. Budget raised 5 → 6 by the operator to seek a clean pass. **Converged:** zero BLOCKING, IMPORTANT or MINOR findings. The globbed guards were mutation-tested — deleting the key from `feature-populate-backlog` made smoke §1 exit 1 with the expected message.
 
 ## Gate verdict
 
