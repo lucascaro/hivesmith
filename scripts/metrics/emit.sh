@@ -106,6 +106,17 @@ SCHEMA = {
     "stall":            ({"feature", "retry", "stage"}, {"reason"}),
     "stage_transition": ({"feature", "from", "to"}, set()),
     "feature_done":     ({"feature"}, {"pr", "seconds_total"}),
+    # The PR-queue events are keyed by `pr` and deliberately carry NO `feature`.
+    # That absence is the isolation mechanism, not an oversight: report.py builds
+    # the feature-throughput denominator as {e["feature"] for e in ev if
+    # e.get("feature")}, so a feature-less event is excluded structurally rather
+    # than by defensive filtering. Adding `feature` here "for symmetry" would
+    # silently start counting contributor PRs as this project's own features,
+    # and nothing downstream could separate them again.
+    "pr_triaged":       ({"pr", "premise", "recommendation"},
+                         {"real_lines", "reported_lines", "mechanical",
+                          "ci_class", "base_behind", "is_fork"}),
+    "pr_landed":        ({"pr", "disposition"}, {"hold_reason", "sha", "autofix"}),
 }
 
 STAGES = {"TRIAGE", "RESEARCH", "PLAN", "IMPLEMENT", "REVIEW", "GATE", "DONE"}
@@ -129,12 +140,34 @@ ENUM = {
     ("stall", "retry"):              {"plan-revise-rerun", "implement-checks-refix",
                                       "gate-fail-rerun", "review-loop-guard"},
     ("stall", "stage"):              STAGES,
+    # NOT_A_BUG is not a weaker SPECULATIVE: a feature, docs, chore or dependency
+    # PR has no premise to reproduce, and without this value the "SPECULATIVE
+    # defaults to hold" rule would hold every non-bug PR in the queue.
+    ("pr_triaged", "premise"):       {"REPRODUCED", "PLAUSIBLE", "SPECULATIVE",
+                                      "NOT_A_BUG"},
+    ("pr_triaged", "recommendation"): {"MERGE", "FIX_THEN_MERGE",
+                                       "HOLD_FOR_AUTHOR", "CLOSE"},
+    ("pr_triaged", "ci_class"):      {"GREEN", "MECHANICAL", "SUBSTANTIVE"},
+    # A single dominant-cause slug, enumerated so it is groupable in report.py.
+    # The full list stays in the triage envelope's `mechanical_causes`, which
+    # never reaches this stream.
+    ("pr_triaged", "mechanical"):    {"none", "crlf-conversion", "reformat",
+                                      "generated-file", "mixed"},
+    ("pr_triaged", "is_fork"):       {"true", "false"},
+    ("pr_landed", "autofix"):        {"true", "false"},
+    # `enqueued` is the merge-queue path: gh pr merge enqueues rather than
+    # merges, so no merge has happened and there is no SHA to record. `skipped`
+    # is the stacked-cascade path, where a held or closed base PR removes its
+    # dependents from the run without any outward-facing write.
+    ("pr_landed", "disposition"):    {"merged", "enqueued", "held", "closed",
+                                      "skipped"},
 }
 
 INT = {"seq", "confidence", "must_fix_count", "applied_count", "round", "rounds",
        "iter", "safe", "risky", "deferred", "threads_open", "threads_fixed",
        "threads_resolved", "duration_s", "seconds_to_approval", "seconds_total",
-       "findings_count", "sections", "bytes", "pr"}
+       "findings_count", "sections", "bytes", "pr",
+       "real_lines", "reported_lines", "base_behind"}
 
 RANGE = {"confidence": (1, 10)}
 

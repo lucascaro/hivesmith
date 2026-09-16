@@ -6,6 +6,8 @@ Index entries are short. Detailed rationale belongs in the per-doc files.
 
 ## Active
 
+- [Inbound PR queue](pr-queue.md) — why `/pr-queue` triages before it reviews, and why it routes on push-ability rather than fork status.
+
 <!-- One row per design doc. Add: `- [Title](slug.md) — one-line description` -->
 
 ## Core beliefs
