@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# pre-push — run the repo's changeset gate for whichever worktree is pushing.
+#
+# Install into `$(git rev-parse --git-path hooks)`, which honours
+# core.hooksPath; without it, that is the shared .git/hooks every worktree
+# uses. Not a symlink into one worktree: the gate must come from the tree
+# being pushed, and branches that predate it are skipped rather than broken.
+set -euo pipefail
+
+gate="$(git rev-parse --show-toplevel)/scripts/check-changeset.sh"
+[[ -f "$gate" ]] || exit 0
+
+# Skip a push that carries only tags.
+#
+# The gate judges the branch at HEAD, never what is actually being pushed,
+# so `git push origin v1.2.3` from a feature branch would be judged on that
+# branch's changeset status, which has nothing to do with the tag.
+#
+# git feeds pre-push one line per ref on stdin:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# check-changeset.sh reads no stdin, so consuming it here is safe.
+#
+# A mixed push (`git push origin HEAD v1.2.3`) still gates: it carries a
+# branch. Empty stdin falls through to the gate rather than skipping it —
+# a hook that silently passes when it cannot tell is the wrong default.
+refs="$(cat)"
+if [[ -n "$refs" ]] && ! awk '{ print $3 }' <<<"$refs" | grep -qv '^refs/tags/'; then
+    exit 0
+fi
+
+exec bash "$gate"

@@ -35,7 +35,7 @@ Specs live under `docs/product-specs/<NNN>-<slug>.md` with YAML frontmatter (`st
 ## Pull Request Checklist
 
 - [ ] Build, lint, and tests pass (see `AGENTS.md`)
-- [ ] `.changesets/<NNN>-<slug>.md` added if user-visible (use `/changelog-update`); use the `no-changeset` PR label for docs- or CI-only changes
+- [ ] `.changesets/<NNN>-<slug>.md` added if user-visible (use `/changelog-update`); not needed when the PR only touches paths exempted in `scripts/check-changeset.sh` (docs, CI, tests); use the `no-changeset` PR label for other changes with no user-visible effect
 - [ ] `AGENTS.md` updated if module map or conventions changed
 - [ ] Relevant docs updated (`README.md`, `docs/`)
 - [ ] PR description references the issue (`Fixes #<number>`)
