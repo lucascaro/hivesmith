@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 # pre-push — run the repo's changeset gate for whichever worktree is pushing.
 #
-# Lives in the shared hooks dir (.git/hooks), which every worktree of this
-# repo uses, so installing it once covers them all. core.hooksPath is
-# deliberately left unset — setting it would relocate hook lookup and
-# disable the graphify post-checkout / post-commit hooks sitting here.
-#
-# Not a symlink into one worktree: the gate must come from the tree being
-# pushed, and branches that predate it are skipped rather than broken.
+# Install into `$(git rev-parse --git-path hooks)`, which honours
+# core.hooksPath; without it, that is the shared .git/hooks every worktree
+# uses. Not a symlink into one worktree: the gate must come from the tree
+# being pushed, and branches that predate it are skipped rather than broken.
 set -euo pipefail
 
 gate="$(git rev-parse --show-toplevel)/scripts/check-changeset.sh"
@@ -15,12 +12,9 @@ gate="$(git rev-parse --show-toplevel)/scripts/check-changeset.sh"
 
 # Skip a push that carries only tags.
 #
-# The gate answers "does this branch add a changeset relative to main?" by
-# looking at HEAD — it never sees what is actually being pushed. So
-# `git push origin v1.2.3` from a feature branch was judged on that branch's
-# changeset status, which has nothing to do with the tag. Releases push tags
-# routinely (scripts/release.sh, and the rc rehearsals), and every one of them
-# hit a --no-verify prompt for a question that did not apply.
+# The gate judges the branch at HEAD, never what is actually being pushed,
+# so `git push origin v1.2.3` from a feature branch would be judged on that
+# branch's changeset status, which has nothing to do with the tag.
 #
 # git feeds pre-push one line per ref on stdin:
 #   <local ref> <local sha> <remote ref> <remote sha>
