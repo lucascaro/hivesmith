@@ -11,7 +11,7 @@ stage: DONE
 
 # Instrument review-loop cost and harden behaviour-changing autofix fixes
 
-- **Exec plan:** [docs/exec-plans/active/086-instrument-review-loop-per-phase-cost-before-optim.md](../exec-plans/completed/086-instrument-review-loop-per-phase-cost-before-optim.md) (or completed/)
+- **Exec plan:** [docs/exec-plans/completed/086-instrument-review-loop-per-phase-cost-before-optim.md](../exec-plans/completed/086-instrument-review-loop-per-phase-cost-before-optim.md) (or completed/)
 
 ## Problem
 
