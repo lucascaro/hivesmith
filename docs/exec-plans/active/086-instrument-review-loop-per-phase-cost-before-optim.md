@@ -335,4 +335,6 @@ Live proof of the first and fourth success criteria comes from running this PR's
 
 ## PR convergence ledger
 
+- **2026-09-26 iter 1** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: f34c573.
+
 ## Gate verdict

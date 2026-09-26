@@ -5,7 +5,7 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 87
-stage: REVIEW
+stage: GATE
 ---
 
 # Instrument review-loop cost and harden behaviour-changing autofix fixes
