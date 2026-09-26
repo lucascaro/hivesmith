@@ -234,6 +234,63 @@ json_out="$(cat "$PRQ_JSON" 2>/dev/null)"
 check   test_pr_queue_json_live_excludes_queue  '"live": 0'        "$json_out"
 check   test_pr_queue_json_reports_queue        '"queue": 4'       "$json_out"
 
+# ---- report.py review-loop cost block (feature 086) -----------------------
+# The block reads only rows that carry the measured fields. Distinct values per
+# phase keep one phase's line from satisfying another phase's assertion.
+RLC="$HIVESMITH_HOME/rlcost.jsonl"
+: > "$RLC"
+"$EMIT" --event review_iteration --field feature=086 --field pr=90 --field iter=1 \
+  --field verdict=REQUEST_CHANGES --field findings_count=3 --field threads_open=0 \
+  --field action=autofix+push --dry-run >> "$RLC" 2>/dev/null
+old_out="$(python3 "$REPORT" --repo . --events "$RLC" 2>&1)"
+nocheck test_review_loop_cost_absent_without_fields "REVIEW LOOP COST"   "$old_out"
+
+for spec in "1 60 1800" "2 120 1800" "3 600 1800"; do
+  read -r it rs cs <<< "$spec"
+  "$EMIT" --event review_iteration --field feature=086 --field pr=91 --field "iter=$it" \
+    --field verdict=REQUEST_CHANGES --field findings_count=0 --field threads_open=0 \
+    --field action=autofix+push --field "review_s=$rs" --field "ci_wait_s=$cs" \
+    --dry-run >> "$RLC" 2>/dev/null
+done
+{
+  "$EMIT" --event review_iteration --field feature=086 --field pr=91 --field iter=4 \
+    --field verdict=REQUEST_CHANGES --field findings_count=4 --field threads_open=0 \
+    --field action=autofix+push --field origin_in_fix=2 --field origin_near_fix=1 \
+    --field origin_carried=0 --field origin_new=1 --dry-run
+  "$EMIT" --event review_iteration --field feature=086 --field pr=92 --field iter=1 \
+    --field verdict=APPROVE --field findings_count=0 --field threads_open=0 \
+    --field action=stop --field escalation_wait_s=7200 --dry-run
+  "$EMIT" --event autofix_applied --field feature=086 --field pr=91 --field safe=0 \
+    --field risky=2 --field deferred=0 --field risky_with_test=1 --field risky_without_test=1 \
+    --dry-run
+} >> "$RLC" 2>/dev/null
+
+rlc_out="$(python3 "$REPORT" --repo . --events "$RLC" 2>&1)"
+check test_review_loop_cost_block_renders      "REVIEW LOOP COST"               "$rlc_out"
+check test_review_loop_cost_phase_percentiles  "review    n=3  p50 2m  p90 10m" "$rlc_out"
+check test_review_loop_cost_ci_wait_line       "ci_wait   n=3  p50 30m"         "$rlc_out"
+check test_review_loop_cost_origin_split       "in_fix 2 (50%)  near_fix 1 (25%)  carried 0 (0%)  new 1 (25%)" "$rlc_out"
+check test_review_loop_cost_escalation_wait    "n=1  p50 2h00"                  "$rlc_out"
+check test_review_loop_cost_hardening          "with test 1 / without 1"        "$rlc_out"
+nocheck test_review_loop_cost_no_traceback     "Traceback"                      "$rlc_out"
+
+# One measured row only: nearest-rank must not raise the way
+# statistics.quantiles does for n < 2.
+ONE="$HIVESMITH_HOME/rlcost-one.jsonl"
+"$EMIT" --event review_iteration --field feature=086 --field pr=93 --field iter=1 \
+  --field verdict=APPROVE --field findings_count=0 --field threads_open=0 \
+  --field action=stop --field review_s=45 --dry-run > "$ONE" 2>/dev/null
+one_out="$(python3 "$REPORT" --repo . --events "$ONE" 2>&1)"
+check test_review_loop_cost_single_value_safe  "review    n=1  p50 45s  p90 45s" "$one_out"
+
+# Hardening counts alone must still surface the block.
+HO="$HIVESMITH_HOME/rlcost-hardening.jsonl"
+"$EMIT" --event autofix_applied --field feature=086 --field pr=94 --field safe=1 \
+  --field risky=1 --field deferred=0 --field risky_with_test=0 --field risky_without_test=1 \
+  --dry-run > "$HO" 2>/dev/null
+ho_out="$(python3 "$REPORT" --repo . --events "$HO" 2>&1)"
+check test_review_loop_cost_hardening_only_stream "with test 0 / without 1"    "$ho_out"
+
 # ---- report.py stage/stall attribution ------------------------------------
 # The bug this guards: attributing a stall by matching the stage name against
 # the retry slug counted a PLAN stall ("plan-revise-rerun") under REVIEW too,

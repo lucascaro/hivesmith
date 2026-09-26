@@ -15,7 +15,7 @@ Nothing recorded what the second opinion cost, what it found, or whether a featu
 | Lives in | the repo's own history | `${HIVESMITH_HOME:-~/.hivesmith}/telemetry/pipeline-events.jsonl` |
 | Computable in CI | yes | **no** |
 | Backfillable | yes | no |
-| Carries | gate verdicts, ledger entries, regression declarations, PR dates | durations, `must_fix`/`applied` counts, seconds-to-approval, which retry fired |
+| Carries | gate verdicts, ledger entries, regression declarations, PR dates | durations (including review-loop per-phase `review_s` / `autofix_s` / `ci_wait_s` and `escalation_wait_s`), `must_fix`/`applied` counts, seconds-to-approval, which retry fired, finding origin relative to the last fix, autofix regression-test counts |
 
 CI cannot read `~/.hivesmith`, so the CI job computes only the git-derived half and **prints it to the job log** — it commits nothing. Writing a metrics artifact to `main` would need `contents: write` (held only by `regenerate-generated`) and would then be a generated file that `block-generated-edits` fails on every PR that touches it.
 
@@ -23,9 +23,9 @@ CI cannot read `~/.hivesmith`, so the CI job computes only the git-derived half 
 
 | Tool | What it does |
 |---|---|
-| `emit.sh` (installed as `~/.hivesmith/bin/hs-metric`) | Appends one validated JSON line per pipeline event. **Fails loudly** — unknown event, missing required field, unknown field, wrong type, or out-of-enum value all exit `64` and append nothing. |
+| `emit.sh` (installed as `~/.hivesmith/bin/hs-metric`) | Appends one validated JSON line per pipeline event. **Fails loudly** — unknown event, missing required field, unknown field, wrong type, out-of-enum or out-of-range value (including a negative duration), or a field group that is partial or does not add up (`origin_*` must sum to `findings_count`; `risky_with_test` + `risky_without_test` must not exceed `risky`) all exit `64` and append nothing. |
 | `regressions.py` | Reports which merged PRs were declared as regressed, from `.changesets/` frontmatter recovered out of git history. |
-| `report.py` | Merges both tiers. Prints pipeline counts, trend lines, the second-opinion block, and the regression split. |
+| `report.py` | Merges both tiers. Prints pipeline counts, trend lines, the second-opinion block, the review-loop cost block (per-phase p50/p90, finding-origin split, escalation wait, autofix regression-test counts — only from rows that carry those fields), and the regression split. |
 | `backfill.py` | Seeds the stream from existing plan markdown (`## Gate verdict`, `## QA verdict`, `## PR convergence ledger`). |
 
 ## Design decisions worth not undoing
