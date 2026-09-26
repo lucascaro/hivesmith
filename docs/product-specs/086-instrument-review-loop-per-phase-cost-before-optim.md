@@ -5,12 +5,13 @@ type: enhancement
 complexity: M
 priority: P2
 pr: 87
-stage: GATE
+shipped: 2026-09-26
+stage: DONE
 ---
 
 # Instrument review-loop cost and harden behaviour-changing autofix fixes
 
-- **Exec plan:** [docs/exec-plans/active/086-instrument-review-loop-per-phase-cost-before-optim.md](../exec-plans/active/086-instrument-review-loop-per-phase-cost-before-optim.md) (or completed/)
+- **Exec plan:** [docs/exec-plans/active/086-instrument-review-loop-per-phase-cost-before-optim.md](../exec-plans/completed/086-instrument-review-loop-per-phase-cost-before-optim.md) (or completed/)
 
 ## Problem
 

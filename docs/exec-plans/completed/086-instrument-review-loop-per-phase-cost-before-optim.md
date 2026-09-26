@@ -2,7 +2,7 @@
 
 - **Spec:** [docs/product-specs/086-instrument-review-loop-per-phase-cost-before-optim.md](../../product-specs/086-instrument-review-loop-per-phase-cost-before-optim.md)
 - **Issue:** #86
-- **Status:** active
+- **Status:** completed
 - **PR:** #87
 - **Branch:** feature/86-review-loop-cost-and-autofix-hardening
 - **Phase:** —
@@ -331,6 +331,11 @@ Live proof of the first and fourth success criteria comes from running this PR's
 
 - **2026-09-26** — Implemented on `feature/86-review-loop-cost-and-autofix-hardening`. All AGENTS.md suites pass: emit-test 55, backfill-test 56, shellcheck, preamble sync, install smoke, brain tests. The decision-region, Threads-block and SAFE-phase diffs are empty. The revert-proof procedure was checked in a scratch repo.
 
+- **2026-09-26** — Gate NEEDS_FOLLOWUP:
+  - a live /review-loop run on the branch skills emitting review_s/origin_*;
+  - a live escalation-wait resume;
+  - a live /autofix step 9a on a behaviour-changing fix.
+
 ## Open questions
 
 ## PR convergence ledger
@@ -338,3 +343,10 @@ Live proof of the first and fourth success criteria comes from running this PR's
 - **2026-09-26 iter 1** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: empty; threads_open: 0; action: stop; head_sha: f34c573.
 
 ## Gate verdict
+
+- **2026-09-26** — verdict: NEEDS_FOLLOWUP; phase: —; checks: 7 passed / 0 failed / 3 followups; followups: pending operator decision; one-line: The schema, report and skill text deliver every criterion. The live paths can only be exercised once the branch skills are installed: a real /review-loop run emitting the new fields, an escalation-wait resume, and an /autofix behaviour-changing fix that lands a regression test proven to fail when the fix is reverted.
+  - 2026-09-26 dimensions:
+    - acceptance — NEEDS_FOLLOWUP — Passing: 7 criteria (emit-test 55, backfill-test 56, emit.sh accept/reject probes, byte-identical region diffs). Not yet exercised: the live escalation-wait resume, and autofix step 9a on a real fix (prompt-only logic; the revert proof was checked only in a scratch repo).
+    - non-goals — PASS — §3, the step-5 bullets and autofix Phase 2 are byte-identical to main; backfill.py is untouched; no pre-push agent was added.
+    - doc accuracy — PASS — Every changeset claim was grep-verified. README and AGENTS.md are updated, the GP5 grep is clean, and neither index.md nor CHANGELOG.md was edited. regression_of: n/a (type: added).
+- **2026-09-26** — verdict: NEEDS_FOLLOWUP (advanced by operator); phase: —; checks: 7 passed / 0 failed / 3 followups; followups: #88; one-line: The operator chose to advance to DONE. The three live-run checks are tracked in #88.
