@@ -18,6 +18,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
+| #86 | Instrument review-loop cost and harden behaviour-changing autofix fixes | #87 | 2026-09-26 | [086-instrument-review-loop-per-phase-cost-before-optim](086-instrument-review-loop-per-phase-cost-before-optim.md) |
 | #78 | /pr-queue — triage, explain, approve, land an inbound PR queue | #80 | 2026-09-16 | [078-pr-queue-inbound-triage-and-landing](078-pr-queue-inbound-triage-and-landing.md) |
 | #79 | Add /hs-brainstorm — a problem-space front door to the feature pipeline | #81 | 2026-09-16 | [079-add-hs-brainstorm-problem-space-front-door](079-add-hs-brainstorm-problem-space-front-door.md) |
 | — | Replace the auto-upgrade cron with an upgrade check at hivesmith skill entry | #83 | 2026-09-16 | [080-replace-auto-upgrade-cron-with-skill-entry-check](080-replace-auto-upgrade-cron-with-skill-entry-check.md) |
