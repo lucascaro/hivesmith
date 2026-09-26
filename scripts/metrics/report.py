@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import statistics
 import subprocess
@@ -64,6 +65,14 @@ def fmt_secs(v: float | None) -> str:
     if v < 5400:
         return f"{v // 60}m"
     return f"{v // 3600}h{(v % 3600) // 60:02d}"
+
+
+def pctl(values: list, q: float) -> float | None:
+    """Nearest-rank percentile. Defined for n=1, unlike statistics.quantiles."""
+    if not values:
+        return None
+    s = sorted(values)
+    return s[max(0, math.ceil(q * len(s)) - 1)]
 
 
 def half_split(values: list, n: int = 5) -> tuple[list, list]:
@@ -239,6 +248,45 @@ def main() -> int:
             print(f" features with must_fix>0 → {a:.1f} review iters;  must_fix=0 → {b:.1f}")
             print("   (if that gap is real, the reviewer is DETECTING difficulty, which is a")
             print("    different claim from creating quality — and also worth knowing.)")
+
+    # ---- review-loop cost (feature 086) ------------------------------------
+    # Only rows that carry the new measured fields count. Older rows predate
+    # the fields (and a different `findings_count` meaning), so they are
+    # excluded rather than read as zeros.
+    phases = ("review_s", "autofix_s", "ci_wait_s")
+    origins = ("origin_in_fix", "origin_near_fix", "origin_carried", "origin_new")
+    ri = [e for e in by["review_iteration"] if not e.get("backfilled")]
+    af = [e for e in by["autofix_applied"]
+          if not e.get("backfilled") and "risky_with_test" in e]
+    cost_fields = phases + origins + ("escalation_wait_s", "worker_tokens")
+    if any(k in e for e in ri for k in cost_fields) or af:
+        print("\nREVIEW LOOP COST — measured per iteration; rows without these fields are")
+        print("excluded, not zeroed.")
+
+        def line(label, vals, fmt=fmt_secs):
+            if vals:
+                print(f" {label:<9} n={len(vals)}  p50 {fmt(pctl(vals, 0.5))}  "
+                      f"p90 {fmt(pctl(vals, 0.9))}")
+
+        for k in phases:
+            line(k[:-2], [e[k] for e in ri if k in e])
+        line("tokens", [e["worker_tokens"] for e in ri if "worker_tokens" in e],
+             fmt=lambda v: f"{v:,}")
+        split = Counter()
+        for e in ri:
+            if all(k in e for k in origins):
+                split.update({k[len("origin_"):]: e[k] for k in origins})
+        if split:
+            n = sum(split.values()) or 1
+            print(" finding origin (iteration >= 2): " + "  ".join(
+                f"{k} {split[k]} ({100 * split[k] // n}%)"
+                for k in ("in_fix", "near_fix", "carried", "new")))
+        line("escalation wait (worker escalations, same worktree)",
+             [e["escalation_wait_s"] for e in ri if "escalation_wait_s" in e])
+        if af:
+            w = sum(e["risky_with_test"] for e in af)
+            wo = sum(e["risky_without_test"] for e in af)
+            print(f" autofix hardening: with test {w} / without {wo}")
 
     # ---- regressions --------------------------------------------------------
     print()

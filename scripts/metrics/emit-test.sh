@@ -192,6 +192,50 @@ before="$(lines)"
 reject test_pr_landed_rejects_unknown_disposition 64 --event pr_landed --field pr=1 --field disposition=landed
 reject test_pr_landed_rejects_feature_field 64 --event pr_landed --field pr=1 --field disposition=merged --field feature=078
 
+# --- review-loop cost + autofix hardening (feature 086) ---------------------
+# Durations and origin counts are measured, never estimated, so the schema's
+# job is to make an impossible value unrecordable: a negative duration, a
+# partial origin split, or a split that does not add up to findings_count.
+RI=(--event review_iteration --field feature=086 --field pr=90 --field iter=2
+    --field verdict=REQUEST_CHANGES --field threads_open=0 --field action=autofix+push)
+accept test_review_iteration_accepts_cost_fields "${RI[@]}" --field findings_count=4 \
+  --field review_s=120 --field autofix_s=300 --field ci_wait_s=600 \
+  --field escalation_wait_s=7200 --field worker_tokens=85000 \
+  --field origin_in_fix=2 --field origin_near_fix=1 --field origin_carried=0 --field origin_new=1
+accept test_review_iteration_accepts_without_cost_fields "${RI[@]}" --field findings_count=4
+accept test_autofix_accepts_hardening_counts --event autofix_applied --field feature=086 \
+  --field pr=90 --field safe=0 --field risky=2 --field deferred=0 \
+  --field risky_with_test=1 --field risky_without_test=1
+# `risky` also counts user-resolved conflict hunks, which are not hardened.
+accept test_autofix_accepts_hardening_below_risky --event autofix_applied --field feature=086 \
+  --field pr=90 --field safe=0 --field risky=3 --field deferred=0 \
+  --field risky_with_test=1 --field risky_without_test=1
+before="$(lines)"
+
+reject test_review_iteration_rejects_negative_duration 64 "${RI[@]}" --field findings_count=0 --field review_s=-1
+reject test_review_iteration_rejects_non_int_origin 64 "${RI[@]}" --field findings_count=4 \
+  --field origin_in_fix=2 --field origin_near_fix=1 --field origin_carried=0 --field origin_new=two
+reject test_review_iteration_rejects_negative_origin 64 "${RI[@]}" --field findings_count=4 \
+  --field origin_in_fix=5 --field origin_near_fix=0 --field origin_carried=0 --field origin_new=-1
+reject test_review_iteration_rejects_partial_origin 64 "${RI[@]}" --field findings_count=4 --field origin_in_fix=4
+reject test_review_iteration_rejects_origin_sum_mismatch 64 "${RI[@]}" --field findings_count=4 \
+  --field origin_in_fix=1 --field origin_near_fix=1 --field origin_carried=0 --field origin_new=1
+reject test_autofix_rejects_hardening_over_risky 64 --event autofix_applied --field feature=086 \
+  --field pr=90 --field safe=0 --field risky=2 --field deferred=0 \
+  --field risky_with_test=2 --field risky_without_test=1
+reject test_autofix_rejects_partial_hardening 64 --event autofix_applied --field feature=086 \
+  --field pr=90 --field safe=0 --field risky=2 --field deferred=0 --field risky_with_test=1
+# A backfilled row may omit findings_count; the group check must still exit 64
+# with a message rather than crash on the missing key.
+err="$("$TOOL" --backfilled --backfill-source docs/x.md:1 --event review_iteration \
+  --field feature=086 --field iter=2 --field verdict=COMMENT --field action=stop \
+  --field origin_in_fix=1 --field origin_near_fix=0 --field origin_carried=0 --field origin_new=0 2>&1 >/dev/null)"; rc=$?
+if [[ "$rc" == 64 && "$err" != *Traceback* && "$(lines)" == "$before" ]]; then
+  ok test_review_iteration_rejects_origin_without_findings_count_backfilled
+else
+  bad test_review_iteration_rejects_origin_without_findings_count_backfilled "rc=$rc err=$err"
+fi
+
 # --- backfill marking -------------------------------------------------------
 out="$("$TOOL" --event gate_verdict --field feature=011 --field verdict=PASS \
         --field acceptance=PASS --field non_goals=PASS --field doc_accuracy=PASS \

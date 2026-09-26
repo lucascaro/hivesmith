@@ -97,9 +97,18 @@ SCHEMA = {
                           "applied_count", "round", "duration_s"}, set()),
     "review_iteration": ({"feature", "pr", "iter", "verdict", "findings_count",
                           "threads_open", "action"},
-                         {"findings_hash", "mergeable", "head_sha", "escalate_reason"}),
+                         {"findings_hash", "mergeable", "head_sha", "escalate_reason",
+                          # Measured cost (#86). Each is omitted when its phase did
+                          # not run or the harness did not report it — never 0.
+                          "review_s", "autofix_s", "ci_wait_s", "escalation_wait_s",
+                          "worker_tokens",
+                          # Where each BLOCKING/IMPORTANT finding sits relative to
+                          # the previous iteration's fix diff. All four or none.
+                          "origin_in_fix", "origin_near_fix", "origin_carried",
+                          "origin_new"}),
     "autofix_applied":  ({"feature", "pr", "safe", "risky", "deferred"},
-                         {"threads_fixed", "threads_resolved", "threads_open", "checks"}),
+                         {"threads_fixed", "threads_resolved", "threads_open", "checks",
+                          "risky_with_test", "risky_without_test"}),
     "gate_verdict":     ({"feature", "verdict", "acceptance", "non_goals",
                           "doc_accuracy"}, {"followups", "legacy_dimension", "seq",
                                             "phase"}),
@@ -169,9 +178,29 @@ INT = {"seq", "confidence", "must_fix_count", "applied_count", "round", "rounds"
        "iter", "safe", "risky", "deferred", "threads_open", "threads_fixed",
        "threads_resolved", "duration_s", "seconds_to_approval", "seconds_total",
        "findings_count", "sections", "bytes", "pr",
-       "real_lines", "reported_lines", "base_behind"}
+       "real_lines", "reported_lines", "base_behind",
+       "review_s", "autofix_s", "ci_wait_s", "escalation_wait_s", "worker_tokens",
+       "origin_in_fix", "origin_near_fix", "origin_carried", "origin_new",
+       "risky_with_test", "risky_without_test"}
 
-RANGE = {"confidence": (1, 10)}
+NONNEG = (0, 10 ** 9)
+RANGE = {"confidence": (1, 10),
+         **{k: NONNEG for k in ("review_s", "autofix_s", "ci_wait_s",
+                                "escalation_wait_s", "worker_tokens",
+                                "origin_in_fix", "origin_near_fix",
+                                "origin_carried", "origin_new",
+                                "risky_with_test", "risky_without_test")}}
+
+# Field groups that only mean something together: (event, members, total field,
+# relation). The members must all be present or all absent, and their sum must
+# satisfy the relation against the total. `risky` is <= rather than == because
+# it also counts user-resolved conflict hunks, which autofix does not harden.
+GROUPS = [
+    ("review_iteration",
+     ("origin_in_fix", "origin_near_fix", "origin_carried", "origin_new"),
+     "findings_count", "=="),
+    ("autofix_applied", ("risky_with_test", "risky_without_test"), "risky", "<="),
+]
 
 # Fields the historical markdown record never contained, so a --backfilled row
 # is allowed to omit them. This is a narrow, enumerated exemption, not a
@@ -242,6 +271,22 @@ for k, v in fields.items():
     if allowed_vals is not None and v not in allowed_vals:
         die('field %s="%s" not in {%s}' % (k, v, ", ".join(sorted(allowed_vals))))
     typed[k] = v
+
+for ev, members, total, rel in GROUPS:
+    if ev != event:
+        continue
+    present = [m for m in members if m in typed]
+    if not present:
+        continue
+    if len(present) != len(members):
+        die("event=%s fields %s go together: got only %s"
+            % (event, ", ".join(members), ", ".join(present)))
+    if total not in typed:
+        die("event=%s fields %s need %s to check against" % (event, ", ".join(members), total))
+    got = sum(typed[m] for m in members)
+    if not (got == typed[total] if rel == "==" else got <= typed[total]):
+        die("event=%s %s sum to %d, must be %s %s=%d"
+            % (event, "+".join(members), got, rel, total, typed[total]))
 
 backfilled = backfilled_flag
 source = os.environ["HS_BACKFILL_SOURCE"]
