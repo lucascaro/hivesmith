@@ -3,7 +3,7 @@
 - **Spec:** [docs/product-specs/086-instrument-review-loop-per-phase-cost-before-optim.md](../../product-specs/086-instrument-review-loop-per-phase-cost-before-optim.md)
 - **Issue:** #86
 - **Status:** active
-- **PR:** —
+- **PR:** #87
 - **Branch:** feature/86-review-loop-cost-and-autofix-hardening
 - **Phase:** —
 

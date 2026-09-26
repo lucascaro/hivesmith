@@ -2,6 +2,7 @@
 issue: 86
 type: added
 bump: minor
+pr: 87
 ---
 - **`/review-loop` now records where each iteration's time goes.**
   - Every `review_iteration` event carries measured wall-clock for review (`review_s`), autofix (`autofix_s`) and the CI wait (`ci_wait_s`).

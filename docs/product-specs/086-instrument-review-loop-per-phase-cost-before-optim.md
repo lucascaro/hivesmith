@@ -4,7 +4,8 @@ title: Instrument review-loop cost and harden behaviour-changing autofix fixes
 type: enhancement
 complexity: M
 priority: P2
-stage: IMPLEMENT
+pr: 87
+stage: REVIEW
 ---
 
 # Instrument review-loop cost and harden behaviour-changing autofix fixes
