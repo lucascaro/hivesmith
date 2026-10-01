@@ -18,7 +18,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: TRIAGE` (sorted by `priority` then issue number).
-3. **Frontmatter is the source of truth.** In the current layout the spec's YAML frontmatter `stage:` field is canonical — read it from `docs/product-specs/<NNN>-*.md` directly, never from the generated `index.md`. If it is not `TRIAGE`, refuse and point the user at `/feature-loop <N>` (or the correct sub-skill: `/feature-research` for RESEARCH, `/feature-plan` for PLAN, `/feature-implement` for IMPLEMENT, `/review-loop <PR>` for REVIEW, `/merge-gate <N>` for GATE, nothing for DONE). Never silently process the wrong stage. **Legacy fallback:** if no frontmatter exists, fall back to the legacy `features/BACKLOG.md` row's `Stage:` column.
+3. **Frontmatter is the source of truth.** In the current layout the spec's YAML frontmatter `stage:` field is canonical — read it from `docs/product-specs/<NNN>-*.md` directly, never from the generated `index.md`. If it is not `TRIAGE`, refuse and point the user at the installed `feature-loop` skill or the correct stage skill (`feature-research` for RESEARCH, `feature-plan` for PLAN, `feature-implement` for IMPLEMENT, `review-loop` for REVIEW, `merge-gate` for GATE, nothing for DONE). Print the host's native command form (Pi: `/skill:<installed-name> <arguments>`). Never silently process the wrong stage. **Legacy fallback:** if no frontmatter exists, fall back to the legacy `features/BACKLOG.md` row's `Stage:` column.
 
 ## Layout resolution
 
@@ -53,7 +53,7 @@ This skill owns Stage = `TRIAGE`. Before doing any work:
    - **Do not edit `docs/product-specs/index.md`.** It's generated from frontmatter by `scripts/regen-generated.sh` on push to `main`. The `block-generated-edits` CI job will fail any PR that touches it directly.
    - **Legacy layout:** when no frontmatter exists, fall back to writing the spec fields + `features/BACKLOG.md` row as before.
 8. **Update GitHub label:** `gh issue edit <number> --add-label triaged`.
-9. **Report:** Confirm triage is complete, remind user to run `/feature-research <number>` next.
+9. **Report:** Confirm triage is complete, tell the user to invoke the installed `feature-research` skill next using the host's command syntax (Pi: `/skill:<installed-name>`).
 
 ## Rules
 - Always ask the user to confirm before writing changes.

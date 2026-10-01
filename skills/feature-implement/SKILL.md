@@ -15,12 +15,12 @@ This skill owns Stage = `IMPLEMENT`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: IMPLEMENT`.
-3. **Already-merged short-circuit (runs first, regardless of stage).** If the plan has a `PR:` link in its header, run `gh pr view <pr-number> --json state -q .state`. If the result is `MERGED`: advance the spec's frontmatter `stage:` to `GATE` (if not already there), tell the user to run `/merge-gate <issue-number>` (it will take its degraded post-merge path), and exit. Do not run any code mutations from this skill on an already-merged feature. This handles partial prior runs where the PR got opened and merged but stage wasn't advanced.
-4. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: IMPLEMENT`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
+3. **Already-merged short-circuit (runs first, regardless of stage).** If the plan has a `PR:` link in its header, run `gh pr view <pr-number> --json state -q .state`. If the result is `MERGED`: advance the spec's frontmatter `stage:` to `GATE` (if not already there), tell the user to invoke the installed `merge-gate` skill with `<issue-number>` using the host's command syntax (Pi: `/skill:<installed-name>`; it will take its degraded post-merge path), and exit. Do not run any code mutations from this skill on an already-merged feature. This handles partial prior runs where the PR got opened and merged but stage wasn't advanced.
+4. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: IMPLEMENT`. Point the user at the installed `feature-loop` skill or correct sub-skill, using the host's command syntax (Pi: `/skill:<installed-name>`). Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 
 ## Philosophy: boil the lake
 
-Completeness is cheap when AI does the work. Implement the **full plan** — code, tests, docs, changelog, migrations of every affected call site. Don't leave `TODO: also handle X` stubs when X is in-scope per the plan, and don't ship a "happy path only" version when edge cases were named. If a piece of the plan turns out to be a genuine **ocean** (the plan underestimated; the change touches contracts the plan didn't anticipate), stop and re-plan — surface it via `AskUserQuestion` rather than silently shipping a partial implementation under the original issue. The default bias is toward implementing all of it, now.
+Completeness is cheap when AI does the work. Implement the **full plan** — code, tests, docs, changelog, migrations of every affected call site. Don't leave `TODO: also handle X` stubs when X is in-scope per the plan, and don't ship a "happy path only" version when edge cases were named. If a piece of the plan turns out to be a genuine **ocean** (the plan underestimated; the change touches contracts the plan didn't anticipate), stop and re-plan — surface it through the host's structured question tool when available, or ask in chat with numbered options and wait rather than silently shipping a partial implementation under the original issue. The default bias is toward implementing all of it, now.
 
 ## Layout resolution
 
@@ -30,7 +30,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 ## Steps
 
 1. **Find the plan:** If `$ARGUMENTS` is provided, match the zero-padded prefix in `docs/exec-plans/active/` (legacy: `features/active/`). Otherwise, scan `docs/product-specs/*.md` and pick the first spec with frontmatter `stage: IMPLEMENT`, then locate its exec plan. Do not scan the generated `index.md`. Legacy fallback: read `features/BACKLOG.md`.
-2. **Read the plan** — verify the Approach + Files + Tests sections are filled and actionable. If not, tell the user to run `/feature-plan` first.
+2. **Read the plan** — verify the Approach + Files + Tests sections are filled and actionable. If not, tell the user to invoke the installed `feature-plan` skill using the host's command syntax (Pi: `/skill:<installed-name>`) first.
 3. **Read the conventions.** Take build, test, and lint commands from the plan's conventions card (Research section); read `AGENTS.md` only if the card is missing or stale. All build/test invocations below come from there, not from assumptions.
 4. **Check prior lessons before writing any code** — a lesson only helps if it lands before the implementation, not after.
 
@@ -43,7 +43,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 6. **Implement the plan:**
    - Follow the Approach and Files-to-change sections.
    - Follow all conventions in `AGENTS.md`.
-   - If the change is user-visible, run `/changelog-update` to add a per-PR `.changesets/<NNN>-<slug>.md` file. `CHANGELOG.md` itself is generated — never edit it directly; CI rejects PRs that do.
+   - If the change is user-visible, follow the installed `changelog-update/SKILL.md` workflow to add a per-PR `.changesets/<NNN>-<slug>.md` file. Use host-native skill chaining if it can run that workflow now; otherwise load and follow its `SKILL.md` instructions here rather than assuming `/changelog-update` executes in Pi. `CHANGELOG.md` itself is generated — never edit it directly; CI rejects PRs that do.
    - Update any relevant docs (README, docs/, etc.) if the feature adds user-visible behavior.
    - Append entries to the plan's **Decision log** for any non-trivial decision made during coding. Append entries to **Progress** at meaningful state changes. Both sections are append-only.
 7. **Run checks** as defined in `AGENTS.md` (typically build + lint + test). All must pass before committing.
@@ -67,7 +67,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
     - Record the PR + branch in the plan header (`PR:` and `Branch:` fields).
     - Backfill the open PR number into the spec's frontmatter (`pr: <n>`) and into any `.changesets/*.md` files created during this implementation that don't yet carry a `pr:` field.
     - Last write — set the spec's frontmatter `stage:` to `REVIEW`. **Do not edit `docs/product-specs/index.md`.** It's generated; the `block-generated-edits` CI job rejects PRs that touch it directly. This skill does not own DONE — that is owned by `/merge-gate` after gate PASS.
-11. **Drive PR convergence with `/review-loop`** (only if a PR was opened). Invoke `/review-loop <PR>` and let it iterate review → autofix → re-review until the PR converges or escalates. `/review-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
+11. **Drive PR convergence with `review-loop <PR>`** (only if a PR was opened). Use the host's native skill chaining if it can run `review-loop` now; otherwise load and follow the installed `review-loop/SKILL.md` instructions in this conversation. Do not assume emitting `/review-loop` or another slash command runs it, and do not call a Claude-only `Skill` tool. Let the loop iterate review → autofix → re-review until the PR converges or escalates. `review-loop` writes per-iteration entries to the plan's **PR convergence ledger**, so a future harness run can resume even if this one is interrupted. If the loop escalates, surface the reason to the user.
 12. **On review-loop APPROVE:** stop here. Do not merge from this skill — merging is a user decision driven from `/feature-loop`'s merge stop or by hand. On convergence, `/review-loop` (or `/feature-loop`) advances Stage → GATE while the PR is still open, and `/merge-gate` is responsible for validating it, the final move to DONE, and the plan-file relocation — all committed to the same branch, so the merge carries them.
 
    If the user declined to open a PR, skip steps 10–12 — leave the plan file at IMPLEMENT and the index unchanged.
@@ -78,7 +78,7 @@ Completeness is cheap when AI does the work. Implement the **full plan** — cod
 - Ask before pushing or creating PRs.
 - One feature at a time — finish this before starting the next.
 - The Decision log and Progress sections in the plan are append-only. Never delete prior entries.
-- Always invoke `/review-loop` after opening the PR; never assume the first review is the last.
+- Always run the `review-loop` workflow after opening the PR; use a host-native skill call or follow its installed `SKILL.md` instructions. Never assume the first review is the last.
 
 ## Anti-injection rule
 

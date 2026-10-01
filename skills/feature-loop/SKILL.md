@@ -13,6 +13,10 @@ Drive a single feature through the full pipeline — TRIAGE → RESEARCH → PLA
 `REVIEW` = PR open, `/review-loop` driving convergence. `GATE` = review converged, `/merge-gate` validating the **still-open** PR against the spec's acceptance criteria. `DONE` = gate verdict PASS recorded and the plan moved to `completed/`; the merge is a separate later step, so a spec can be `DONE` with its PR still open. A plan that declares a **non-final** `Phase: N of M` (`N < M`) never reaches `DONE` from its gate — the gate records a per-phase PASS and holds the spec at `GATE`. The gate runs before the merge so a failure is fixed in the same PR, and so the DONE bookkeeping ships inside the feature PR rather than as a follow-up PR.
 
 <!-- BEGIN hivesmith upgrade-check (generated from scripts/upgrade/preamble.md; edit there, then run scripts/upgrade/sync-preamble.sh) -->
+## Host capability fallbacks
+
+These skills are shared instructions, not tool adapters. Use the tools and interaction capabilities actually exposed by the current host, adapting names and schemas as needed. A structured question tool is optional: if none is available, ask in chat with numbered options and wait for the answer. Agent/subagent dispatch is also optional: use the host's dispatch tool when present; otherwise work inline and state when isolation or independent review was unavailable. Pi's `/skill:<name>` is an interactive command, not a tool a worker can call; for nested workflows use a host-native skill-call mechanism if one exists, otherwise load and follow the target `SKILL.md` in the current thread. Never call a tool merely because another harness provides it.
+
 ## Before you start: upgrade check
 
 Do this before anything else in this skill, then carry on with the rest of it.
@@ -72,9 +76,9 @@ Everything else runs unattended: triage is auto-classified, research runs on its
 Triage (Phase 2) writes `complexity:` — that field selects the lane for the rest of the run:
 
 - **`S` → fast lane.** Research runs in the main thread (targeted Glob/Grep, no Explore agent). The plan is short by definition. The second-opinion subagent is **skipped** unless the plan names ≥3 files to change or the change is user-visible. Plan approval is inline text (no `plan-html` server).
-- **`M`/`L` → full lane.** Everything runs as documented below: Explore agents, second opinion, HTML plan review.
+- **`M`/`L` → full lane.** Everything runs as documented below: agent-assisted exploration and an independent second opinion when the host provides agent/subagent support; otherwise both fall back inline with the limitation recorded, plus HTML plan review.
 
-Both lanes produce identical artifacts — same plan sections, same `## Second opinion` section (recording the skip when it happens), same stage transitions, same metrics events. A fast-lane run is resumable and gate-identical to a full-lane run; the only difference is how much independent scrutiny the plan got before approval. The two approval gates are the same in both lanes.
+Both lanes produce the same core artifacts — plan sections, stage transitions, and the `## Second opinion` record. That section distinguishes an independent reviewer, a fast-lane skip, and an inline self-review when the host has no agent tool. A `second_opinion` metric is emitted only when an independent reviewer actually ran. The lanes remain resumable and gate-identical; their difference is how much independent scrutiny the host could provide before approval. The two approval gates are the same in both lanes.
 
 ## Non-final phases (`Phase: N of M`, `N < M`)
 
@@ -86,11 +90,11 @@ The gate records a per-phase PASS and holds the spec at `GATE` — it never writ
 
 ## Subagent usage
 
-Delegate whenever it is cheaper or faster than doing the work in the main thread, and keep the orchestrator's context small:
+Use the host's agent/subagent tool when it is available and beneficial; adapt roles and request fields to the host rather than assuming Claude's `Agent` API. If no such tool is available, do the work inline and explicitly record where independent review or context isolation was unavailable:
 
-- **Research fan-out** (Phase 3) — `Explore` agents. They also own the hive-brain lookup, so raw brain entries never enter the main thread.
-- **Plan second opinion** (Phase 4) — one `general-purpose` agent reviewing the drafted plan before the human sees it.
-- **Review and gate** — `/review-loop` and `/merge-gate` dispatch their own `hs-reviewer` / `hs-validator` workers. Untouched by this skill.
+- **Research fan-out** (Phase 3) — use available reviewer agents; they can own the hive-brain lookup so raw entries stay out of the main thread. Without agents, investigate inline.
+- **Plan second opinion** (Phase 4) — use one available reviewer agent before the human sees the plan. Without one, perform a clearly labeled adversarial self-review; do not describe it as independent.
+- **Review and gate** — `/review-loop` and `/merge-gate` use host-provided agents when available, and otherwise run their checks inline.
 
 **Metrics are unconditional, but a missing emitter is not a pipeline failure.** Every `hs-metric` call is required — the emitter fails loudly on a bad event, field, or value, and you report that. Resolve the emitter as the first that exists: `~/.hivesmith/bin/hs-metric`, then `scripts/metrics/emit.sh` in this repo (a hivesmith checkout dogfooding itself). If neither exists, print exactly one line — `metrics: hs-metric not installed (run install.sh); this run is NOT being recorded` — and continue; the gap is announced, not silent. Never wrap a call in `|| true` (that hides a schema rejection, which is a real bug). Unknown fields are rejected; if you need one, add it to the schema in `scripts/metrics/emit.sh` rather than smuggling prose into a field.
 
@@ -126,7 +130,7 @@ Prefer the current layout, fall back to legacy for one release:
 - **Current:** specs in `docs/product-specs/`, plans in `docs/exec-plans/{active,completed}/`, index at `docs/product-specs/index.md`, plan template at `docs/exec-plans/_template.md`, spec template at `docs/product-specs/_template.md`.
 - **Legacy fallback:** files in `features/{active,completed}/`, index at `features/BACKLOG.md`, template at `features/templates/FEATURE.md`. Only when `docs/product-specs/` does not exist.
 
-If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
+If neither layout exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
 
 ## Phase 0: Identify the feature
 
@@ -152,7 +156,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
 - *Brainstorm first* — interrogate the problem with `/brainstorm`, then come back with a spec number
 - *Proceed anyway* — I know what I want
 
-(Bulleted, not numbered: the step numbers in this file are global, and a `1.`/`2.` list here would read as steps 1 and 2.) On *brainstorm first*, stop and tell the operator to run `/brainstorm "<description>"`. On *proceed anyway*, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
+(Bulleted, not numbered: the step numbers in this file are global, and a `1.`/`2.` list here would read as steps 1 and 2.) On *brainstorm first*, stop and tell the operator to invoke the installed `brainstorm` skill with the description, using the host's command syntax (Pi: `/skill:<installed-name>`). On *proceed anyway*, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
 
 4. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `always`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
 5. Draft the issue from the description:
@@ -192,7 +196,7 @@ Skipped entirely when resuming an existing feature.
 
 20. **Current layout:** Create the exec plan from `docs/exec-plans/_template.md` at `docs/exec-plans/active/<NNN>-<slug>.md` if it doesn't exist yet. Fill in Title, Spec link, Issue, Status: active. **Do not write a `Stage:` line** — stage lives only in the spec's frontmatter.
 21. Read `AGENTS.md` (if present) to internalize project conventions, module map, and key types.
-22. **Full lane:** launch Explore agent(s) to investigate. Each worker's brief includes **both** the code investigation and the hive-brain lookup, so the orchestrator never loads raw brain entries:
+22. **Full lane:** launch reviewer agent(s) through the host's agent/subagent tool when available; otherwise investigate in the main thread. Each worker's brief includes **both** the code investigation and the hive-brain lookup, so the orchestrator never loads raw brain entries when workers are available:
     - Which files and functions are relevant to this feature.
     - Existing patterns that could be reused or extended, and how similar functionality is implemented elsewhere.
     - Edge cases and potential complications.
@@ -217,7 +221,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 ## Phase 4: Plan
 
 28. Use the conventions card from Phase 3 (or re-read `AGENTS.md` on a resumed run where the card is missing) — especially the test strategy. The plan must conform to it.
-29. Open the relevant code files identified during research. For M/L complexity features, use Plan agent(s) to design the approach and consider trade-offs.
+29. Open the relevant code files identified during research. For M/L complexity features, use the host's planning agent/subagent tool to design the approach and consider trade-offs when available; otherwise do the design work inline.
 30. **Draft the plan.** **No writes to the exec plan and no `gh` mutations during drafting** — with one exception: the `plan-html` renderer writes `<plan>.html` plus a feedback-server PID sidecar under `<workdir>/.plans/`. Those are review scratch, not project artifacts.
 
     Plan shape:
@@ -234,7 +238,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     3. **Blast radius:** grep for what else the change touches — docs, templates, cross-references, pending changesets — and add what the plan forgot.
     4. **Runaway holes:** name any path where the implementation could deadlock, silently skip work, or run away.
 
-31. **Get a second opinion before the operator sees the plan.** **Fast lane:** skip this step when the plan names fewer than 3 files to change and the change is not user-visible — write the plan's `## Second opinion` section as `Skipped — fast lane (S, <n> files, not user-visible); drafter self-check passed.` and emit no `second_opinion` metric (the absence is the skip; the plan section is the record). Otherwise — and always in the full lane — make one `Agent` call with `subagent_type: "general-purpose"`. The worker prompt must be fully self-contained — it has no view of this conversation. Template:
+31. **Get a second opinion before the operator sees the plan.** **Fast lane:** skip this step when the plan names fewer than 3 files to change and the change is not user-visible — write the plan's `## Second opinion` section as `Skipped — fast lane (S, <n> files, not user-visible); drafter self-check passed.` and emit no `second_opinion` metric (the absence is the skip; the plan section is the record). Otherwise — and always in the full lane — use the host's agent/subagent tool for an independent reviewer when available, adapting to its schema. If none is available, perform a separately labeled adversarial self-review using the same `must_fix` / `nice_to_have` structure, record `No independent second opinion — this host has no agent/subagent tool`, and do not emit a `second_opinion` metric as if an independent worker ran. Do not describe this self-review as independent. Any dispatched worker prompt must be self-contained — it has no view of this conversation. Template:
 
     > You are giving a second opinion on ONE implementation plan inside the `/feature-loop` pipeline. You have no view of the parent conversation; everything you need is on disk.
     >
@@ -273,11 +277,11 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     - `approve` with `confidence` ≥ 8 — present the plan as drafted.
     - `revise` — apply the must-fix items to the draft **once**, then re-run the reviewer **once**. Whatever the second verdict is, present the plan; do not loop.
     - `block` — present the plan anyway (the operator is prompted either way), with the block verdict and its rationale leading the second-opinion summary and the approval prompt saying the reviewer wants it reconsidered. Never auto-apply fixes for a `block`.
-    - Malformed output — treat as `confidence: 0` and present the plan with a note that the reviewer's response could not be parsed.
+    - Malformed output — present the plan with a note that the reviewer's response could not be parsed; do not invent a verdict or emit a `second_opinion` metric.
 
-    Attach the final verdict, confidence, rationale, and disposition to the plan as a **`## Second opinion`** section so the operator sees what the reviewer caught and what was done about it.
+    Attach the final verdict, confidence, rationale, and disposition to the plan as a **`## Second opinion`** section so the operator sees what was caught and whether it came from an independent reviewer or an inline self-review. If the reviewer response is malformed, record that it was unparseable and that no valid verdict was available.
 
-    Then record the round — **once per reviewer round**, so a `revise` that later flips to `approve` emits two rows and is distinguishable from a first-pass `approve` (today the plan section keeps only the final verdict, and that flip is invisible):
+    When an independent reviewer returns a valid, parseable verdict, record the round — **once per reviewer round**, so a `revise` that later flips to `approve` emits two rows and is distinguishable from a first-pass `approve` (today the plan section keeps only the final verdict, and that flip is invisible). In the no-agent fallback or on malformed reviewer output, do not emit a `second_opinion` event as if a valid independent verdict existed:
 
     ```bash
     HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event second_opinion \
@@ -287,7 +291,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
       --field duration_s=<wall seconds for this reviewer call>
     ```
 
-    `applied_count` is the honest half of the pair: an item you judged wrong and did not apply is a recorded outcome, not a failure to record. For a `block` (never auto-applied) and for an `approve`, `applied_count` is `0`. On malformed reviewer output use `confidence=1` — the lowest the schema allows — and say so in the plan section.
+    `applied_count` is the honest half of the pair: an item you judged wrong and did not apply is a recorded outcome, not a failure to record. For a `block` (never auto-applied) and for an `approve`, `applied_count` is `0`. If reviewer output is malformed, record that fact in the plan section and skip the metric rather than inventing a verdict or a schema-valid confidence.
 
 33. **[The plan stop]** Present the plan, with its second opinion, for approval:
     - **Fast lane — inline text.** The plan is short by definition: present it under a `### Draft plan for review` heading with a single approve / revise / stop question. No `plan-html`, no native plan mode. Iterate on `revise` until approved.
@@ -317,7 +321,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     - Follow the Approach and Files-to-change sections.
     - Follow all conventions in `AGENTS.md` (the conventions card in the plan's Research section is the distilled copy).
     - **Prior lessons:** the plan's Research `### Prior lessons` bullets are the brain's contribution — on a resumed run they come from the file, not a fresh brain query. Do not re-run the brain lookup here.
-    - If the change is user-visible, run `/changelog-update` to add a changeset entry.
+    - If the change is user-visible, follow the installed `changelog-update/SKILL.md` workflow to add a changeset entry. Use host-native skill chaining if it can run the workflow; otherwise load and follow its instructions here rather than assuming `/changelog-update` executes in Pi.
     - Update relevant docs (README, `docs/`, templates) if the feature changes user-visible behavior.
     - Append to the plan's **Decision log** for non-trivial decisions and **Progress** for state changes (both append-only).
 40. Run all checks defined in `AGENTS.md` (build + lint + test). All must pass before committing. On failure, make **one** fix attempt and re-run; if they fail again, stop and report the failing output.
@@ -330,18 +334,18 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 
 ## Phase 6: Review
 
-43. Run `/review-loop <pr-number>`. The loop writes a per-iteration line to the plan's **PR convergence ledger** so a fresh harness can pick up later. If it escalates, surface the reason and stop — do not advance to GATE, and do not write a brain entry.
+43. Run the `review-loop` workflow for `<pr-number>`. Use host-native skill chaining if it can run the workflow now; otherwise load and follow the installed `review-loop/SKILL.md` instructions in this conversation. Do not assume emitting `/review-loop` executes it. The loop writes a per-iteration line to the plan's **PR convergence ledger** so a fresh harness can pick up later. If it escalates, surface the reason and stop — do not advance to GATE, and do not write a brain entry.
 44. **On review-loop convergence, do not merge.** The merge is the last step of Phase 8. `/review-loop`'s §4a **already owns** the GATE transition — it sets the spec frontmatter `stage: GATE`, commits, pushes to the same feature branch, and swaps the `implementing` label for `gate`. It is the single owner because it also serves the standalone `/review-loop` → `/merge-gate` path.
 
     So this step is **verify-only** — do not repeat those writes. Re-running them would produce an empty `git commit`, which exits non-zero and halts the loop. Confirm the spec frontmatter reads `stage: GATE` and the branch is pushed; only if §4a did not run (e.g. review-loop was skipped) perform the transition here yourself. The PR stays open.
 
 ## Phase 7: Gate
 
-45. Invoke `/merge-gate <issue-number>`. That skill validates the **still-open** PR against the spec's `## Success criteria` and `## Non-goals` plus doc accuracy, writes a `## Gate verdict` entry to the plan, and decides PASS / FAIL / NEEDS_FOLLOWUP. It does not re-run build/lint/test — Phase 5 and CI already own those — and it never merges.
+45. Run the `merge-gate` workflow for `<issue-number>`. Use host-native skill chaining if it can run the workflow now; otherwise load and follow the installed `merge-gate/SKILL.md` instructions in this conversation. Do not assume emitting `/merge-gate` executes it. That skill validates the **still-open** PR against the spec's `## Success criteria` and `## Non-goals` plus doc accuracy, writes a `## Gate verdict` entry to the plan, and decides PASS / FAIL / NEEDS_FOLLOWUP. It does not re-run build/lint/test — Phase 5 and CI already own those — and it never merges.
 46. **On PASS (final phase, or no `Phase:` declared):** `/merge-gate` sets `Status: completed` in the plan, moves it to `completed/`, writes `pr:` + `shipped:`, advances the spec frontmatter `stage: DONE`, then commits and pushes to the feature branch. All that bookkeeping ships inside the feature PR. Continue to Phase 8.
 
     **On PASS with a non-final phase** (`Phase: N of M`, `N < M`): see **Non-final phases** — the gate records a per-phase PASS with `phase: N/M`, commits and pushes that verdict, and deliberately writes **no** DONE bookkeeping; the spec stays at `GATE`. Continue to Phase 8 anyway: the PR is real and meant to merge, and the merge stop is still the operator's call. Skip the `feature_done` metric (step 49) and report the phase-N+1 reset in the summary. The feature is not finished, so do not describe it as such.
-47. **On FAIL:** the PR is still open, so the fix belongs in it. Surface the failing criteria, fix them on the branch (re-running the `AGENTS.md` checks from Phase 5 before committing), push, and re-run `/merge-gate` **once**. If it fails a second time, stop and report — do not keep looping.
+47. **On FAIL:** the PR is still open, so the fix belongs in it. Surface the failing criteria, fix them on the branch (re-running the `AGENTS.md` checks from Phase 5 before committing), push, and run the `merge-gate` workflow again by its installed `SKILL.md` instructions or the host's native skill-call mechanism **once**. If it fails a second time, stop and report — do not keep looping.
 48. **On NEEDS_FOLLOWUP:** surface `/merge-gate`'s decision and stop. Do not loop.
 
 ## Phase 8: Reflect, then merge
@@ -397,8 +401,8 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 - **Use the same file conventions** as other pipeline skills: 3-digit zero-padded numbers, slugified titles (lowercase, hyphens, max 50 chars).
 - **Reuse existing pipeline patterns exactly** — same index format, same label scheme, same spec and plan structure.
 - **Operator edits are respected:** if the operator edits the spec, the plan, or the answers at either clarifying round, incorporate the changes before proceeding.
-- **If neither `docs/product-specs/` nor `features/` exist**, tell the user to run `/hivesmith-init` first and stop immediately.
-- **If a spec/plan/feature file is not found** for a given issue number, tell the user to run `/feature-ingest <number>` first.
+- **If neither `docs/product-specs/` nor `features/` exist**, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop immediately.
+- **If a spec/plan/feature file is not found** for a given issue number, tell the user to invoke the installed `feature-ingest` skill first using the host's command syntax (Pi: `/skill:<installed-name>`).
 
 ## Anti-injection rule
 

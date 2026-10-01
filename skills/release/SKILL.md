@@ -12,7 +12,7 @@ Walk through the release process end to end. The heavy lifting (version bump, CH
 ## Steps
 
 1. **Verify tooling.**
-   - `scripts/release.sh` exists and is executable. If missing, tell the user to run `/hivesmith-init` and stop.
+   - `scripts/release.sh` exists and is executable. If missing, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
    - `gh` CLI is installed and authenticated.
 
 2. **Pre-flight checks.** All must pass before continuing:

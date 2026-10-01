@@ -9,6 +9,8 @@ allowed-tools: Read Edit Bash
 
 Broadens the scope of an existing entry under `~/.hivesmith/brain/`. This is the **only** path that promotes scope — auto-writes default to `scope=project` and stay there until a human invokes this skill.
 
+Use a host-provided structured question tool when available; otherwise ask in chat with numbered options and wait. Do not promote until the operator explicitly confirms.
+
 ## Why this is gated
 
 Without an explicit gate, lessons learned in one repo can leak into prompts for unrelated repos. Cross-repo bleed is a documented attack class (see the GitHub MCP heist) and a real failure mode for AI memory systems. Promotion requires human review.

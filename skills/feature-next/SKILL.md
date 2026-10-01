@@ -10,6 +10,10 @@ allowed-tools: Read Glob Grep Bash AskUserQuestion
 Show the current state of the feature pipeline and recommend the next action.
 
 <!-- BEGIN hivesmith upgrade-check (generated from scripts/upgrade/preamble.md; edit there, then run scripts/upgrade/sync-preamble.sh) -->
+## Host capability fallbacks
+
+These skills are shared instructions, not tool adapters. Use the tools and interaction capabilities actually exposed by the current host, adapting names and schemas as needed. A structured question tool is optional: if none is available, ask in chat with numbered options and wait for the answer. Agent/subagent dispatch is also optional: use the host's dispatch tool when present; otherwise work inline and state when isolation or independent review was unavailable. Pi's `/skill:<name>` is an interactive command, not a tool a worker can call; for nested workflows use a host-native skill-call mechanism if one exists, otherwise load and follow the target `SKILL.md` in the current thread. Never call a tool merely because another harness provides it.
+
 ## Before you start: upgrade check
 
 Do this before anything else in this skill, then carry on with the rest of it.
@@ -51,7 +55,7 @@ After any other option, continue with this skill.
 1. **Locate the source of truth**, in this order:
    - `docs/product-specs/<NNN>-*.md` files with YAML frontmatter (current layout). The frontmatter `stage:` field is canonical; **do not** read from the generated `docs/product-specs/index.md` (it's a regenerated view, not a source).
    - `features/BACKLOG.md` (legacy fallback — one release only)
-   If neither exists, suggest the user run `/hivesmith-init` first.
+   If neither exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`).
 2. **Current layout:** scan each `docs/product-specs/<NNN>-*.md`, parse YAML frontmatter, collect `issue`, `title`, `stage`, `complexity`, `priority`, `pr`, `shipped`. Active items are those with `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, GATE}. **Legacy layout:** read the BACKLOG row for each active feature, then read its exec plan for the current stage.
 3. For each active item, optionally read its exec plan (`docs/exec-plans/active/<NNN>-<slug>.md`) to surface the PR field for REVIEW-stage items.
 4. Display a summary table:
@@ -67,14 +71,16 @@ Feature Pipeline Status
 
 5. Check for un-ingested GitHub issues: run `gh issue list --state open --json number,title` and compare against existing spec/plan files (current layout: `docs/product-specs/`, `docs/exec-plans/{active,completed}/`; legacy: `features/active/` and `features/completed/`).
 6. Recommend the next action based on priority. Stages later in the pipeline take precedence — work in flight clears first:
-   - If there are GATE-stage items → "Run `/merge-gate <number>` to validate the open PR before merging"
-   - If there are REVIEW-stage items → "Run `/review-loop <pr-number>` to drive PR convergence (or `/feature-loop <number>` to resume from REVIEW with merge gate)"
-   - If there are IMPLEMENT-stage items → "Run `/feature-implement <number>` to implement"
-   - If there are PLAN-stage items → "Run `/feature-plan <number>` to create implementation plan"
-   - If there are RESEARCH-stage items → "Run `/feature-research <number>` to research"
-   - If there are TRIAGE-stage items → "Run `/feature-triage <number>` to triage"
-   - If there are un-ingested issues → "Run `/feature-ingest <number>` to ingest"
-   - Otherwise → "Pipeline is clear. Run `/brainstorm` to develop the next idea, or `/feature-new` if you already know what to build."
+   - If there are GATE-stage items → recommend the installed `merge-gate` skill with the issue number to validate the open PR before merging.
+   - If there are REVIEW-stage items → recommend the installed `review-loop` skill with the PR number to drive convergence (or `feature-loop` with the issue number to resume from REVIEW with merge gate).
+   - If there are IMPLEMENT-stage items → recommend the installed `feature-implement` skill with the issue number.
+   - If there are PLAN-stage items → recommend the installed `feature-plan` skill with the issue number.
+   - If there are RESEARCH-stage items → recommend the installed `feature-research` skill with the issue number.
+   - If there are TRIAGE-stage items → recommend the installed `feature-triage` skill with the issue number.
+   - If there are un-ingested issues → recommend the installed `feature-ingest` skill with the issue number.
+   - Otherwise → report that the pipeline is clear; recommend the installed `brainstorm` skill for a vague idea or `feature-new` for a concrete feature.
+
+   Render every recommendation using the current host's command syntax. Pi uses `/skill:<installed-name> <arguments>`; other hosts may use bare slash commands.
 
    For REVIEW-stage items, also surface the PR number (from the plan header's `PR:` field) so the user can act on it directly.
 

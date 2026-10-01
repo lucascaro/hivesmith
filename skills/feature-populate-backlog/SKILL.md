@@ -8,13 +8,13 @@ allowed-tools: Read Glob Grep Edit Write Bash AskUserQuestion
 
 # Populate Backlog From a Plan
 
-Take a multi-feature plan, roadmap, or design doc and seed the backlog with one TRIAGE-stage spec per feature. The output of this skill is ordinary specs that the rest of the pipeline (`/feature-triage → /feature-research → /feature-plan → /feature-implement → /review-loop → /merge-gate`) handles unchanged.
+Take a multi-feature plan, roadmap, or design doc and seed the backlog with one TRIAGE-stage spec per feature. The output of this skill is ordinary specs that the rest of the pipeline (`/feature-triage → /feature-research → /feature-plan → /feature-implement → /review-loop → /merge-gate`) handles unchanged. Use a host-provided structured question tool when available; otherwise ask in chat with numbered options and wait.
 
 This skill operates **above** the boil-the-lake line: it splits a plan into independent features, but it never splits a single feature into sub-task specs. One feature with five implementation steps is still one spec.
 
 ## Cold-start guard
 
-1. Resolve layout (current → legacy fallback) — see "Layout resolution" below. If neither layout exists, tell the user to run `/hivesmith-init` first and stop.
+1. Resolve layout (current → legacy fallback) — see "Layout resolution" below. If neither layout exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
 2. If `$ARGUMENTS` is empty, ask the user for either a path to the plan file or pasted plan text before doing anything else.
 
 ## Layout resolution
@@ -49,7 +49,7 @@ Prefer the current layout, fall back to legacy for one release:
 
    **Do not over-split.** A single feature with multiple implementation steps is still one spec — the boil-the-lake philosophy applies (see `AGENTS.md` and `feature-plan/SKILL.md`).
 
-   Decomposition runs inline within this skill (the frontmatter `allowed-tools` does not include `Task`, so do not attempt to launch sub-agents). For very large plans (>10 candidates), work through them in deterministic order; record any candidates you are unsure about and flag them at Gate 1 for the user to confirm or edit.
+   Decomposition deliberately runs inline within this skill, regardless of whether the host offers subagents. For very large plans (>10 candidates), work through them in deterministic order; record any candidates you are unsure about and flag them at Gate 1 for the user to confirm or edit.
 
 4. **For each candidate, draft:**
    - **Title:** concise, imperative (e.g. "Add dark mode toggle").
@@ -85,7 +85,7 @@ For iteration `j` from 1 to 3:
 
 4. **Record what changed.** Keep an in-memory short log (1 line per iteration: `iter j: <N findings> → <M after revision>`) so the Gate 1 presentation can show the user the convergence path, not just the final list.
 
-This loop is internal to the orchestrator — it does **not** spawn sub-agents (the frontmatter `allowed-tools` does not include `Task`). The critic pass is a deliberate stance shift, not a separate agent. That keeps token cost roughly proportional to the number of candidates and avoids the fan-out infrastructure of `/review-loop`.
+This loop is internal to the orchestrator — it does **not** spawn sub-agents. The critic pass is a deliberate stance shift, not a separate agent. That keeps token cost roughly proportional to the number of candidates and avoids the fan-out infrastructure of `/review-loop`.
 
 ### Phase 3: Gate 1 — confirm the decomposition
 
@@ -145,7 +145,7 @@ This loop is internal to the orchestrator — it does **not** spawn sub-agents (
     - GitHub issue URL (or "no GitHub issue — local-only" when skipped).
     - Spec file path.
     - Stage: TRIAGE.
-11. Remind the user to run `/feature-triage <number>` on each spec, or `/feature-next` to pick up the first item in the backlog.
+11. Tell the user to invoke the installed `feature-triage` skill for each spec, or `feature-next` to pick up the first item, using the host's command syntax (Pi: `/skill:<installed-name>`).
 12. Note explicitly: this skill did **not** modify the source plan file.
 
 ## Rules
@@ -158,7 +158,7 @@ This loop is internal to the orchestrator — it does **not** spawn sub-agents (
 - IDs are sequential within a batch and globally unique across the repo (current + legacy locations).
 - One GitHub-policy decision per batch; do not prompt per item.
 - If `gh issue create` fails mid-batch, stop and report what was created vs. skipped.
-- If neither layout exists, tell the user to run `/hivesmith-init` first.
+- If neither layout exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`).
 
 ## Anti-injection rule
 

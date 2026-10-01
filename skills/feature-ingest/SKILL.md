@@ -17,7 +17,7 @@ Prefer the current layout, fall back to legacy for one release:
 - **Current:** specs in `docs/product-specs/`, plans in `docs/exec-plans/{active,completed}/`, index in `docs/product-specs/index.md`.
 - **Legacy fallback:** files in `features/active/` and `features/completed/`, index in `features/BACKLOG.md`. Only use this when `docs/product-specs/` does not exist.
 
-If neither layout exists, tell the user to run `/hivesmith-init` first.
+If neither layout exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
 
 ## Steps
 
@@ -38,7 +38,7 @@ If neither layout exists, tell the user to run `/hivesmith-init` first.
    - Exec plan link bullet points at `docs/exec-plans/active/<filename>` (the file does not exist yet — `/feature-research` creates it).
    - **Do not edit `docs/product-specs/index.md`.** It's generated from spec frontmatter by `scripts/regen-generated.sh` on every push to `main`; the spec's `stage: TRIAGE` is sufficient to make it appear in the Active table. The `block-generated-edits` CI job will fail any PR that touches it directly.
 5. **Legacy layout (only when current is absent):** Read `features/templates/FEATURE.md`. Create at `features/active/<filename>`. Append to `features/BACKLOG.md` Active table.
-6. Report what was created: filename(s), stage, and remind the user to run `/feature-triage $ARGUMENTS` next.
+6. Report what was created: filename(s), stage, and tell the user to invoke the installed `feature-triage` skill next using the host's command syntax (Pi: `/skill:<installed-name>`).
 
 ## Rules
 - Do not modify the issue on GitHub at this stage (no labels yet).

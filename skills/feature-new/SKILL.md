@@ -10,7 +10,7 @@ allowed-tools: Read Glob Grep Edit Write Bash
 
 # Create New Feature
 
-Create a new GitHub issue from a description and run it through the feature pipeline (ingest + triage).
+Create a new GitHub issue from a description and run it through the feature pipeline (ingest + triage). When an operator decision is required, use the host's structured question tool if available; otherwise ask in chat with numbered options and wait.
 
 If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask the user what feature they want.
 
@@ -123,8 +123,7 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
     - Spec / feature file path.
     - Type, complexity, priority.
     - Current stage (RESEARCH).
-18. Remind user to run `/feature-research <number>` next — unless the caller supplied its own
-    handoff (`/brainstorm` hands off to `/feature-loop <number>`), in which case print that instead.
+18. Tell the user to invoke the installed `feature-research` skill next — unless the caller supplied its own handoff (`brainstorm` hands off to `feature-loop <number>`), in which case name that skill instead. Use the host's command syntax when printing a command (Pi: `/skill:<installed-name>`).
 
 ## Rules
 - Always show the proposed issue contents at Gate 1; whether GitHub creation is the recommended default is governed by `.hivesmith/config.toml`'s `[github] create_issues` value (`opt-out` / `always` / `opt-in` / `ask`; default `opt-out` when missing). When the value is `always`, Gate 1 is skipped entirely and the issue is auto-created.
@@ -133,4 +132,4 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
 - Single feature at a time.
 - Follow existing filename conventions (3-digit zero-pad, slugified title, max 50 chars).
 - If no argument is provided, ask the user to describe the feature before proceeding.
-- If neither `docs/product-specs/` nor `features/` exist, tell the user to run `/hivesmith-init` first.
+- If neither `docs/product-specs/` nor `features/` exist, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.

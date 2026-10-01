@@ -7,7 +7,7 @@ allowed-tools: Read Glob Write Bash
 
 # Initialize hivesmith in a project
 
-Scaffold the hivesmith templates into the current project so the feature-pipeline skills, loop primitives, and gardening skills have the files they expect.
+Scaffold the hivesmith templates into the current project so the feature-pipeline skills, loop primitives, and gardening skills have the files they expect. Use the host's structured question tool when available; otherwise present choices in chat with numbered options and wait for the operator.
 
 The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Templates are under `<hivesmith>/templates/`.
 
@@ -141,7 +141,7 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    - Edit `scripts/release.sh` to set `PROJECT`, `REPO`, and `BUILD_CMD` at the top.
    - Edit `.hivesmith/config.toml` to change the GitHub issue creation policy later: `"opt-out"` (create by default), `"always"` (create without asking), `"opt-in"` (keep specs local by default), or `"ask"` (prompt every time).
    - The hive brain at `~/.hivesmith/brain/` will accumulate cross-project lessons. Use `/brain-promote` to broaden a project lesson, `/brain-garden` to tidy.
-   - Run `/feature-next` to verify the pipeline is wired up.
+   - Invoke the installed `feature-next` skill to verify the pipeline is wired up, using the host's command syntax (Pi: `/skill:<installed-name>`).
 
 10. **Migration mode (`--migrate`).** If invoked with `--migrate`, AND `features/active/` or `features/completed/` exists with at least one `*.md` file:
    - For each existing feature file `features/<state>/<NNN>-<slug>.md`:

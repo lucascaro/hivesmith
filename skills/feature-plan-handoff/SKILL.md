@@ -20,7 +20,7 @@ The premise: **the file is the whole contract.** A fresh agent — new session, 
 | A slug | `~/.hivesmith/plans/<slug>.md` |
 | Empty | **first** the exec plan whose spec is at `stage: IMPLEMENT` — or, as a recovery case, still at `stage: PLAN` because `/feature-plan` crashed before its last write or the frontmatter was hand-edited — and whose `## Review log` has at least one entry; **then** the most recently modified `~/.hivesmith/plans/` file with `status: REVIEWED`. When both resolve, the repo plan wins |
 
-Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at `/feature-plan`.
+Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at the installed `feature-plan` skill using the host's command syntax (Pi: `/skill:<installed-name>`).
 
 ## Steps
 
@@ -41,7 +41,7 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
 
    `## Verification` was added to `docs/exec-plans/_template.md` alongside this skill. A plan scaffolded from an older template will not have it; that is a real gate failure. This skill never backfills it — refuse and send the user to `/feature-plan-review`, which fixes it where the added commands get reviewed. `/feature-plan` backfills too, if it reaches the plan first.
 
-   On any failure, list each one with the section it's in, which file it was read from, and what would satisfy it, then point the user at `/feature-plan-review <target>`. Stop there.
+   On any failure, list each one with the section it's in, which file it was read from, and what would satisfy it, then point the user at the installed `feature-plan-review` skill using the host's command syntax (Pi: `/skill:<installed-name> <target>`). Stop there.
 
 3. **On pass, stamp it.** Standalone plans: set `status: HANDED-OFF`. Spec-driven plans: set the spec's frontmatter `stage:` to `IMPLEMENT` in `docs/product-specs/<NNN>-*.md` — the spec is the authority, and a handed-off plan is by definition ready to implement. `/feature-plan` normally advanced it already, so this is usually a no-op; write it only when the current stage is earlier than `IMPLEMENT` (`PLAN`, or unset). **Never demote** `REVIEW`, `GATE` or `DONE` — re-running handoff on a plan already in flight must not rewind it; leave the stage untouched and say so. **Do not edit `docs/product-specs/index.md`** (it's generated).
 

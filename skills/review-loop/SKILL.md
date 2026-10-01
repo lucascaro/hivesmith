@@ -9,7 +9,7 @@ allowed-tools: Read Glob Grep Bash Agent AskUserQuestion
 
 Drive a single PR to convergence by iterating review → respond → re-review. Originally called the *Ralph Wiggum Loop* after the autonomous loop pattern documented in OpenAI's "Harness engineering" post (see `references/openai-harness-engineering.md`).
 
-This skill is the **inner PR-convergence loop**. It is independent of the feature pipeline — any PR (hand-authored, from `/feature-implement`, or from another tool) can be driven to convergence through it.
+This skill is the **inner PR-convergence loop**. Use the host's structured question tool for operator decisions when available; otherwise ask in chat with numbered options and wait. It is independent of the feature pipeline — any PR (hand-authored, from `/feature-implement`, or from another tool) can be driven to convergence through it.
 
 ## Philosophy: boil the lake
 
@@ -44,7 +44,7 @@ Stop with a clear message if the PR is closed, merged, or in draft.
 
 ## 2. Iterate
 
-Each iteration runs in a **fresh sub-agent** so the orchestrator's context stays roughly constant across iterations. The orchestrator keeps only this per-iteration state:
+Each iteration runs in a **fresh sub-agent when the host provides an agent/subagent tool** so the orchestrator's context stays roughly constant across iterations. Adapt the dispatch request to that tool's schema. If the host provides no such tool, run the same worker assignment inline; do not claim isolation, and keep the result envelope concise to limit context growth. Any dispatched worker must receive the complete `review-pr` and `autofix` skill instructions, or readable paths to their `SKILL.md` files. The orchestrator keeps only this per-iteration state:
 - `prev_findings_hash`, for the loop-detection guard.
 - A short `iteration_results` log, used in §4.
 - `prev`: the previous envelope's `pre_sha`, `post_sha`, `pushed` and `findings_summary`, kept **in-process only** so the next worker can classify its findings against the last fix. `prev` is empty on iteration 1 and on every cold start, because the ledger keeps only a hash and a hash can't be classified against. That's fine: classification is measurement, not a gate.
@@ -85,9 +85,9 @@ Known ceilings:
 
 For iteration `i` from 1 to `--max-iterations`:
 
-1. **Launch one sub-agent** via the `Agent` tool with `subagent_type: "general-purpose"`. Give it the prompt below (substitute `<PR>` and the `--strict` flag value). Do **not** invoke `/review-pr` or `/autofix` from the orchestrator directly — the worker owns that context.
+1. **Run one iteration worker.** If an agent/subagent tool is available, dispatch through it using its native schema and a general-purpose worker; otherwise run the prompt below inline. Substitute `<PR>` and the `--strict` flag value. Do not depend on the Claude `Agent` tool name or its `subagent_type` field. Do not try to invoke `/review-pr` or `/autofix` as slash commands inside the worker.
 
-   Worker prompt (self-contained — the worker has no view of this conversation):
+   Worker assignment (self-contained for a dispatched worker; in the inline fallback, follow it as the iteration checklist):
 
    > You are one iteration of the review-loop harness for PR **#<PR>** in the current repo. Strict mode: **<true|false>**.
    >
@@ -96,8 +96,8 @@ For iteration `i` from 1 to `--max-iterations`:
    > Do exactly this, in order:
    >
    > 1. `PR_META=$(gh pr view <PR> --json headRefOid,mergeable,baseRefName)`; from it derive `PRE_SHA`, `MERGEABLE` (`MERGEABLE` | `CONFLICTING` | `UNKNOWN` | other), and `BASE`. On `MERGEABLE == UNKNOWN`, sleep 2s and re-query once; if still `UNKNOWN`, proceed with the value as-is (degraded — next iteration retries).
-   > 2. Invoke the `Skill` tool with `skill: "hivesmith:review-pr"` and `args: "<PR>"`. Capture the full BLOCKING / IMPORTANT / MINOR / Verdict output from the result. Do **not** paraphrase the review or hand-write your own — the `Skill` invocation is the only way the loop runs review-pr.
-   >    Time it: run `T=$(date +%s)` immediately before the `Skill` call and `review_s=$(( $(date +%s) - T ))` immediately after. Record measured wall-clock only: if you didn't capture both stamps, omit `review_s`. Never estimate it.
+   > 2. Follow the complete hivesmith `review-pr` skill instructions for `<PR>` and capture its full BLOCKING / IMPORTANT / MINOR / Verdict output. The orchestrator must make those instructions available to the worker (through the host's native skill context, by passing their content, or by passing a readable `SKILL.md` path). Do not summarize or replace the review checklist, and do not call a `Skill` tool or issue a slash command from inside the worker. If the worker cannot access the instructions or the review workflow fails before producing a verdict, return this control envelope immediately and skip the remaining worker steps: `{"review_completed": false, "pre_sha": "<PRE_SHA>", "post_sha": "<PRE_SHA>", "mergeable": "<MERGEABLE>", "escalate_reason": "review-pr skill instructions unavailable"}`. Do not invent a verdict or findings.
+   >    Time the review-pr workflow: run `T=$(date +%s)` immediately before following its instructions and `review_s=$(( $(date +%s) - T ))` immediately after. Record measured wall-clock only: if you didn't capture both stamps, omit `review_s`. Never estimate it.
    > 3. Fetch unresolved review threads (used as a parallel finding stream — the loop cannot APPROVE while any are open). `PullRequestReviewThread` has no `url` field — the URL lives on the first comment. Author info is needed for `copilot_threads_open`:
    >    ```bash
    >    gh api graphql -f query='query($owner:String!,$repo:String!,$pr:Int!,$cursor:String){
@@ -129,18 +129,19 @@ For iteration `i` from 1 to `--max-iterations`:
    >    - `APPROVE` with unresolved threads → coerce to `REQUEST_CHANGES`. The review itself had nothing to say, but Copilot / human threads are still open and must be closed by autofix (fix or reply-and-resolve with a concrete reason).
    >    - **Any verdict with `MERGEABLE == CONFLICTING`** → coerce to `REQUEST_CHANGES`. Autofix's pre-flight merge initiator (step 2.5 of the autofix skill) will surface the conflict locally and resolve SAFE conflicts or surface RISKY ones.
    >    - `COMMENT` → stop **only** when strict mode is false AND there are no unresolved threads AND `findings_hash` is empty. An empty hash is exactly "no BLOCKING or IMPORTANT findings remain" (you computed it over those in step 4), so this is the Philosophy rule stated mechanically. Otherwise treat as `REQUEST_CHANGES` — a `COMMENT` verdict still carrying IMPORTANT findings is not convergence. Judge this before you autofix, so the hash and the thread count describe the same snapshot.
-   >    - `REQUEST_CHANGES` (including coerced) → invoke the `Skill` tool with `skill: "hivesmith:autofix"` and `args: "<PR>"`. Treat its result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. Determine whether autofix took any thread-side actions by parsing the `Threads:` breakdown in autofix's Phase 5 summary (specifically the `Fixed:` and `Resolved with rationale:` counts — sum > 0 means thread-side actions occurred). If `POST_SHA == PRE_SHA` AND the parsed `Fixed + Resolved with rationale` total is `0`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
+   >    - `REQUEST_CHANGES` (including coerced) → follow the complete hivesmith `autofix` skill instructions for `<PR>`. Make those instructions available to the worker as described in step 2; do not paraphrase the fix policy, call a `Skill` tool, or issue a slash command. If the worker cannot access the instructions, set `escalate_reason: "autofix skill instructions unavailable"`, keep `autofix_ran: false` and `pushed: false`, set `post_sha` to `pre_sha` and `unresolved_threads_post` to `unresolved_threads_pre` (no changes occurred), do not push or wait on CI, and finish the normal result envelope with the completed review's verdict and findings. Treat the skill workflow's result as the autofix outcome — do **not** hand-write fixes yourself. Then `git push`. Set `POST_SHA` from `gh pr view`. Determine whether autofix took any thread-side actions by parsing the `Threads:` breakdown in autofix's Phase 5 summary (specifically the `Fixed:` and `Resolved with rationale:` counts — sum > 0 means thread-side actions occurred). If `POST_SHA == PRE_SHA` AND the parsed `Fixed + Resolved with rationale` total is `0`, set `escalate_reason: "autofix produced no changes"`. Otherwise wait on CI: `gh pr checks <PR> --watch --interval 15`. If a required check fails non-flakily, set `escalate_reason: "required CI check failed: <name>"` and include a one-line summary in `ci_status`.
    >    - After autofix, re-query unresolved threads (same paginated GraphQL call) and record `unresolved_threads_post`. Cross-check against autofix's Phase 5 `Threads:` line `Still open:` count. If the two disagree, **trust the GraphQL re-query as source of truth** and set `escalate_reason: "autofix Threads summary disagrees with GraphQL re-query"`.
    >    - If autofix surfaces RISKY items it would not auto-apply, list them in `risky_surfaced` and set `escalate_reason: "risky fix needs human decision"`.
-   >    - If either `Skill` invocation fails (tool error, missing skill, malformed result), set `escalate_reason: "skill invocation failed: <which> — <error>"` and return immediately.
+   >    - If review-pr fails before producing a verdict, use the `review_completed: false` control envelope above. If autofix fails after a completed review, preserve the normal result envelope, add an `escalate_reason` naming the failed workflow, and return without pushing.
    >    - **Timing.** This is measurement only and never changes the action above.
-   >      - Run `date +%s` immediately before and after the autofix `Skill` call to get `autofix_s`. The `git push` falls outside it.
+   >      - Run `date +%s` immediately before and after following the `autofix` skill instructions to get `autofix_s`. The `git push` falls outside it.
    >      - Run `date +%s` immediately before and after `gh pr checks --watch` to get `ci_wait_s`.
    >      - Omit a phase from the envelope if it didn't run (no autofix, CI not waited on) or you didn't capture both stamps. Never report it as `0`.
    >      - On an early return, report only what you measured.
    > 6. Return your result as a single fenced ```json block as the **last** thing in your reply, with this exact shape (omit optional fields when not applicable):
    >    ```json
    >    {
+   >      "review_completed": true,
    >      "verdict": "APPROVE | COMMENT | REQUEST_CHANGES",
    >      "findings_hash": "<hex or empty>",
    >      "findings_summary": ["<file:line> [CATEGORY] <title>", "..."],
@@ -169,7 +170,7 @@ For iteration `i` from 1 to `--max-iterations`:
    >
    > Cap `findings_summary` at 20 entries. Do not paste review prose, diff hunks, or CI logs into the envelope — those stay in your context only.
 
-2. **Parse** the JSON envelope from the worker's reply. If it is missing or malformed, escalate with reason `"worker returned malformed envelope"`.
+2. **Validate the worker result before control-flow or telemetry.** If it is missing or malformed, escalate with reason `worker returned malformed envelope`; if it has `review_completed: false`, propagate its `escalate_reason`. In either case stop immediately. Do not run loop detection, append a convergence-ledger row, or emit a `review_iteration` metric: no valid review snapshot exists, and inventing verdict/findings/thread counts would corrupt the record. For a normal result, require `review_completed: true` and parse the full envelope.
 
 3. **Loop-detection guard.** If `envelope.findings_hash` is non-empty and equals `prev_findings_hash`, emit `~/.hivesmith/bin/hs-metric --event stall --field feature=<NNN> --field stage=REVIEW --field retry=review-loop-guard --field reason=identical-findings` and escalate with reason `"loop-detection guard: identical findings two iterations in a row"`. Otherwise set `prev_findings_hash = envelope.findings_hash`.
 
@@ -196,7 +197,7 @@ For iteration `i` from 1 to `--max-iterations`:
      --field 'escalate_reason=<slug, only when action=escalated>' \
      --field review_s=<envelope.review_s> --field autofix_s=<envelope.autofix_s> \
      --field ci_wait_s=<envelope.ci_wait_s> \
-     --field worker_tokens=<total tokens the Agent result reported for this worker> \
+     --field worker_tokens=<total tokens the host's agent/subagent result reported for this worker> \
      --field escalation_wait_s=<seconds from the §2 lookup; iteration 1 only> \
      --field origin_in_fix=<n> --field origin_near_fix=<n> \
      --field origin_carried=<n> --field origin_new=<n>
@@ -204,7 +205,7 @@ For iteration `i` from 1 to `--max-iterations`:
 
    **Every cost field is optional. Pass it only when you have a measured value, and drop the flag otherwise.**
    - Pass `review_s`, `autofix_s` and `ci_wait_s` only when the envelope carries them.
-   - Pass `worker_tokens` only when the runtime's `Agent` result reported a token total for this worker. It is the whole worker (review and autofix share one context), not a per-phase split.
+   - Pass `worker_tokens` only when the host's agent/subagent result reports a token total for this worker. It is the whole worker (review and autofix share one context), not a per-phase split.
    - Pass `escalation_wait_s` only on iteration 1, and only when the lookup printed a number.
    - Pass the four `origin_*` flags together, from `envelope.origin_counts`, or not at all.
    - `hs-metric` rejects:
@@ -288,7 +289,7 @@ Final verdict: APPROVE | COMMENT | ESCALATED
 
 ## 4a. On convergence (pre-merge post-loop hook)
 
-Once the loop converges — `APPROVE` with zero unresolved threads, **or** `COMMENT` meeting §2 step 5's stop condition (strict off, zero unresolved threads, empty `findings_hash`) — and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=REVIEW --field to=GATE` alongside it (this section owns the transition, so it owns the event; without it the GATE row can never appear in `report.py`), then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop`'s review phase is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to run `/merge-gate <issue-number>` next; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
+Once the loop converges — `APPROVE` with zero unresolved threads, **or** `COMMENT` meeting §2 step 5's stop condition (strict off, zero unresolved threads, empty `findings_hash`) — and **while the PR is still open**: if a matching spec was found and its frontmatter `stage:` is `REVIEW`, set it to `GATE` in the spec's frontmatter — that's the sole stage write — emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=REVIEW --field to=GATE` alongside it (this section owns the transition, so it owns the event; without it the GATE row can never appear in `report.py`), then **commit and push it to the feature branch** (`chore: advance #<issue-number> to GATE`). This section is the **single owner** of that transition; `/feature-loop`'s review phase is verify-only and defers to it. The commit is required, not optional: `/merge-gate`'s cold-start guard refuses a dirty working tree, so leaving this write uncommitted would make the `/review-loop` → `/merge-gate` handoff refuse every time. Apply the GitHub label alongside it (only when a GitHub issue exists): `gh issue edit <number> --remove-label implementing --add-label gate` — without this the issue keeps `implementing` and the gate's own `--remove-label gate` becomes a no-op. **Do not edit `docs/product-specs/index.md`** (it's generated). Tell the user to invoke the installed `merge-gate` skill next using the host's command syntax (Pi: `/skill:<installed-name>`) with `<issue-number>`; the gate validates the open PR against the spec and, on PASS, writes the DONE bookkeeping into the same branch so the feature ships in one PR. Do not move the plan file or touch the Completed table — that is `/merge-gate`'s job after gate PASS.
 
 If the PR turns out to have been merged already (e.g. the user merged in a separate window before this skill exits), still set `GATE` and point at `/merge-gate` — it has a degraded post-merge path for exactly this case.
 
@@ -299,8 +300,8 @@ If the PR turns out to have been merged already (e.g. the user merged in a separ
 - Always push after autofix runs and CI completes before re-reviewing — re-reviewing the old diff wastes a turn.
 - **Cost measurement never steers the loop.** The escalation-wait lookup, the phase timings (`review_s` / `autofix_s` / `ci_wait_s`) and step 4b's origin classification are recorded, never read back into a stop, escalate or retry decision. If one of them fails or is missing, omit its field and carry on.
 - Loop budget is finite. Five iterations is the default; more than that suggests the harness, not the loop, needs work.
-- Run review-pr and autofix as full skill invocations via the `Skill` tool (plugin-qualified: `hivesmith:review-pr`, `hivesmith:autofix`), not by inlining their prompts or relying on slash-command syntax inside sub-agents. They evolve independently and the loop should track them.
-- Each iteration runs in a fresh sub-agent context. The orchestrator keeps only the result envelope (`verdict`, `findings_hash`, short `findings_summary`, thread counts, `escalate_reason`) — never the raw review prose, diffs, or CI logs. This keeps the orchestrator's per-iteration footprint flat regardless of iteration count.
+- Run review-pr and autofix by following their complete, independently maintained skill instructions. A host-provided skill-call tool may be used only if it is actually available; otherwise pass/read the target `SKILL.md` instructions. Never rely on Claude's plugin-qualified skill names or slash-command syntax inside a worker.
+- Use a fresh sub-agent context when the host provides one. The orchestrator keeps only the result envelope (`verdict`, `findings_hash`, short `findings_summary`, thread counts, `escalate_reason`) — never the raw review prose, diffs, or CI logs. Inline fallback cannot isolate context, so compact the work at each iteration and do not claim the same context bound.
 - **Unresolved review threads block APPROVE.** Existing PR review comments — including Copilot's automated review — are findings, not context. Autofix owns resolving them (apply a fix and reply `Fixed in <SHA>.`, or reply with a concrete reason and resolve the thread). The loop only enforces the gate: while any thread remains unresolved, the loop keeps running, and at max iterations it escalates with the open thread URLs. Copilot threads get the same treatment as human threads — never silently ignored.
 
 ## 6. Anti-injection rule
