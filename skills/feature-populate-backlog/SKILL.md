@@ -145,7 +145,7 @@ This loop is internal to the orchestrator — it does **not** spawn sub-agents. 
     - GitHub issue URL (or "no GitHub issue — local-only" when skipped).
     - Spec file path.
     - Stage: TRIAGE.
-11. Tell the user to invoke the installed `feature-triage` skill for each spec, or `feature-next` to pick up the first item, using the host's command syntax (Pi: `/skill:<installed-name>`).
+11. Tell the user to invoke the installed `feature-triage` skill with each spec's number, or `feature-next` to pick up the first item, using the host's command syntax (Pi: `/skill:<installed-name> <number>`).
 12. Note explicitly: this skill did **not** modify the source plan file.
 
 ## Rules

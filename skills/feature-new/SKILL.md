@@ -123,7 +123,7 @@ If `$ARGUMENTS` is provided, use it as the feature description. Otherwise, ask t
     - Spec / feature file path.
     - Type, complexity, priority.
     - Current stage (RESEARCH).
-18. Tell the user to invoke the installed `feature-research` skill next — unless the caller supplied its own handoff (`brainstorm` hands off to `feature-loop <number>`), in which case name that skill instead. Use the host's command syntax when printing a command (Pi: `/skill:<installed-name>`).
+18. Tell the user to invoke the installed `feature-research` skill with the resolved `<number>` next — unless the caller supplied its own handoff (`brainstorm` hands off to `feature-loop <number>`), in which case preserve that number. Use the host's command syntax when printing a command (Pi: `/skill:<installed-name> <number>`).
 
 ## Rules
 - Always show the proposed issue contents at Gate 1; whether GitHub creation is the recommended default is governed by `.hivesmith/config.toml`'s `[github] create_issues` value (`opt-out` / `always` / `opt-in` / `ask`; default `opt-out` when missing). When the value is `always`, Gate 1 is skipped entirely and the issue is auto-created.

@@ -22,7 +22,7 @@ Strip `--text` / `--html` first, then resolve the target:
 | A slug | `~/.hivesmith/plans/<slug>.md` |
 | Empty | **first** the exec plan whose spec is at `stage: IMPLEMENT` and whose `## Review log` is empty (the "planned, not yet reviewed" state — `/feature-plan` advances the stage as its last write, so `stage: PLAN` is already gone by the time this skill runs); **then** the most recently modified `~/.hivesmith/plans/` file with `status: DRAFT` |
 
-Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at the installed `feature-plan` skill using the host's command syntax (Pi: `/skill:<installed-name>`). Do not invent a plan to review. When both lanes resolve, the repo plan wins — a stale standalone draft from an unrelated project must never silently become the target.
+Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at the installed `feature-plan` skill with the requested `<slug-or-number>` using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`). Do not invent a plan to review. When both lanes resolve, the repo plan wins — a stale standalone draft from an unrelated project must never silently become the target.
 
 ## Philosophy: boil the lake
 
@@ -70,7 +70,7 @@ Review all of it. Every file path, every claimed helper, every call site the cha
 
 8. **Present the result.** Same format rule as `/feature-plan`: `--text` forces text, `HIVESMITH_PLAN_HTML=0` forces text, otherwise text when the plan is short (≲120 body lines, no diagram-worthy content) and HTML otherwise. On the HTML path, follow the **Canonical call sequence** in `skills/plan-html/SKILL.md` — it owns the guard, the fallback chain, and the stop-server obligation. Set `changed: true` on every section you touched so the user sees the edits highlighted, and re-render to the same output path.
 
-9. **Report.** List the findings by class (grounding / gaps / YAGNI), state what you changed, and tell the user to invoke the installed `feature-plan-handoff` skill when they're satisfied, using the host's command syntax (Pi: `/skill:<installed-name>`).
+9. **Report.** List the findings by class (grounding / gaps / YAGNI), state what you changed, and tell the user to invoke the installed `feature-plan-handoff` skill with the resolved `<slug-or-number>` when they're satisfied, using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`).
 
 ## Rules
 

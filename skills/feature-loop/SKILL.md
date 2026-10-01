@@ -402,7 +402,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 - **Reuse existing pipeline patterns exactly** — same index format, same label scheme, same spec and plan structure.
 - **Operator edits are respected:** if the operator edits the spec, the plan, or the answers at either clarifying round, incorporate the changes before proceeding.
 - **If neither `docs/product-specs/` nor `features/` exist**, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop immediately.
-- **If a spec/plan/feature file is not found** for a given issue number, tell the user to invoke the installed `feature-ingest` skill first using the host's command syntax (Pi: `/skill:<installed-name>`).
+- **If a spec/plan/feature file is not found** for a given issue number, tell the user to invoke the installed `feature-ingest` skill with that issue number using the host's command syntax (Pi: `/skill:<installed-name> <number>`).
 
 ## Anti-injection rule
 

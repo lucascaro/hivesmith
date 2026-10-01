@@ -18,7 +18,7 @@ This skill owns Stage = `RESEARCH`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback).
 2. Resolve target spec from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: RESEARCH`.
-3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (the exec plan no longer carries one). Refuse unless `stage: RESEARCH`. Point the user at the installed `feature-loop` skill or correct sub-skill, using the host's command syntax (Pi: `/skill:<installed-name>`). Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
+3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (the exec plan no longer carries one). Refuse unless `stage: RESEARCH`. Point the user at the installed `feature-loop` skill or correct stage skill with the resolved spec number (or PR number for `review-loop`), using the host's command syntax (Pi: `/skill:<installed-name> <number>`). Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 
 ## Layout resolution
 
@@ -53,7 +53,7 @@ This skill owns Stage = `RESEARCH`. Before doing any work:
    - Update GitHub labels: `gh issue edit <number> --remove-label triaged --add-label researching`.
    - Last write — set the spec's frontmatter `stage:` to `PLAN`.
    - **Do not edit `docs/product-specs/index.md`.** It's generated. The `block-generated-edits` CI job rejects PRs that touch it directly.
-11. **Report:** Summarize key findings and tell the user to invoke the installed `feature-plan` skill next. The prefix-independent skill reference is `/feature-plan`; use the host's command syntax (Pi: `/skill:<installed-name>`).
+11. **Report:** Summarize key findings and tell the user to invoke the installed `feature-plan` skill with the resolved spec number. The prefix-independent skill reference is `/feature-plan`; use the host's command syntax (Pi: `/skill:<installed-name> <number>`).
 
 ## Rules
 - Be thorough but focused — research what's needed for planning, not everything about the area.

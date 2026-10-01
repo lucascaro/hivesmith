@@ -39,7 +39,7 @@ git checkout "$DEFAULT_BRANCH" && git pull --ff-only
 
 ## 2. Detect staleness signals
 
-For each in-scope doc, check it (in parallel via the host's agent/subagent tool when available if there are more than a few docs; otherwise inspect the docs inline and sequentially):
+For each in-scope doc, check it (in parallel via the host's agent/subagent tool if available when there are more than a few docs; otherwise inspect the docs inline and sequentially):
 
 1. **Broken cross-links.** Resolve every relative link in the file. Any link that 404s within the repo is a finding.
 2. **Dead symbol references.** Every backticked code identifier (`FunctionName`, `module.path`, `path/to/file.ext`) gets grepped against the current code. Identifiers that look like code but don't appear anywhere are findings — except in `exec-plans/completed/` where stale references to since-renamed symbols are expected (note them, don't act).

@@ -20,7 +20,7 @@ The premise: **the file is the whole contract.** A fresh agent — new session, 
 | A slug | `~/.hivesmith/plans/<slug>.md` |
 | Empty | **first** the exec plan whose spec is at `stage: IMPLEMENT` — or, as a recovery case, still at `stage: PLAN` because `/feature-plan` crashed before its last write or the frontmatter was hand-edited — and whose `## Review log` has at least one entry; **then** the most recently modified `~/.hivesmith/plans/` file with `status: REVIEWED`. When both resolve, the repo plan wins |
 
-Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at the installed `feature-plan` skill using the host's command syntax (Pi: `/skill:<installed-name>`).
+Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at the installed `feature-plan` skill with the requested `<slug-or-number>` using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`).
 
 ## Steps
 

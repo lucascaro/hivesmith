@@ -87,7 +87,7 @@ Score the existing feedback loop on the six dimensions above, 0–10 each, with 
    <Compare against the previous audit if one exists in docs/design-docs/feedback-loop-audit-*.md. Note dimensions that improved/regressed.>
    ```
 
-6. **Report** the composite score and the top 3 fixes inline. Suggest invoking the installed `feedback-loop` skill with `design`, or `feature-new` for each prioritized gap, using the host's command syntax (Pi: `/skill:<installed-name> <arguments>`).
+6. **Report** the composite score and the top 3 fixes inline. Suggest invoking the installed `feedback-loop` skill with `design`, or invoke `feature-new` with each prioritized gap as its description, using the host's command syntax (Pi: `/skill:<installed-name> <description>`).
 
 ## Mode: design
 

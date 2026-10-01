@@ -29,6 +29,10 @@ lacks() {
 
 # Pi native skills and the boundary around optional user-owned agent plugins.
 has README.md '/skill:<installed-name>'
+has README.md 'Pi does not translate them.'
+has README.md '`Read` → `read`, `Grep` → `grep`, `Glob` → `find`, `Edit` → `edit`, `Write` → `write`, and `Bash` → `bash`'
+has README.md 'Pi invokes the same native skill as `/skill:hs-feature-plan`.'
+has README.md 'for Pi, `./.pi/skills`'
 has README.md 'Hivesmith does not install an agent/subagent plugin.'
 has README.md 'Claude'
 has scripts/upgrade/preamble.md 'if none is available, ask in chat with numbered options and wait for the answer.'
@@ -42,14 +46,22 @@ has skills/review-loop/SKILL.md 'the complete hivesmith `review-pr` skill instru
 has skills/review-loop/SKILL.md 'the complete hivesmith `autofix` skill instructions'
 has skills/review-loop/SKILL.md '"review_completed": false'
 has skills/review-loop/SKILL.md 'Do not run loop detection, append a convergence-ledger row, or emit a `review_iteration` metric'
+has skills/feature-loop/SKILL.md 'A `second_opinion` metric is emitted only when an independent reviewer actually ran.'
 has skills/feature-loop/SKILL.md 'In the no-agent fallback or on malformed reviewer output, do not emit a `second_opinion` event as if a valid independent verdict existed:'
 has skills/pr-queue/SKILL.md 'the complete hivesmith `review-loop` skill instructions'
 has skills/brainstorm/SKILL.md 'read and follow the installed `feature-new/SKILL.md` instructions'
+has skills/feature-new/SKILL.md 'feature-research` skill with the resolved `<number>` next'
+has skills/feature-triage/SKILL.md 'resolved spec number (or PR number for REVIEW)'
+has skills/feature-ingest/SKILL.md 'feature-triage` skill with `$ARGUMENTS`'
+has skills/feature-research/SKILL.md 'feature-plan` skill with the resolved spec number'
+has skills/feature-plan/SKILL.md 'feature-plan-review` skill with the resolved `<slug-or-number>`'
+has skills/feature-plan-review/SKILL.md 'feature-plan-handoff` skill with the resolved `<slug-or-number>`'
 has skills/feature-implement/SKILL.md 'follow the installed `changelog-update/SKILL.md` workflow'
 has skills/feature-implement/SKILL.md 'rather than assuming `/changelog-update` executes in Pi.'
 has .changesets/README.md 'Required: `type`, `bump`. Optional: `issue`'
 has templates/.changesets/README.md 'Required: `type`, `bump`. Optional: `issue`'
 has skills/feature-next/SKILL.md 'Render every recommendation using the current host'
+has skills/feature-next/SKILL.md 'Pi uses `/skill:<installed-name> <arguments>`'
 
 # Agent-dependent tasks use host capabilities with a truthful inline fallback.
 for skill in review-loop pr-queue review-pr merge-gate feedback-loop feature-loop \
