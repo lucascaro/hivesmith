@@ -71,15 +71,17 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
 
      Plan:  docs/exec-plans/active/<NNN>-<slug>.md
      Repo:  <repo root>
-     Mode:  spec-driven (issue #<N>, stage IMPLEMENT)
+     Mode:  spec-driven (stage IMPLEMENT; GitHub issue #<N> if the spec has `issue:`, otherwise local spec #<N>)
      Plan is committed on <branch> — it travels with the branch to any
      clone or worktree that checks it out.
 
-   In a fresh session:
+   In a fresh session, use the host's command form:
 
-     /feature-implement <N>
+     Bare-command hosts: /feature-implement <N>
+     Pi (unprefixed install): /skill:feature-implement <N>
+     Pi (installed with --prefix hs-): /skill:hs-feature-implement <N>
 
-   Or, in a harness without hivesmith installed, paste:
+   For a custom Pi prefix, substitute the installed `feature-implement` skill name. Or, in a harness without hivesmith installed, paste:
 
      Read docs/exec-plans/active/<NNN>-<slug>.md and execute it.
      Follow ## Approach exactly. Append to ## Progress as you go.

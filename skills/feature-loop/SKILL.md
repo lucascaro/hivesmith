@@ -156,7 +156,7 @@ If neither layout exists, tell the user to invoke the installed `hivesmith-init`
 - *Brainstorm first* — interrogate the problem with `/brainstorm`, then come back with a spec number
 - *Proceed anyway* — I know what I want
 
-(Bulleted, not numbered: the step numbers in this file are global, and a `1.`/`2.` list here would read as steps 1 and 2.) On *brainstorm first*, stop and tell the operator to invoke the installed `brainstorm` skill with the description, using the host's command syntax (Pi: `/skill:<installed-name>`). On *proceed anyway*, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
+(Bulleted, not numbered: the step numbers in this file are global, and a `1.`/`2.` list here would read as steps 1 and 2.) On *brainstorm first*, stop and tell the operator to invoke the installed `brainstorm` skill with the description, using the host's command syntax (Pi: `/skill:<installed-name> "<description>"`). On *proceed anyway*, continue to step 4 unchanged. This refusal approves nothing and creates nothing, so it is not a third approval gate. **Skip it entirely** when resuming an existing feature (numeric or no-argument input) — the spec already exists.
 
 4. **Read the per-project policy.** Look for `.hivesmith/config.toml` and read `[github] create_issues`. Treat one of: `opt-out`, `always`, `opt-in`, `ask`. If the file is missing or the key is absent, default to `opt-out`.
 5. Draft the issue from the description:

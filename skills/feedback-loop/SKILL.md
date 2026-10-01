@@ -28,7 +28,7 @@ Score the existing feedback loop on the six dimensions above, 0–10 each, with 
 
 ### Steps
 
-1. **Resolve project state.** Check that `docs/product-specs/index.md` (or legacy `features/BACKLOG.md`) exists. If neither does, suggest `/hivesmith-init` and stop.
+1. **Resolve project state.** Check that `docs/product-specs/index.md` (or legacy `features/BACKLOG.md`) exists. If neither does, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
 
 2. **Gather the evidence.** If the host provides an agent/subagent tool, fan out to four workers (each in a fresh context and returning a bounded JSON envelope), adapting to the available tool's request schema. Otherwise perform the four investigations inline, one at a time, and keep each result to the same bounded envelope.
 
@@ -136,7 +136,7 @@ Propose a concrete feedback loop for this app. Walks the six dimensions, asking 
    - Append to the index Active table at Stage = TRIAGE.
    - Cross-link from `docs/design-docs/feedback-loop.md` to each new spec.
 
-5. **Report:** the design doc path, the new spec numbers, and the recommended next action (`/feature-triage <N>` or `/feature-loop <N>` for each).
+5. **Report:** the design doc path, the new spec numbers, and the recommended next action. Use the host's command syntax for each new spec (bare-command hosts: `/feature-triage <N>` or `/feature-loop <N>`; Pi: `/skill:<installed-name> <N>`).
 
 ## Rules
 

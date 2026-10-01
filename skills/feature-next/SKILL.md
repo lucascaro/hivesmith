@@ -89,4 +89,4 @@ Feature Pipeline Status
 - List un-ingested issues separately below the table
 - Recommend only ONE next action (the highest-priority, most-advanced stage)
 - Prefer the current layout (`docs/`) over the legacy layout (`features/`); only fall back to legacy when `docs/product-specs/` does not exist or no spec files are present. The current-layout SoR is each spec's YAML frontmatter, not the generated `index.md`.
-- If both layouts have entries, only the current layout is authoritative — note this in the output and suggest `/hivesmith-init --migrate`
+- If both layouts have entries, only the current layout is authoritative — note this in the output and recommend invoking the installed `hivesmith-init` skill with `--migrate` using the host's command syntax (Pi: `/skill:<installed-name> --migrate`).

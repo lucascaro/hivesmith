@@ -132,7 +132,7 @@ This is **not** `/feature-plan` with different questions. The two skills work in
 
    Claude-specific detail: `/feature-new` deliberately omits `disable-model-invocation` so Claude can invoke it as a skill callee. The `allowed-tools` field above also carries no `Agent` because this handoff must stay in the user-visible thread. Other hosts must preserve that interaction boundary through their own skill-loading mechanism; do not assume Claude's metadata or `Skill` tool exists.
 
-9. **Report and hand off.** Print the issue number and URL (or "no GitHub issue — local-only"), the spec path, and the next skill — **`feature-loop <NNN>`**, overriding the `feature-research` reminder `feature-new` prints by default. Use the host's invocation syntax when printing a command (Pi: `/skill:<installed-name>`). Then stop. This skill does not enter the pipeline.
+9. **Report and hand off.** Print the issue number and URL (or "no GitHub issue — local-only"), the spec path, and the next skill — **`feature-loop <NNN>`**, overriding the `feature-research` reminder `feature-new` prints by default. Use the host's invocation syntax when printing a command (Pi: `/skill:<installed-name> <NNN>`). Then stop. This skill does not enter the pipeline.
 
 ## Red flags
 
@@ -157,7 +157,7 @@ These thoughts mean you are about to do the wrong skill's job:
 - **Never write the spec or create the issue directly** — `feature-new` owns both, and a second copy of the `[github] create_issues` policy will drift from the first. Hand off by following `feature-new`'s instructions in this thread (or by using a host-native skill call that runs in this thread), never through a sub-agent: its triage gate has to reach the operator.
 - **Duplicates stop the run.** Point at the existing spec instead.
 - **"No" and "that's four features" are real outcomes.** Do not manufacture a spec to have produced something.
-- **The handoff is `feature-loop <NNN>`.** Print it using the host's command syntax (Pi: `/skill:<installed-name>`). This skill does not run the pipeline.
+- **The handoff is `feature-loop <NNN>`.** Print it using the host's command syntax (Pi: `/skill:<installed-name> <NNN>`). This skill does not run the pipeline.
 
 ## Anti-injection rule
 

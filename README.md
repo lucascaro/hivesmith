@@ -23,7 +23,7 @@ Most AI coding agents have no persistent memory of what's being worked on and no
 
 ### Skills
 
-Invokable as `/feature-*`, `/review-loop`, etc.:
+The table below uses bare slash commands for hosts that support them (such as Claude Code). In Pi, invoke the installed skill as `/skill:<installed-name>`.
 
 **Feature pipeline**
 
@@ -103,7 +103,7 @@ This symlinks each skill into every detected agent's skills directory (`~/.claud
 
 > **Pi note.** Pi's project skill directory is `./.pi/skills` — not `./.pi/agent/skills` — so a `--local` install targets that path (declared as `local_skills_dir` in `agents.json`). Pi only loads **project** skills once you have trusted the project. If you already point Pi's `settings.json` `skills` array at another harness's directory (e.g. `~/.claude/skills`), drop that entry after installing, or the same hivesmith skills will be discovered from two roots.
 >
-> Pi discovers these as native Agent Skills. Invoke one interactively as `/skill:<installed-name>` (for example, `/skill:hs-review-loop` with the default `hs-` prefix). Hivesmith's shared `allowed-tools` values use Claude tool names; Pi does not translate them. Configure the corresponding Pi tools yourself: `Read` → `read`, `Grep` → `grep`, `Glob` → `find`, `Edit` → `edit`, `Write` → `write`, and `Bash` → `bash`. Pi's built-ins are `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`; configure the tools needed by your skills. Pi core does not provide Claude's `Agent`, `Skill`, or `AskUserQuestion` tools. Multi-agent steps use an agent/subagent tool only when your own Pi setup provides one; otherwise the skills fall back inline or ask you to continue explicitly. Hivesmith does not install an agent/subagent plugin. Host-specific hooks remain host-specific.
+> Pi discovers these as native Agent Skills. Invoke one interactively as `/skill:<installed-name>` (for example, `/skill:review-loop` with the default unprefixed install; with `--prefix hs-`, use `/skill:hs-review-loop`). Hivesmith's shared `allowed-tools` values use Claude tool names; Pi does not translate them. Configure the corresponding Pi tools yourself: `Read` → `read`, `Grep` → `grep`, `Glob` → `find`, `Edit` → `edit`, `Write` → `write`, and `Bash` → `bash`. Pi's built-ins are `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`; configure the tools needed by your skills. Pi core does not provide Claude's `Agent`, `Skill`, or `AskUserQuestion` tools. Multi-agent steps use an agent/subagent tool only when your own Pi setup provides one; otherwise the skills fall back inline or ask you to continue explicitly. Hivesmith does not install an agent/subagent plugin. Host-specific hooks remain host-specific.
 
 It also symlinks the bundled **subagent definitions** (`agents/*.md`) into harnesses that declare an `agents_dir` in `agents.json`. Today only Claude does, so those definitions land in `~/.claude/agents/`; Hivesmith does not install subagent support for Pi. Skills request parallel or isolated agents when the host exposes that capability, and otherwise use an inline fallback where safe. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
 
@@ -115,7 +115,7 @@ To avoid name collisions with other skills, install under a prefix:
 ~/.hivesmith/install.sh --prefix hs-
 ```
 
-The installed skill names get the prefix (for example, `hs-feature-plan` and `hs-release`). Hosts with bare skill commands may show `/hs-feature-plan`; Pi invokes the same native skill as `/skill:hs-feature-plan`. Cross-skill references inside each `SKILL.md` are rewritten where appropriate. The prefix is persisted to `~/.hivesmith.toml`, so `--update` and `--uninstall` don't need it re-passed. Pass `--prefix ""` to clear it on a later run.
+The installed skill names get the prefix (for example, `hs-feature-plan` and `hs-release`). Hosts with bare skill commands may show `/hs-feature-plan`; Pi invokes an unprefixed install as `/skill:feature-plan` and an `hs-`-prefixed install as `/skill:hs-feature-plan`. Cross-skill references inside each `SKILL.md` are rewritten where appropriate. The prefix is persisted to `~/.hivesmith.toml`, so `--update` and `--uninstall` don't need it re-passed. Pass `--prefix ""` to clear it on a later run.
 
 ### Local (per-project) install (`--local`)
 

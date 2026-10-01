@@ -21,6 +21,7 @@ Use a disposable PR and run `/skill:hs-review-loop <PR> --max-iterations 1` with
 - The review step follows the installed `review-pr/SKILL.md` instructions. If those instructions cannot be located, the loop escalates instead of improvising a review.
 - If autofix is needed, it follows the installed `autofix/SKILL.md` instructions. Existing push, CI, risky-change, and convergence gates remain in force.
 - If an interaction needs structured options, the skill asks in chat with numbered options and waits.
+- If the post-autofix thread query fails twice, the loop records `threads_open: unknown` in the ledger when available, skips the numeric iteration metric, and escalates instead of assuming zero open threads.
 
 Use a disposable PR because review-loop can push an authorized autofix. Do not use a protected or fork PR for this smoke.
 
