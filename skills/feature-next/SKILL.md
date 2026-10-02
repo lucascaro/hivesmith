@@ -56,31 +56,31 @@ After any other option, continue with this skill.
    - `docs/product-specs/<NNN>-*.md` files with YAML frontmatter (current layout). The frontmatter `stage:` field is canonical; **do not** read from the generated `docs/product-specs/index.md` (it's a regenerated view, not a source).
    - `features/BACKLOG.md` (legacy fallback — one release only)
    If neither exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`).
-2. **Current layout:** scan each `docs/product-specs/<NNN>-*.md`, parse YAML frontmatter, collect `issue`, `title`, `stage`, `complexity`, `priority`, `pr`, `shipped`. Active items are those with `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, GATE}. **Legacy layout:** read the BACKLOG row for each active feature, then read its exec plan for the current stage.
+2. **Current layout:** scan each `docs/product-specs/<NNN>-*.md`, parse YAML frontmatter, collect `issue`, `title`, `stage`, `complexity`, `priority`, `pr`, `shipped`, and the filename's numeric `spec_id` prefix even when `issue` is absent. Active items are those with `stage` in {TRIAGE, RESEARCH, PLAN, IMPLEMENT, REVIEW, GATE}. **Legacy layout:** read the BACKLOG row for each active feature, then read its exec plan for the current stage and preserve its feature number.
 3. For each active item, optionally read its exec plan (`docs/exec-plans/active/<NNN>-<slug>.md`) to surface the PR field for REVIEW-stage items.
 4. Display a summary table:
 
 ```
 Feature Pipeline Status
 =======================
-#  | Issue | Title                  | Stage    | Complexity
----|-------|------------------------|----------|----------
-1  | #16   | Stale preview on exit  | RESEARCH | M
-2  | #13   | Fix mouse support      | TRIAGE   | —
+Spec | Issue | Title                  | Stage    | Complexity
+-----|-------|------------------------|----------|----------
+016  | #16   | Stale preview on exit  | RESEARCH | M
+013  | #13   | Fix mouse support      | TRIAGE   | —
 ```
 
 5. Check for un-ingested GitHub issues: run `gh issue list --state open --json number,title` and compare against existing spec/plan files (current layout: `docs/product-specs/`, `docs/exec-plans/{active,completed}/`; legacy: `features/active/` and `features/completed/`).
-6. Recommend the next action based on priority. Stages later in the pipeline take precedence — work in flight clears first:
-   - If there are GATE-stage items → recommend the installed `merge-gate` skill with the issue number to validate the open PR before merging.
+6. Recommend the next action based on priority. Stages later in the pipeline take precedence — work in flight clears first. If the selected active spec has no `issue:` field, recommend the installed `feature-loop` skill with its `spec_id` instead; that path preserves the local-only GitHub issue gate and takes precedence over the stage-specific rules below.
+   - If there are GATE-stage items → recommend the installed `merge-gate` skill with the GitHub issue number to validate the open PR before merging.
    - If there are REVIEW-stage items → recommend the installed `review-loop` skill with the PR number to drive convergence (or `feature-loop` with the issue number to resume from REVIEW with merge gate).
-   - If there are IMPLEMENT-stage items → recommend the installed `feature-implement` skill with the issue number.
-   - If there are PLAN-stage items → recommend the installed `feature-plan` skill with the issue number.
-   - If there are RESEARCH-stage items → recommend the installed `feature-research` skill with the issue number.
-   - If there are TRIAGE-stage items → recommend the installed `feature-triage` skill with the issue number.
-   - If there are un-ingested issues → recommend the installed `feature-ingest` skill with the issue number.
+   - If there are IMPLEMENT-stage items → recommend the installed `feature-implement` skill with the GitHub issue number.
+   - If there are PLAN-stage items → recommend the installed `feature-plan` skill with the GitHub issue number.
+   - If there are RESEARCH-stage items → recommend the installed `feature-research` skill with the GitHub issue number.
+   - If there are TRIAGE-stage items → recommend the installed `feature-triage` skill with the GitHub issue number.
+   - If there are un-ingested issues → recommend the installed `feature-ingest` skill with the GitHub issue number.
    - Otherwise → report that the pipeline is clear; recommend the installed `brainstorm` skill for a vague idea or `feature-new` for a concrete feature.
 
-   Render every recommendation using the current host's command syntax. Pi uses `/skill:<installed-name> <arguments>`; other hosts may use bare slash commands.
+   Render every recommendation with the current host's command syntax and the actual identifier. Pi uses `/skill:<installed-name> <arguments>`; other hosts may use bare slash commands.
 
    For REVIEW-stage items, also surface the PR number (from the plan header's `PR:` field) so the user can act on it directly.
 

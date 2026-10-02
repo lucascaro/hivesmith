@@ -13,6 +13,8 @@ mkdir -p .pi
 
 Trust the project in Pi, start `pi`, and invoke `/skill:hs-review-loop`. Pi should load the skill as a native Agent Skill. If the project is not trusted, project skills are not loaded; use a global install or trust the project.
 
+For a local-only spec with `stage: IMPLEMENT` and no `issue:` field, run `/skill:hs-feature-next`. It should display the filename's spec ID and recommend `/skill:hs-feature-loop <spec-id>`, not an issue-linked implementation command. The copy-paste block from `/skill:hs-feature-plan-handoff <spec-id>` should likewise route to `feature-loop`.
+
 ## 2. Check capability-aware behavior (built-ins only)
 
 Use a disposable PR and run `/skill:hs-review-loop <PR> --max-iterations 1` with no agent/subagent plugin enabled.
@@ -31,4 +33,4 @@ Repeat the review-loop smoke with your own agent/subagent plugin enabled. Hivesm
 
 ## 4. Check unsupported host hooks are explicit
 
-Invoke `/skill:hs-graphify-init` from Pi. It should explain that its automatic refresh and orientation hooks currently configure Claude Code, and must not run that setup expecting Pi hooks. No Pi extension or agent plugin should be installed by this skill.
+Invoke `/skill:hs-graphify-init` from Pi. It should explain that its automatic refresh and orientation hooks currently configure Claude Code, and must not run that setup expecting Pi hooks. Running `/skill:hs-hivesmith-init` in Pi should not present the Claude hook setup as Pi automation. No Pi extension or agent plugin should be installed by these skills.

@@ -85,7 +85,7 @@ Completeness is cheap when AI does the work. When you fix a finding, fix **every
    **Why merge, not rebase.** Merge produces a single `MERGE_HEAD` state, easy to reason about and easy to abort with `git merge --abort` (subject to the rule in *Merge-conflict rules* below). Rebase replays N commits with N intermediate conflict states; verification cost compounds. This project squash-merges at land time, so the extra merge commit on the feature branch is absorbed into the squash and never reaches the base history. If a project lands PRs without squash, the `merge:` commit-subject prefix used above makes the resulting commit filterable in `git log`.
 
    **d. None of the above:** Stop and tell the user:
-   > No review findings, PR, or unresolved conflicts found. Run the installed `review-pr` skill first, or pass a PR number to this skill. Use the host's native command syntax (Pi: `/skill:<installed-name> <number>`).
+   > No review findings, PR, or unresolved conflicts found. Run the installed `review-pr` skill first, or pass a PR number to this skill. In Pi, invoke the appropriate installed skill with `/skill:<review-pr-name> <number>` or `/skill:<autofix-name> <number>`.
 
 3. **Normalize findings** into a working list. Each item has:
    - **Source:** review / check / thread / ci / preflight-merge

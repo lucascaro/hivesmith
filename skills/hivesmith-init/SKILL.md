@@ -125,12 +125,15 @@ The hivesmith repo lives at `~/.hivesmith` (or wherever the user cloned it). Tem
    ```
    This creates `~/.hivesmith/brain/` (a git repo), seeded from `templates/brain/`. It's idempotent — safe to call on re-runs and existing brains.
 
-8. **Offer graphify wiring.** Ask whether to run `/graphify-init`, which wires graphify into this project so its code knowledge graph maintains itself: a shared extraction cache across worktrees, worktree-aware git hooks, and a debounced auto-refresh after edits. Brain entries can `[[wikilink]]` graphify nodes for code-structure context, and those references stay rot-free while the graph auto-updates. Do not run it unprompted — it installs git hooks and an editor hook. Print:
+8. **Offer graphify wiring only with the host boundary clear.** The shared cache and Git hooks are host-independent, but `graphify-init` currently wires Claude Code editor hooks, not Pi hooks. On Claude Code, ask whether to run the installed `graphify-init` skill using the host's command syntax; do not run it unprompted because it installs hooks. On Pi, do not recommend it as Pi automation. Explain that it configures Claude Code hooks and that graphify can still be queried manually; only continue if the operator explicitly wants the Claude integration in this project. Print the applicable note:
    ```
-   Tip: run /graphify-init to wire graphify into this project — shared
-        extraction cache across worktrees, auto-refreshing code map, and
-        [[wikilink]]-able nodes for brain entries.
-        Needs graphify installed: https://github.com/Graphify-Labs/graphify
+   Claude Code: Set up graphify with the installed graphify-init skill — shared
+   extraction cache across worktrees, auto-refreshing code map, and
+   [[wikilink]]-able nodes for brain entries. Needs graphify installed:
+   https://github.com/Graphify-Labs/graphify
+
+   Pi: graphify-init does not wire Pi editor hooks. You can use graphify manually;
+   Hivesmith does not install a Pi extension for automatic refresh or nudges.
    ```
    (Print only the text — do not run an install command without confirmation.)
 

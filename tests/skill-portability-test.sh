@@ -65,10 +65,17 @@ has skills/feature-implement/SKILL.md 'follow the installed `changelog-update/SK
 has skills/feature-implement/SKILL.md 'rather than assuming `/changelog-update` executes in Pi.'
 has .changesets/README.md 'Required: `type`, `bump`. Optional: `issue`'
 has templates/.changesets/README.md 'Required: `type`, `bump`. Optional: `issue`'
-has skills/feature-next/SKILL.md 'Render every recommendation using the current host'
+has skills/feature-next/SKILL.md 'Render every recommendation with the current host'
+has skills/feature-next/SKILL.md 'numeric `spec_id` prefix even when `issue` is absent'
+has skills/feature-next/SKILL.md 'If the selected active spec has no `issue:` field'
+has skills/feature-next/SKILL.md 'recommend the installed `feature-loop` skill with its `spec_id`'
 has skills/feature-next/SKILL.md 'Pi uses `/skill:<installed-name> <arguments>`'
-has skills/feature-plan-handoff/SKILL.md 'Pi (unprefixed install): /skill:feature-implement <N>'
-has skills/feature-plan-handoff/SKILL.md 'Pi (installed with --prefix hs-): /skill:hs-feature-implement <N>'
+has skills/feature-plan-handoff/SKILL.md 'Issue-backed spec, Pi unprefixed: /skill:feature-implement <N>'
+has skills/feature-plan-handoff/SKILL.md 'Issue-backed spec, Pi --prefix hs-: /skill:hs-feature-implement <N>'
+has skills/feature-plan-handoff/SKILL.md 'Local-only spec, Pi unprefixed: /skill:feature-loop <N>'
+has skills/feedback-loop/SKILL.md '/skill:<feedback-loop-name> design'
+has skills/review-loop/SKILL.md 'Attempt to post the §3 escalation comment to the PR'
+has skills/hivesmith-init/SKILL.md 'On Pi, do not recommend it as Pi automation'
 
 # Agent-dependent tasks use host capabilities with a truthful inline fallback.
 for skill in review-loop pr-queue review-pr merge-gate feedback-loop feature-loop \

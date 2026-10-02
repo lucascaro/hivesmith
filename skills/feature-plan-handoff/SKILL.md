@@ -75,13 +75,16 @@ Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → 
      Plan is committed on <branch> — it travels with the branch to any
      clone or worktree that checks it out.
 
-   In a fresh session, use the host's command form:
+   In a fresh session, choose the action based on whether the spec has a GitHub `issue:`:
 
-     Bare-command hosts: /feature-implement <N>
-     Pi (unprefixed install): /skill:feature-implement <N>
-     Pi (installed with --prefix hs-): /skill:hs-feature-implement <N>
+     Issue-backed spec, bare-command host: /feature-implement <N>
+     Issue-backed spec, Pi unprefixed: /skill:feature-implement <N>
+     Issue-backed spec, Pi --prefix hs-: /skill:hs-feature-implement <N>
+     Local-only spec, bare-command host: /feature-loop <N>
+     Local-only spec, Pi unprefixed: /skill:feature-loop <N>
+     Local-only spec, Pi --prefix hs-: /skill:hs-feature-loop <N>
 
-   For a custom Pi prefix, substitute the installed `feature-implement` skill name. Or, in a harness without hivesmith installed, paste:
+   For a custom Pi prefix, substitute the installed name of the selected skill. Use `feature-loop` for local-only specs because it skips GitHub issue linking; do not hand a local spec number to issue-linked `feature-implement`. Or, in a harness without hivesmith installed, paste:
 
      Read docs/exec-plans/active/<NNN>-<slug>.md and execute it.
      Follow ## Approach exactly. Append to ## Progress as you go.

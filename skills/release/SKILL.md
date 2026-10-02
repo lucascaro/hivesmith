@@ -50,5 +50,5 @@ Walk through the release process end to end. The heavy lifting (version bump, CH
 
 - **Never bypass failed pre-flight checks.** If CI is red or the tree is dirty, stop — the user can override by running `scripts/release.sh` directly if they know what they're doing.
 - **Never force-push or re-tag an existing version.** If the tag exists, stop and ask.
-- **Do not edit `CHANGELOG.md` here** — `release.sh` handles the stamp. If entries are missing, invoke the installed `changelog-update` skill using the host's command syntax (Pi: `/skill:<installed-name>`) before releasing.
+- **Do not edit `CHANGELOG.md` here** — `release.sh` handles the stamp. If entries are missing, invoke the installed `changelog-update` skill before releasing (Pi: `/skill:<changelog-update-name>`).
 - **One release at a time.** If a previous release commit is unpushed, resolve that first.
