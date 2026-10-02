@@ -22,7 +22,7 @@ Strip `--text` / `--html` first, then resolve the target:
 | A slug | `~/.hivesmith/plans/<slug>.md` |
 | Empty | **first** the exec plan whose spec is at `stage: IMPLEMENT` and whose `## Review log` is empty (the "planned, not yet reviewed" state — `/feature-plan` advances the stage as its last write, so `stage: PLAN` is already gone by the time this skill runs); **then** the most recently modified `~/.hivesmith/plans/` file with `status: DRAFT` |
 
-Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at `/feature-plan`. Do not invent a plan to review. When both lanes resolve, the repo plan wins — a stale standalone draft from an unrelated project must never silently become the target.
+Standalone plan schema — frontmatter `slug` / `title` / `status` (`DRAFT` → `REVIEWED` → `HANDED-OFF`) / `created` / `source` / `repo`, then `## Summary`, `## Context`, `## Non-goals`, `## Decisions`, `## Approach` (`### Files to change`, `### New files`, `### Tests`), `## Verification`, `## Open questions`, `## Review log`, `## Progress`. Canonical copy: `plan-template.md` beside the `feature-plan` skill. If the plan file does not exist, say so and point the user at the installed `feature-plan` skill with the requested `<slug-or-number>` using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`). Do not invent a plan to review. When both lanes resolve, the repo plan wins — a stale standalone draft from an unrelated project must never silently become the target.
 
 ## Philosophy: boil the lake
 
@@ -58,7 +58,7 @@ Review all of it. Every file path, every claimed helper, every call site the cha
 
 5. **Ask what's still open.** Same loop as `/feature-plan`: batched, at most 4 questions in a round, structured question primitive if the runtime has one (e.g. `AskUserQuestion`) and a numbered prose list otherwise. Same **stop rule** — stop when no remaining unknown would change the file list, the test list, or a public interface. Every answer appends to `## Decisions` with the rejected alternative and the reason.
 
-6. **Size gate — fan out only when the plan earns it.** Default to reviewing linearly yourself. When the plan exceeds roughly 200 lines or names more than about 10 files, dispatch three `hs-reviewer` subagents in parallel, one per dimension — *grounding* (step 2), *gaps* (step 3), *YAGNI* (step 4) — each returning findings only, then pool and dedupe. Dispatch them; if the Agent tool errors on an unrecognized `subagent_type`, retry once with `general-purpose` and note the downgrade in your output. Do not pre-check for the agent's existence — a failed dispatch is the signal.
+6. **Size gate — fan out only when the plan earns it.** Default to reviewing linearly yourself. When the plan exceeds roughly 200 lines or names more than about 10 files, use the host's agent/subagent tool, if available, to dispatch three reviewers in parallel, one per dimension — *grounding* (step 2), *gaps* (step 3), *YAGNI* (step 4) — each returning findings only, then pool and dedupe. Adapt to the host's agent names and request schema. If no dispatch tool is available, review the three dimensions inline in sequence and note that they were not independent reviews.
 
 7. **Apply the changes to the plan.** This skill edits the plan, it does not just complain about it.
    - Fix the wrong paths, add the missing tests, add the missing call sites, delete the speculative scope.
@@ -70,7 +70,7 @@ Review all of it. Every file path, every claimed helper, every call site the cha
 
 8. **Present the result.** Same format rule as `/feature-plan`: `--text` forces text, `HIVESMITH_PLAN_HTML=0` forces text, otherwise text when the plan is short (≲120 body lines, no diagram-worthy content) and HTML otherwise. On the HTML path, follow the **Canonical call sequence** in `skills/plan-html/SKILL.md` — it owns the guard, the fallback chain, and the stop-server obligation. Set `changed: true` on every section you touched so the user sees the edits highlighted, and re-render to the same output path.
 
-9. **Report.** List the findings by class (grounding / gaps / YAGNI), state what you changed, and tell the user to run `/feature-plan-handoff <slug-or-number>` when they're satisfied.
+9. **Report.** List the findings by class (grounding / gaps / YAGNI), state what you changed, and tell the user to invoke the installed `feature-plan-handoff` skill with the resolved `<slug-or-number>` when they're satisfied, using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`).
 
 ## Rules
 

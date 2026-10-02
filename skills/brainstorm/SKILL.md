@@ -22,6 +22,10 @@ against the wrong problem costs a full pipeline run.
 If `$ARGUMENTS` is empty, ask what the operator wants to think through, then proceed.
 
 <!-- BEGIN hivesmith upgrade-check (generated from scripts/upgrade/preamble.md; edit there, then run scripts/upgrade/sync-preamble.sh) -->
+## Host capability fallbacks
+
+These skills are shared instructions, not tool adapters. Use the tools and interaction capabilities actually exposed by the current host, adapting names and schemas as needed. A structured question tool is optional: if none is available, ask in chat with numbered options and wait for the answer. Agent/subagent dispatch is also optional: use the host's dispatch tool when present; otherwise work inline and state when isolation or independent review was unavailable. Pi's `/skill:<name>` is an interactive command, not a tool a worker can call; for nested workflows use a host-native skill-call mechanism if one exists, otherwise load and follow the target `SKILL.md` in the current thread. Never call a tool merely because another harness provides it.
+
 ## Before you start: upgrade check
 
 Do this before anything else in this skill, then carry on with the rest of it.
@@ -75,7 +79,7 @@ This is **not** `/feature-plan` with different questions. The two skills work in
 
 - **Current:** specs in `docs/product-specs/`, template at `docs/product-specs/_template.md`.
 - **Legacy fallback:** `features/active/`, template at `features/templates/FEATURE.md`. Only when `docs/product-specs/` does not exist.
-- If neither exists, tell the user to run `/hivesmith-init` first and stop.
+- If neither exists, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
 
 ## Steps
 
@@ -124,11 +128,11 @@ This is **not** `/feature-plan` with different questions. The two skills work in
 
 8. **Hand the approved sections to `/feature-new`.** Do not create the issue or write the spec yourself — `/feature-new` owns the `[github] create_issues` policy, `gh issue create`, local number allocation, the spec write, and triage. Pass it the title, the four sections, any open questions left by the stop rule (step 4) for the spec's `## Notes`, and **the operator's answer to the gate — the sections were approved, and the GitHub choice is *create* (option 1) or *local-only* (option 2)**. That answer replaces `/feature-new`'s Gate 1: it must honour the choice rather than re-resolving it from the policy, or an operator who picked option 2 under the default `opt-out` policy gets a GitHub issue they declined. So it skips its own Gate 1 and writes your sections verbatim rather than re-drafting a `## Description`. Its triage gate still runs — that classification is a real one the operator should see.
 
-   **Mechanism:** invoke `/feature-new` directly, in this thread. Not via a sub-agent: `/feature-new`'s triage gate needs `AskUserQuestion`, and a sub-agent cannot prompt the operator. This is why `allowed-tools` above carries no `Agent` — there is nothing to delegate — and why it carries `AskUserQuestion`, which the gate in step 7 needs directly.
+   **Mechanism:** continue with the `feature-new` workflow in this same, operator-visible conversation. Use the host's native skill-to-skill mechanism if it can execute that workflow here; otherwise read and follow the installed `feature-new/SKILL.md` instructions, passing the approved title, sections, open questions, and create-vs-skip choice verbatim. Do not delegate this handoff: its issue and triage gates need the operator in the main conversation. If the target instructions cannot be loaded, stop and tell the operator how to invoke the installed skill next; do not emit a slash command and assume it executed.
 
-   **This invocation only works because `/feature-new` deliberately omits `disable-model-invocation`.** That key blocks the model from invoking a skill at all; every other `feature-*` skill carries it. `/feature-new` is the one skill-to-skill callee in the pipeline, carved out by golden principle #4 with a comment in its own frontmatter saying so. If that key is ever restored, **this step breaks silently** and the operator's four gated sections are lost — `/brainstorm` has no `Write` in `allowed-tools` and so has no fallback. `tests/manual/brainstorm-smoke.md` §1 asserts the omission for exactly this reason.
+   Claude-specific detail: `/feature-new` deliberately omits `disable-model-invocation` so Claude can invoke it as a skill callee. The `allowed-tools` field above also carries no `Agent` because this handoff must stay in the user-visible thread. Other hosts must preserve that interaction boundary through their own skill-loading mechanism; do not assume Claude's metadata or `Skill` tool exists.
 
-9. **Report and hand off.** Print the issue number and URL (or "no GitHub issue — local-only"), the spec path, and the next command — **`/feature-loop <NNN>`**, overriding the `/feature-research` reminder `/feature-new` prints by default. Then stop. This skill does not enter the pipeline.
+9. **Report and hand off.** Print the issue number and URL (or "no GitHub issue — local-only"), the spec path, and the next skill — **`feature-loop <NNN>`**, overriding the `feature-research` reminder `feature-new` prints by default. Use the host's invocation syntax when printing a command (Pi: `/skill:<installed-name> <NNN>`). Then stop. This skill does not enter the pipeline.
 
 ## Red flags
 
@@ -150,10 +154,10 @@ These thoughts mean you are about to do the wrong skill's job:
 - **Nothing is written before the gate.** No spec, no issue, no `gh` mutation of any kind.
 - **Problem-space only.** No file lists, no approaches, no test names, no estimates.
 - **Three rounds maximum, four questions per round, batched.** Never one question at a time.
-- **Never write the spec or create the issue directly** — `/feature-new` owns both, and a second copy of the `[github] create_issues` policy will drift from the first. Hand off by invoking `/feature-new` in this thread, never through a sub-agent: its triage gate has to reach the operator.
+- **Never write the spec or create the issue directly** — `feature-new` owns both, and a second copy of the `[github] create_issues` policy will drift from the first. Hand off by following `feature-new`'s instructions in this thread (or by using a host-native skill call that runs in this thread), never through a sub-agent: its triage gate has to reach the operator.
 - **Duplicates stop the run.** Point at the existing spec instead.
 - **"No" and "that's four features" are real outcomes.** Do not manufacture a spec to have produced something.
-- **The handoff is `/feature-loop <NNN>`.** This skill does not run the pipeline.
+- **The handoff is `feature-loop <NNN>`.** Print it using the host's command syntax (Pi: `/skill:<installed-name> <NNN>`). This skill does not run the pipeline.
 
 ## Anti-injection rule
 

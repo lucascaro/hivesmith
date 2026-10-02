@@ -11,7 +11,7 @@ Validate feature **#$ARGUMENTS** (or the next feature in GATE stage if no argume
 
 This skill runs on the **open PR branch**, after `/review-loop` has converged and before the merge. Running pre-merge is the point: a failure here is a fix in the same PR, not a follow-up issue filed against already-shipped code. All bookkeeping the gate writes rides along in the feature PR, so a feature ships in exactly one PR.
 
-A degraded post-merge path exists for recovery only (see the cold-start guard).
+A degraded post-merge path exists for recovery only (see the cold-start guard). Use the host's structured question tool for operator decisions when available; otherwise ask in chat with numbered options and wait. Never pass the gate or merge without the required human decision.
 
 ## Philosophy: boil the lake
 
@@ -29,7 +29,7 @@ This skill owns Stage = `GATE`. Before doing any work:
 
 1. Resolve layout (current → legacy fallback per the section below).
 2. Resolve target plan from `$ARGUMENTS` (number) or, if absent, scan `docs/product-specs/*.md` for the first spec with frontmatter `stage: GATE` and locate its exec plan under `docs/exec-plans/{active,completed}/`. Do not scan the generated `index.md`.
-3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: GATE`. Point the user at `/feature-loop <N>` or the correct sub-skill on refusal. Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
+3. **Spec frontmatter is the sole source of truth for stage.** Read `stage:` from `docs/product-specs/<NNN>-*.md` YAML frontmatter — never from the generated `index.md`, never from any `Stage:` line in the exec plan (it no longer carries one). Refuse unless `stage: GATE`. Point the user at the installed `feature-loop` skill or correct stage skill with the resolved spec number (or PR number for `review-loop`), using the host's command syntax (Pi: `/skill:<installed-name> <number>`). Never silently process the wrong stage. **Legacy fallback (pre-decentralize layout):** when the spec lacks frontmatter, read `Stage:` from the exec plan if present, else from the legacy BACKLOG row.
 4. **Resolve the PR state** from the plan's `PR:` header field: `gh pr view <pr-number> --json state -q .state`.
 
    - **`OPEN` — the normal path.** Additionally require that the plan's `## PR convergence ledger` has at least one entry and that its **latest** entry shows review actually converged: `action: stop`, with `verdict: APPROVE` or `verdict: COMMENT`, and `threads_open: 0`. Those are exactly `/review-loop`'s own convergence conditions (its §2 step 5 stops on `APPROVE` with zero threads, and on `COMMENT` with strict mode off, zero threads, and an empty `findings_hash` — i.e. no BLOCKING or IMPORTANT findings left) — the gate must not demand a stricter signal than the loop can produce, or the normal path would refuse every time.
@@ -60,7 +60,7 @@ This skill owns Stage = `GATE`. Before doing any work:
    - `OPEN` path: `main...HEAD` (the PR's own changes, excluding anything that landed on `main` since the branch point). Use the repo's default branch name if it is not `main`.
    - `MERGED` path: `<merge-sha>~1..<merge-sha>`.
 
-3. **Execute the checklist.** Prefer parallel sub-agents for independent checks (use the multi-reviewer fanout pattern from `/review-pr`). Spawn one Agent (`subagent_type: "hs-validator"`) per validator dimension. **Fallback:** dispatch it; if the Agent tool errors on an unrecognized `subagent_type`, retry once with `"general-purpose"` and note the downgrade in the verdict. Do not pre-check for the agent's existence — a failed dispatch is the signal.
+3. **Execute the checklist.** Prefer parallel agents for independent checks when the host provides an agent/subagent tool (use the multi-reviewer fanout pattern from `/review-pr`). Adapt reviewer roles and request fields to the host. If no dispatch tool is available, verify each validator dimension inline and note that the checks were not independently delegated.
 
    Three dimensions:
    - **Acceptance criteria** — exercises each Success criterion (read the diff, confirm the code actually delivers the observable signal; for behavioral signals, run a script or test that demonstrates it). Cite per-criterion evidence, one line per criterion.
@@ -157,7 +157,7 @@ This skill owns Stage = `GATE`. Before doing any work:
 - The gate is read-mostly: it runs commands, reads files, and writes only to the plan's `## Gate verdict` section, the spec's frontmatter (on PASS), and (on PASS) moves the plan file. It never edits `docs/product-specs/index.md`.
 - Never modify production code from this skill. If the gate reveals a bug on an open PR, report it so it is fixed in the PR — do not patch it inline, and do not file an issue for it.
 - Never merge from this skill. The gate reports readiness; the merge is a separate, human-confirmed step.
-- Each dimension worker must run in a fresh sub-agent so the orchestrator's context stays bounded regardless of how much output the checks produce.
+- Use a fresh sub-agent per dimension when the host provides that capability. Without it, run dimensions inline and keep evidence bounded; do not claim independent validation or isolated contexts.
 - **Never write `DONE` while the plan declares a non-final phase.** A `Phase: N of M` header with `N < M` blocks the DONE bookkeeping outright — no `stage: DONE`, no plan move, no `shipped:` — regardless of how the three dimensions land. Marking a one-slice-of-three feature complete also files away the plan that phases N+1..M still depend on.
 - The `## Gate verdict` section is append-only. Re-running `/merge-gate` adds a new entry; it never overwrites an old one. The latest entry is authoritative for Stage advancement.
 - If the spec has no Success criteria, refuse and ask the user to fill them in. A gate pass against an empty checklist is meaningless.
