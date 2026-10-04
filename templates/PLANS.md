@@ -15,6 +15,8 @@ How planning works in this repo.
 
 ## Plan lifecycle
 
+The commands below use bare slash syntax for hosts that support it. In Pi, invoke the installed skill as `/skill:<installed-name>`; include any configured prefix in the installed name.
+
 1. **RESEARCH** — `/feature-research` populates the Research section.
 2. **PLAN** — `/feature-plan` populates the Approach, Files, and Tests sections.
 3. **IMPLEMENT** — `/feature-implement` appends to Decision log and Progress as code lands.

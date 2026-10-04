@@ -57,7 +57,7 @@ After any other option, continue with this skill.
 
 The loop pauses for the operator at two approval gates on a normal run:
 
-1. **Plan approval** (Phase 4) — the only point where a wrong answer is expensive and the human is better informed than the loop. The draft carries a reviewer subagent's second opinion inline (or the recorded skip, in the fast lane — see **Lanes**).
+1. **Plan approval** (Phase 4) — the only point where a wrong answer is expensive and the human is better informed than the loop. The draft records an independent second opinion when an agent ran, an inline self-review when no agent was available, or the fast-lane skip (see **Lanes**).
 2. **Merge** (Phase 8) — irreversible and outward-facing. Never automatic, under any signal.
 
 Several interactions gather input or refuse work **without approving anything**, and none of them is a third approval gate: the clarifying rounds in Phase 1Q and Phase 3Q (both skipped when resuming an existing feature), and the under-specified-description refusal at the top of Phase 1. One further prompt appears only for projects whose `[github] create_issues` policy is `ask` (see Phase 1).

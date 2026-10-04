@@ -44,7 +44,7 @@ All of these must pass before a PR merges. `/feature-implement` runs them.
 
 ## Workflows
 
-This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills:
+This project uses [hivesmith](https://github.com/lucascaro/hivesmith) skills. The slash-command names below are examples for hosts that support bare slash commands. In Pi, invoke the installed skill as `/skill:<installed-name>`; the installed name includes any configured prefix.
 
 - **Feature pipeline** — `/feature-next` → (`/brainstorm` or `/feature-new` or `/feature-ingest <#>`) → `/feature-triage` → `/feature-research` → `/feature-plan` → `/feature-implement` → `/review-loop`. `/brainstorm` is the pre-pipeline problem-space stage: it interrogates the problem behind a vague idea and drafts the spec's narrative sections before any issue exists.
 - **PR convergence** — `/review-loop` drives review-respond-iterate on any PR until findings clear or it escalates.

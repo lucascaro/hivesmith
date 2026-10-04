@@ -17,13 +17,15 @@ See `AGENTS.md` → "Build / Test / Lint Commands". All commands must pass befor
 
 ## Feature Workflow
 
-This project uses the [hivesmith](https://github.com/lucascaro/hivesmith) feature pipeline. From inside your AI coding agent (Claude Code, Codex, Gemini, Copilot, Factory):
+This project uses the [hivesmith](https://github.com/lucascaro/hivesmith) feature pipeline. From inside your AI coding agent (Claude Code, Codex, Gemini, Copilot, Factory, Pi):
+
+The commands below use bare slash syntax for hosts that support it. In Pi, invoke the installed skill as `/skill:<installed-name>`; include any configured prefix in the installed name.
 
 1. `/feature-next` — see the current pipeline state and next recommended action
 2. `/brainstorm [idea]` (when the idea is still vague) or `/feature-new <description>` or `/feature-ingest <issue#>` — add a new item
 3. `/feature-triage [#]` → `/feature-research [#]` → `/feature-plan [#]` → `/feature-implement [#]`
 4. `/changelog-update` — scaffold a `.changesets/<NNN>-<slug>.md` for any user-visible change
-5. `/review-pr <#>` — deep parallel review before merge
+5. `/review-pr <#>` — deep review before merge (parallel when the host provides agent support)
 6. `/release <version>` — cut a release once at least one changeset is present
 
 Specs live under `docs/product-specs/<NNN>-<slug>.md` with YAML frontmatter (`stage:` is the source of truth). Exec plans live under `docs/exec-plans/{active,completed}/`. Per-PR changelog entries live under `.changesets/`; `CHANGELOG.md` itself is **generated** on push to `main` by `scripts/regen-generated.sh` — never edit it directly. `docs/product-specs/index.md` and `docs/exec-plans/tech-debt-tracker.md` are generated the same way.
