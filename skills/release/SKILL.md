@@ -12,7 +12,7 @@ Walk through the release process end to end. The heavy lifting (version bump, CH
 ## Steps
 
 1. **Verify tooling.**
-   - `scripts/release.sh` exists and is executable. If missing, tell the user to run `/hivesmith-init` and stop.
+   - `scripts/release.sh` exists and is executable. If missing, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
    - `gh` CLI is installed and authenticated.
 
 2. **Pre-flight checks.** All must pass before continuing:
@@ -50,5 +50,5 @@ Walk through the release process end to end. The heavy lifting (version bump, CH
 
 - **Never bypass failed pre-flight checks.** If CI is red or the tree is dirty, stop — the user can override by running `scripts/release.sh` directly if they know what they're doing.
 - **Never force-push or re-tag an existing version.** If the tag exists, stop and ask.
-- **Do not edit `CHANGELOG.md` here** — `release.sh` handles the stamp. Use `/changelog-update` earlier if entries are missing.
+- **Do not edit `CHANGELOG.md` here** — `release.sh` handles the stamp. If entries are missing, invoke the installed `changelog-update` skill before releasing (Pi: `/skill:<changelog-update-name>`).
 - **One release at a time.** If a previous release commit is unpushed, resolve that first.

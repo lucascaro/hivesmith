@@ -21,7 +21,7 @@ Filenames are the sort key. Within each `### <Type>` section in `CHANGELOG.md`, 
 
 ```markdown
 ---
-issue: 29
+issue: 29                 # optional; omit when there is no GitHub issue
 pr: 30                    # optional pre-merge; filled when PR opens
 type: added | changed | fixed | removed | deprecated | security
 bump: major | minor | patch | none
@@ -31,7 +31,7 @@ regression_of_issue: 24   # optional companion
 - **Headline line.** Body bullets land verbatim under the `### <Type>` heading in `CHANGELOG.md`'s `[Unreleased]` section. Keep the headline imperative and outcome-focused; bullets explain the user-facing change, not the implementation.
 ```
 
-Required: `issue`, `type`, `bump`. Optional: `pr`, `regression_of`, `regression_of_issue`.
+Required: `type`, `bump`. Optional: `issue` (include when a GitHub issue exists), `pr`, `regression_of`, `regression_of_issue`.
 
 ### `regression_of`
 
