@@ -11,6 +11,8 @@ Sets up [graphify](https://github.com/Graphify-Labs/graphify) so a project's cod
 
 Backed by `graphify-setup.sh` in this skill directory. **The script is the source of truth — do not re-implement its logic, and do not hand-edit what it writes.**
 
+**Host boundary:** the shared-cache and Git-hook setup is host-independent, but the automatic refresh and orientation hooks described below are Claude Code `PostToolUse` / `PreToolUse` integrations. The script writes Claude-specific settings; it does not install a Pi extension or wire Pi hooks. If invoked from Pi, do not run the setup expecting Pi automation. Only proceed if the operator explicitly wants to configure the Claude Code integration in this repository.
+
 ## What it sets up
 
 1. **A shared extraction cache.** Each checkout's `graphify-out/cache` becomes a symlink into `$(git rev-parse --git-common-dir)/graphify-cache`. Cache keys are content hashes, so a file extracted once in any worktree is never re-extracted in another. This is the part that saves money: semantic extraction costs LLM calls, and without sharing every new worktree re-pays for identical files.
@@ -34,14 +36,14 @@ Backed by `graphify-setup.sh` in this skill directory. **The script is the sourc
 
 1. **Check `graphify` is on `PATH`.** If not, tell the user to install it (`pip install graphifyy` or `uv tool install graphifyy`) and stop. Do not attempt the install yourself.
 
-2. **Check for skill/package version drift.** Compare `graphify --version` against `~/.claude/skills/graphify/.graphify_version`. If they differ, warn — a stale `/graphify` skill teaches the agent an older CLI than the installed package — and suggest `graphify install --platform claude`. This is a warning, not a blocker; continue either way.
+2. **Check for skill/package version drift.** If the active host exposes a graphify skill version marker, compare it with `graphify --version`. If they differ, warn — a stale `/graphify` skill teaches the agent an older CLI than the installed package — and suggest updating that skill through its owning host. If no marker is available, skip the comparison instead of assuming the skill lives under `~/.claude/skills/`. This is a warning, not a blocker.
 
 3. **Confirm the project is a git repository.** The whole design keys off `git rev-parse --git-common-dir`. If it is not a repo, stop and say so.
 
-4. **Run the setup** with the working directory set to the project root. Invoke `graphify-setup.sh` **from this skill's own directory** (or by its absolute path) — an installed skill lives under `~/.claude/skills/<prefix>graphify-init/`, so a repo-relative `skills/graphify-init/...` path only resolves inside a hivesmith checkout, which is the one project that least needs this skill.
+4. **Run the setup** with the working directory set to the project root. Invoke `graphify-setup.sh` **from this skill's own directory** (or by its absolute path). An installed skill may live in any host's skill root, so a repo-relative `skills/graphify-init/...` path only resolves inside a hivesmith checkout, which is the one project that least needs this skill.
 
    ```bash
-   "$(dirname "$0")/graphify-setup.sh"   # or: ~/.claude/skills/<prefix>graphify-init/graphify-setup.sh  (<prefix> is empty on a default install)
+   "$(dirname "$0")/graphify-setup.sh"   # or the absolute path to this installed skill's graphify-setup.sh
    ```
 
    Pass through the user's arguments:

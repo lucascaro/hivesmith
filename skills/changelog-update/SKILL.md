@@ -13,7 +13,7 @@ Add a per-PR changeset file under `.changesets/` for the current change. Use thi
 
 ## Steps
 
-1. **Locate `.changesets/`** at the repo root. If missing, tell the user to run `/hivesmith-init` to scaffold it and stop. If `.changesets/README.md` is absent, also stop — the project has not adopted the new layout yet.
+1. **Locate `.changesets/`** at the repo root. If missing, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop. If `.changesets/README.md` is absent, also stop — the project has not adopted the new layout yet.
 
 2. **Determine the entry details.**
    - If `$ARGUMENTS` provides a category and description, use them.

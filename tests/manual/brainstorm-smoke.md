@@ -101,8 +101,10 @@ echo "step 1c OK"
 - Before anything is written, all four sections (`## Problem`, `## Desired behavior`,
   `## Success criteria`, `## Non-goals`) are presented for approval. **Nothing on disk changes
   before that gate**, including `gh` calls.
-- On approval it invokes `/feature-new`; the resulting spec has all four sections non-placeholder
-  and lands at `stage: RESEARCH`.
+- On approval it continues with the `feature-new` workflow in the same operator-visible thread,
+  using native skill chaining if supported or following the installed `feature-new/SKILL.md`.
+  It does not emit a slash command and assume it ran. The resulting spec has all four sections
+  non-placeholder and lands at `stage: RESEARCH`.
 
 ## 3. Delegation contract
 
@@ -114,8 +116,11 @@ After the run in §2:
 - Gate 1 ("Create this GitHub issue?") did **not** fire — `/brainstorm`'s gate already covered both
   the content and the create-vs-skip choice.
 - Gate 2 (triage classification) **did** fire. Triage is a real classification the operator sees.
-- The printed handoff names `/feature-loop <NNN>`, not `/feature-research <NNN>`.
+- The printed handoff names `feature-loop <NNN>`, not `feature-research <NNN>`; on Pi it uses the
+  native `/skill:<installed-name>` command form.
 - `/brainstorm` itself never ran `gh issue create`.
+- In Pi, the workflow does not require a model-callable `Skill` tool; if the host cannot load the
+  target skill instructions, it stops with an explicit handoff instead of silently dropping them.
 - An open question left by the step-4 stop rule lands in the spec's `## Notes`. `/brainstorm` writes
   nothing itself, so an open question it only mentions in chat is lost.
 - **Legacy layout.** With `docs/product-specs/` absent and `features/active/` present, all four

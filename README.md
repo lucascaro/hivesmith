@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A multi-agent dev workflow bundle for Claude Code, Codex, Gemini, Copilot, and Factory. Gives every AI agent in your toolkit a shared harness — a structured `docs/` system of record, a feature pipeline that drives PRs to convergence, and recurring background workflows that keep the codebase legible — installable into any project in one command.
+A dev-workflow bundle for Claude Code, Codex, Gemini, Copilot, Factory, and Pi. Gives compatible agents a shared harness — a structured `docs/` system of record, a feature pipeline that drives PRs to convergence, and recurring background workflows that keep the codebase legible — installable into any project in one command.
 
 Extracted from the [claude-mux](https://github.com/lucascaro/claude-mux) development process. Layout and loop primitives follow the pattern documented in OpenAI's [*Harness engineering*](https://openai.com/index/harness-engineering/) post.
 
@@ -11,19 +11,19 @@ Extracted from the [claude-mux](https://github.com/lucascaro/claude-mux) develop
 Most AI coding agents have no persistent memory of what's being worked on and no coordination with each other. Hivesmith gives them a shared structure:
 
 - **A repo-as-system-of-record layout** — product specs (the *what/why*) in `docs/product-specs/`, exec plans (the *how*, with append-only Decision log + Progress) in `docs/exec-plans/{active,completed}/`, plus stubs for `DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `golden-principles.md`. `AGENTS.md` is a short table of contents that points into the tree.
-- **A feature pipeline** — ingest a GitHub issue, triage it, research the codebase, plan, implement, and ship. Each step is a single slash command writing to `docs/`. Any agent — Claude, Codex, Gemini — can pick up where another left off.
+- **A feature pipeline** — ingest a GitHub issue, triage it, research the codebase, plan, implement, and ship. Each step is a single skill writing to `docs/`. Any supported harness — including Pi — can pick up where another left off.
 - **PR convergence** — `/review-loop` drives any PR through review → autofix → re-review until findings clear or escalation criteria hit. `feature-implement` calls it after opening the PR; you can also run it on hand-authored PRs.
 - **Recurring sweeps** — `/doc-garden` watches `docs/` for staleness and opens scoped fix-up PRs; `/gc-sweep` reads `golden-principles.md`, finds deviations in the codebase, and opens small refactor PRs; `/code-garden` runs a daily one-category code-hygiene sweep and opens at most one small PR per run.
 - **A cross-project second brain** — `~/.hivesmith/brain/` is a git-tracked, scope-tagged store of durable lessons (gotchas, conventions, decisions) that hivesmith skills accumulate across every project. Read at the start of `feature-new` / `feature-triage` / `feature-research` / `feature-plan` / `feature-implement` / `review-pr`; appended at convergence by `feature-implement` / `review-pr` / `review-loop`. Each read is best-effort and skipped when the same entries are already in context from an earlier step in the run. Promotion across projects is gated by `/brain-promote`; tidying happens via `/brain-garden`.
 - **An inbound PR queue** — `/pr-queue` is the maintainer-side counterpart to the feature pipeline. It orders the open PRs by dependency and readiness, triages each one read-only (premise first: is the bug real and can it even occur here), explains it in terms of what a user would notice, and gates every action on your decision. A fork or a protected branch is reviewed read-only; only a branch you can push to may go through `/review-loop`.
-- **A size-adaptive PR review** — `/review-pr` reviews the diff against four dimensions (correctness, safety, security, performance/UX/consistency) and then investigates what the diff reaches outside itself. It runs as one linear pass on an ordinary PR and splits the diff review across parallel agents only on a large one, where a single reader measurably degrades.
+- **A size-adaptive PR review** — `/review-pr` reviews the diff against four dimensions (correctness, safety, security, performance/UX/consistency) and then investigates what the diff reaches outside itself. It runs as one linear pass on an ordinary PR and uses parallel agents on a large one when the host provides them; otherwise it runs inline and reports that fan-out was unavailable.
 - **A release workflow** — changelog, version bump, and release script scaffolded once and invocable from any supported agent.
 
 ## What you get
 
 ### Skills
 
-Invokable as `/feature-*`, `/review-loop`, etc.:
+The table below uses bare slash commands for hosts that support them (such as Claude Code). In Pi, invoke the installed skill as `/skill:<installed-name>`.
 
 **Feature pipeline**
 
@@ -101,9 +101,11 @@ git clone https://github.com/lucascaro/hivesmith ~/.hivesmith
 
 This symlinks each skill into every detected agent's skills directory (`~/.claude/skills/`, `~/.codex/skills/`, `~/.factory/skills/`, `~/.gemini/skills/`, `~/.copilot/skills/`, `~/.pi/agent/skills/`). Agents whose parent directory does not exist are skipped automatically.
 
-> **pi note.** pi's project skill directory is `./.pi/skills` — not `./.pi/agent/skills` — so a `--local` install targets that path (declared as `local_skills_dir` in `agents.json`). pi only loads **project** skills once you have trusted the project. If you already point pi's `settings.json` `skills` array at another harness's directory (e.g. `~/.claude/skills`), drop that entry after installing, or the same hivesmith skills will be discovered from two roots.
+> **Pi note.** Pi's project skill directory is `./.pi/skills` — not `./.pi/agent/skills` — so a `--local` install targets that path (declared as `local_skills_dir` in `agents.json`). Pi only loads **project** skills once you have trusted the project. If you already point Pi's `settings.json` `skills` array at another harness's directory (e.g. `~/.claude/skills`), drop that entry after installing, or the same hivesmith skills will be discovered from two roots.
+>
+> Pi discovers these as native Agent Skills. Invoke one interactively as `/skill:<installed-name>` (for example, `/skill:review-loop` with the default unprefixed install; with `--prefix hs-`, use `/skill:hs-review-loop`). Hivesmith's shared `allowed-tools` values use Claude tool names; Pi does not translate them. Configure the corresponding Pi tools yourself: `Read` → `read`, `Grep` → `grep`, `Glob` → `find`, `Edit` → `edit`, `Write` → `write`, and `Bash` → `bash`. Pi's built-ins are `read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`; configure the tools needed by your skills. Pi core does not provide Claude's `Agent`, `Skill`, or `AskUserQuestion` tools. Multi-agent steps use an agent/subagent tool only when your own Pi setup provides one; otherwise the skills fall back inline or ask you to continue explicitly. Hivesmith does not install an agent/subagent plugin. Host-specific hooks remain host-specific.
 
-It also symlinks the bundled **subagent definitions** (`agents/*.md`) into any harness that declares an `agents_dir` in `agents.json`. Today only `claude` does, so subagents land in `~/.claude/agents/` and other harnesses are unaffected. `/merge-gate` uses `hs-validator` for its parallel validator fan-out; `/review-pr` uses `hs-reviewer` for its two fan-out paths — splitting the diff review on a large PR, and escalating a single oversized out-of-diff investigation — and reviews everything else inline; `/pr-queue` dispatches one `hs-reviewer` per PR for its read-only triage. Both fall back to built-in agent types when the definitions aren't installed. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
+It also symlinks the bundled **subagent definitions** (`agents/*.md`) into harnesses that declare an `agents_dir` in `agents.json`. Today only Claude does, so those definitions land in `~/.claude/agents/`; Hivesmith does not install subagent support for Pi. Skills request parallel or isolated agents when the host exposes that capability, and otherwise use an inline fallback where safe. Subagent filenames are **not** affected by `--prefix` — they always install as `hs-reviewer.md` / `hs-validator.md`.
 
 ### Namespaced install (`--prefix`)
 
@@ -113,11 +115,11 @@ To avoid name collisions with other skills, install under a prefix:
 ~/.hivesmith/install.sh --prefix hs-
 ```
 
-Skills install as `/hs-feature-plan`, `/hs-release`, etc. Cross-skill references inside each `SKILL.md` are rewritten so the pipeline still works end-to-end. The prefix is persisted to `~/.hivesmith.toml`, so `--update` and `--uninstall` don't need it re-passed. Pass `--prefix ""` to clear it on a later run.
+The installed skill names get the prefix (for example, `hs-feature-plan` and `hs-release`). Hosts with bare skill commands may show `/hs-feature-plan`; Pi invokes an unprefixed install as `/skill:feature-plan` and an `hs-`-prefixed install as `/skill:hs-feature-plan`. Cross-skill references inside each `SKILL.md` are rewritten where appropriate. The prefix is persisted to `~/.hivesmith.toml`, so `--update` and `--uninstall` don't need it re-passed. Pass `--prefix ""` to clear it on a later run.
 
 ### Local (per-project) install (`--local`)
 
-By default the installer targets your home directories (`~/.claude/`, …). Pass `--local` to install into the **current project** instead — skills and subagents are symlinked under `./.claude/skills`, `./.claude/agents`, etc., so they travel with the repo:
+By default the installer targets each detected harness's home directories. Pass `--local` to install into the **current project** instead. Skills go under that harness's project skill directory (for Pi, `./.pi/skills`); subagent definitions are linked only for harnesses that declare an `agents_dir` (currently Claude), so Pi gets skills but no Hivesmith-provided agents:
 
 ```bash
 cd ~/code/my-project

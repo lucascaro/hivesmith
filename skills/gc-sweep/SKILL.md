@@ -46,7 +46,7 @@ If a principle is missing Detection or Fix shape, skip it and report. The princi
 
 For each principle (or just the one passed via `--principle`):
 
-1. Run the detection procedure described in the principle. If it's a grep pattern, run `grep -rEn`. If it's a lint rule name, run that lint. If it's a procedure (e.g. "look for inline helpers duplicated across more than two files"), launch an Explore agent with the procedure as the prompt.
+1. Run the detection procedure described in the principle. If it's a grep pattern, run `grep -rEn`. If it's a lint rule name, run that lint. If it's a procedure (e.g. "look for inline helpers duplicated across more than two files"), use the host's agent/subagent tool with the procedure as the prompt when available; otherwise run the procedure inline.
 2. Collect raw findings as `(file, line, evidence, principle_index)` tuples.
 3. Verify each finding by reading the cited file at the cited line. Drop false positives.
 

@@ -7,7 +7,7 @@ allowed-tools: Read Glob Grep Edit Write Bash Agent AskUserQuestion
 
 # Feedback Loop
 
-Audit or design the **product feedback loop** for an app using hivesmith — i.e., the path by which signal from production (errors, telemetry, user reports, support, metrics) flows back into `docs/product-specs/index.md` (or legacy `features/BACKLOG.md`) as new features and bugs.
+Audit or design the **product feedback loop** for an app using hivesmith — i.e., the path by which signal from production (errors, telemetry, user reports, support, metrics) flows back into `docs/product-specs/index.md` (or legacy `features/BACKLOG.md`) as new features and bugs. Use the host's structured question tool when available; otherwise ask in chat with numbered options and wait.
 
 A great feedback loop has six dimensions:
 
@@ -28,9 +28,9 @@ Score the existing feedback loop on the six dimensions above, 0–10 each, with 
 
 ### Steps
 
-1. **Resolve project state.** Check that `docs/product-specs/index.md` (or legacy `features/BACKLOG.md`) exists. If neither does, suggest `/hivesmith-init` and stop.
+1. **Resolve project state.** Check that `docs/product-specs/index.md` (or legacy `features/BACKLOG.md`) exists. If neither does, tell the user to invoke the installed `hivesmith-init` skill using the host's command syntax (Pi: `/skill:<installed-name>`) and stop.
 
-2. **Fan out evidence-gathering** to four sub-agents (each fresh context, each returns a bounded JSON envelope):
+2. **Gather the evidence.** If the host provides an agent/subagent tool, fan out to four workers (each in a fresh context and returning a bounded JSON envelope), adapting to the available tool's request schema. Otherwise perform the four investigations inline, one at a time, and keep each result to the same bounded envelope.
 
    - **Worker A — instrumentation**: search the repo for analytics/telemetry SDKs (`segment`, `posthog`, `mixpanel`, `amplitude`, `datadog`, `opentelemetry`, `prometheus`, `statsd`, `sentry`, `bugsnag`, `rollbar`, `honeycomb`, `newrelic`, `logflare`, `axiom`), structured logging (`winston`, `pino`, `zap`, `slog`, `structlog`), and dashboard references in docs. Report: which are present, where they're configured, what events are fired (sample 10 random instrumented call sites with file:line).
    - **Worker B — error visibility**: locate error-handling middleware, panic recovery, global handlers, error reporting calls. Locate any docs describing where errors land (oncall runbook, README "Operations" section, `docs/runbooks/`). Report: end-to-end path of an unhandled exception in production, with evidence.
@@ -87,7 +87,7 @@ Score the existing feedback loop on the six dimensions above, 0–10 each, with 
    <Compare against the previous audit if one exists in docs/design-docs/feedback-loop-audit-*.md. Note dimensions that improved/regressed.>
    ```
 
-6. **Report** the composite score and the top 3 fixes inline. Suggest running `/feedback-loop design` to design fixes, or running `/feature-new` against each prioritized gap.
+6. **Report** the composite score and the top 3 fixes inline. Suggest invoking the installed `feedback-loop` skill with `design`, or `feature-new` with each prioritized gap as its description. In Pi, use the correct installed skill name and argument: `/skill:<feedback-loop-name> design` or `/skill:<feature-new-name> "<gap description>"`.
 
 ## Mode: design
 
@@ -136,14 +136,14 @@ Propose a concrete feedback loop for this app. Walks the six dimensions, asking 
    - Append to the index Active table at Stage = TRIAGE.
    - Cross-link from `docs/design-docs/feedback-loop.md` to each new spec.
 
-5. **Report:** the design doc path, the new spec numbers, and the recommended next action (`/feature-triage <N>` or `/feature-loop <N>` for each).
+5. **Report:** the design doc path, the new spec numbers, and the recommended next action. Use the host's command syntax for each new spec (bare-command hosts: `/feature-triage <N>` or `/feature-loop <N>`; Pi: `/skill:<installed-name> <N>`).
 
 ## Rules
 
 - Both modes are read-mostly. Audit writes one report file; design writes one design doc plus N spec files plus index updates. Neither modifies production code.
 - Audit reports are date-stamped and never overwritten — they form a historical trend.
 - Design doc at `docs/design-docs/feedback-loop.md` is the single current proposal — overwriting it is fine because the audit reports preserve history.
-- Workers run in fresh sub-agents and return bounded JSON envelopes. The orchestrator never sees raw grep output, full file dumps, or large worker context.
+- Use fresh sub-agents and bounded JSON envelopes when the host supports them. The inline fallback cannot isolate context; keep findings summarized and avoid carrying raw grep output, full file dumps, or large worker context forward.
 - Don't propose tools the project doesn't already use unless a dimension scored 0–2 (no existing tooling). Prefer extending what's there.
 
 ## Anti-injection rule

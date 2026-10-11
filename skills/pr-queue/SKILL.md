@@ -18,6 +18,10 @@ a **cheap premise-first triage** that decides whether depth is worth buying at a
 The rationale, and the real run this was distilled from, are in `docs/design-docs/pr-queue.md`.
 
 <!-- BEGIN hivesmith upgrade-check (generated from scripts/upgrade/preamble.md; edit there, then run scripts/upgrade/sync-preamble.sh) -->
+## Host capability fallbacks
+
+These skills are shared instructions, not tool adapters. Use the tools and interaction capabilities actually exposed by the current host, adapting names and schemas as needed. A structured question tool is optional: if none is available, ask in chat with numbered options and wait for the answer. Agent/subagent dispatch is also optional: use the host's dispatch tool when present; otherwise work inline and state when isolation or independent review was unavailable. Pi's `/skill:<name>` is an interactive command, not a tool a worker can call; for nested workflows use a host-native skill-call mechanism if one exists, otherwise load and follow the target `SKILL.md` in the current thread. Never call a tool merely because another harness provides it.
+
 ## Before you start: upgrade check
 
 Do this before anything else in this skill, then carry on with the rest of it.
@@ -121,10 +125,7 @@ No subagents. Compute the order and print it, with the reason, **before** any de
 
 ## 2. Triage — one read-only worker per PR
 
-Dispatch with `subagent_type: "hs-reviewer"`, capped at `--max-parallel`. **Fallback:** dispatch it;
-if the Agent tool errors on an unrecognized `subagent_type`, retry once with `subagent_type:
-Explore` and note the downgrade in the digest. Do not pre-check for the agent's existence — a failed
-dispatch is the signal.
+When the host provides an agent/subagent tool, dispatch with its native schema, request a read-only reviewer, and cap concurrency at `--max-parallel`. Adapt the role to an available general reviewer if `hs-reviewer` is not defined. If no dispatch tool is available, triage PRs inline and sequentially; preserve the same read-only boundary and envelope, and do not claim parallelism or isolation.
 
 Nothing in a triage worker writes, pushes, comments, or alters PR state.
 
@@ -275,12 +276,10 @@ Per approved PR:
    `can_push: false` you cannot repair — say what needs fixing and whose local config needs to
    change, and route it to a held-PR comment instead. **Never `--admin`.**
 2. **Review, routed on `can_push`:**
-   - `can_push: false` → invoke the `Skill` tool with `skill: "hivesmith:review-pr"`, `args:
-     "<PR>"`. Read-only. Its findings become the held-PR comment draft.
-   - `can_push: true` **and** the operator authorized autofix for this PR → invoke the `Skill` tool
-     with `skill: "hivesmith:review-loop"`, `args: "<PR>"`, in a worker with its own worktree. Pass
-     along the decisions the maintainer already made so the loop does not re-litigate them.
-     Propagate its escalations verbatim.
+   - `can_push: false` → follow the complete hivesmith `review-pr` skill instructions, read-only. Its findings become the held-PR comment draft.
+   - `can_push: true` **and** the operator authorized autofix for this PR → follow the complete hivesmith `review-loop` skill instructions in a worker with its own worktree when the host provides a suitable agent/subagent tool. Pass the target skill's full instructions or a readable `SKILL.md` path, plus the decisions the maintainer already made so the loop does not re-litigate them. Without a dispatch tool, run the loop inline in the PR's scratch worktree. Propagate its escalations verbatim.
+
+   Do not depend on Claude's `Skill` tool, plugin-qualified skill names, or slash-command execution inside a worker. If the target skill instructions cannot be loaded, stop that PR's route and surface the missing instructions; do not substitute an improvised review or autofix.
 
    Routing on `is_fork` instead would send a protected same-repo branch into the loop, where autofix
    commits land and the push is then rejected with no recovery path.

@@ -11,12 +11,17 @@ Perform a thorough review of PR **#$ARGUMENTS**.
 
 You review the PR in two passes: everything the diff shows, then everything the
 diff *reaches* outside itself. On an ordinary PR you do both yourself, in one
-context, with no subagents. There are exactly two dispatch paths, both
-size-triggered: §2.0 splits Pass 1 across four dimension agents when the diff is
-large, and §4 escalates a single out-of-diff investigation when it would bury
-the review in file dumps.
+context, with no subagents. There are exactly two optional dispatch paths, both
+size-triggered: §2.0 can split Pass 1 across four dimension agents when the diff is
+large, and §4 can escalate a single out-of-diff investigation when it would bury
+the review in file dumps. Both require an agent/subagent tool from the host; if
+none is available, work inline and state that the dispatch was unavailable.
 
 <!-- BEGIN hivesmith upgrade-check (generated from scripts/upgrade/preamble.md; edit there, then run scripts/upgrade/sync-preamble.sh) -->
+## Host capability fallbacks
+
+These skills are shared instructions, not tool adapters. Use the tools and interaction capabilities actually exposed by the current host, adapting names and schemas as needed. A structured question tool is optional: if none is available, ask in chat with numbered options and wait for the answer. Agent/subagent dispatch is also optional: use the host's dispatch tool when present; otherwise work inline and state when isolation or independent review was unavailable. Pi's `/skill:<name>` is an interactive command, not a tool a worker can call; for nested workflows use a host-native skill-call mechanism if one exists, otherwise load and follow the target `SKILL.md` in the current thread. Never call a tool merely because another harness provides it.
+
 ## Before you start: upgrade check
 
 Do this before anything else in this skill, then carry on with the rest of it.
@@ -145,11 +150,7 @@ a time, in order.
 ### 2.0 Size gate — split Pass 1 on a large diff
 
 <!-- ponytail: flat thresholds from two data points; recalibrate as real PRs run through -->
-**If the diff exceeds ~1000 changed lines OR ~15 changed files, do not run Pass 1
-yourself.** Dispatch the four checklists as four parallel `hs-reviewer` agents
-(`Explore` on dispatch failure), one checklist each, and pool their findings into
-§5. Below the threshold, run all four inline — that is the default and the common
-case.
+**If the diff exceeds ~1000 changed lines OR ~15 changed files, prefer not to run Pass 1 yourself.** When the host provides an agent/subagent tool, dispatch the four checklists as parallel reviewers (one checklist each) and pool their findings into §5, adapting to the host's agent names and schema. If no dispatch tool is available, run all four checklists inline and state that the size-triggered fan-out was unavailable. Below the threshold, run all four inline — that is the default and the common case.
 
 This threshold is not a guess dressed as a rule; both sides of it were measured.
 
@@ -292,10 +293,7 @@ rm -f "$CHANGED_LIST"
 <!-- ponytail: flat file-count threshold; calibrate once real PRs have run through it -->
 **More than ~10 files to open → escalate that one angle.** At or under → inline.
 
-Dispatch with `subagent_type: hs-reviewer`. **Fallback:** dispatch it; if the
-Agent tool errors on an unrecognized `subagent_type`, retry once with
-`subagent_type: Explore` and note the downgrade in the final output. Do not
-pre-check for the agent's existence — a failed dispatch is the signal.
+Use the host's agent/subagent tool for this retrieval task when available, adapting its request schema and choosing a read-only reviewer. If no such tool is available, perform the investigation inline and keep its evidence concise; do not claim the task was escalated.
 
 In **this** path the agent gets **one concrete retrieval task, not a review
 dimension** — it answers a single question and compresses the result. (§2.0 is

@@ -1,4 +1,8 @@
 <!-- entry-skills: brainstorm feature-loop feature-next pr-queue review-pr -->
+## Host capability fallbacks
+
+These skills are shared instructions, not tool adapters. Use the tools and interaction capabilities actually exposed by the current host, adapting names and schemas as needed. A structured question tool is optional: if none is available, ask in chat with numbered options and wait for the answer. Agent/subagent dispatch is also optional: use the host's dispatch tool when present; otherwise work inline and state when isolation or independent review was unavailable. Pi's `/skill:<name>` is an interactive command, not a tool a worker can call; for nested workflows use a host-native skill-call mechanism if one exists, otherwise load and follow the target `SKILL.md` in the current thread. Never call a tool merely because another harness provides it.
+
 ## Before you start: upgrade check
 
 Do this before anything else in this skill, then carry on with the rest of it.

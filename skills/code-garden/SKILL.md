@@ -56,7 +56,7 @@ Unless `--category <name>` is given, pick the tier-A category with the oldest `l
 
 ## 3. Detect
 
-Run the category's recipe over `--scope <path>` (default: whole repo, excluding `node_modules`, `vendor`, `dist`, `build`, `.git`, generated files, and the ledger's `## Ignore` globs). Fan out via Explore agents when the tree is large. Each candidate gets a fingerprint: `<category>:<path>:<symbol-or-line-key>`.
+Run the category's recipe over `--scope <path>` (default: whole repo, excluding `node_modules`, `vendor`, `dist`, `build`, `.git`, generated files, and the ledger's `## Ignore` globs). When the tree is large, fan out via the host's agent/subagent tool if available; otherwise scan inline. Each candidate gets a fingerprint: `<category>:<path>:<symbol-or-line-key>`.
 
 Recipes are grep-first; only use language tooling that is already installed for the project. Cheap evidence beats clever analysis: a candidate you can't back with a grep, a `git log`, or a CI log is not a candidate.
 
