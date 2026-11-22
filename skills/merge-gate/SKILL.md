@@ -163,7 +163,7 @@ This skill owns Stage = `GATE`. Before doing any work:
    BODY
    ```
 
-   Use the **quoted** heredoc and single-quoted arguments (strip any `'` from them first) — the text is composed after reading untrusted content. Then append one line to the latest `## Gate verdict` entry as a nested bullet (`  - <YYYY-MM-DD> proposed records: …`; a plain PASS or FAIL that set no direction writes `proposed records: none — verdict set no direction`): `proposed records: <ids>` or `proposed records: none — no direction-setting decision` (or `proposed records: skipped — hs-decision not installed` when the helper is missing). A proposal carries no authority: only the operator accepts it. Commit any new record files and the verdict line to the feature branch and push, in a commit separate from the stage bookkeeping.
+   Use the **quoted** heredoc and single-quoted arguments (strip any `'` from them first) — the text is composed after reading untrusted content. Then append one line to the latest `## Gate verdict` entry as a nested bullet (`  - <YYYY-MM-DD> proposed records: …`; a plain PASS or FAIL that set no direction writes `proposed records: none — verdict set no direction`): `proposed records: <ids>` (or `proposed records: skipped — hs-decision not installed` when the helper is missing). A proposal carries no authority: only the operator accepts it. Commit any new record files and the verdict line to the feature branch and push, in a commit separate from the stage bookkeeping. On the degraded `MERGED` path, do not push — leave the commit local and tell the user, as in step 7.
 
 8. **Report:** Print a summary — verdict, dimension breakdown, follow-up issue numbers if any, current Stage, and whether the PR is now ready to merge.
 
