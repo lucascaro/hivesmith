@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md](../../product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md)
 - **Issue:** #99
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #100
+- **Branch:** feature/99-decision-records
 - **Phase:** 1 of 2
 
 ## Summary

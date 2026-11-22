@@ -2,6 +2,7 @@
 issue: 99
 type: added
 bump: minor
+pr: 100
 ---
 - **Decision records: per-repo decisions that agents check new work against (phase 1 of 2, advisory).**
   - **The gap:** Agents had nothing durable to judge a plan, issue or idea against. Every judgment call fell back to the operator, and a decision made in one session was forgotten in the next.
