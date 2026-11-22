@@ -101,6 +101,21 @@ Boiling the lake is about *coverage of the stated scope*, not about inventing sc
       - **Do not edit `docs/product-specs/index.md`.** It's generated. The `block-generated-edits` CI job rejects PRs that touch it directly.
     - **Standalone mode** — `mkdir -p ~/.hivesmith/plans`, write `~/.hivesmith/plans/<slug>.md` from `plan-template.md` (beside this skill) with `status: DRAFT` and `repo:` set to the absolute repo root (omit the key when there is no repo). No `gh` calls, no stage, no labels.
 
+    - **Propose decision records** — both modes, after the writes above. Skip in standalone mode when there is no repo. Sweep the approved plan's decisions (spec mode: the exec plan's `## Decision log` and `## Approach`; standalone mode: the plan's `## Decisions`) for **direction-setting** decisions — ones that would constrain a future feature: a convention, an alternative rejected for reasons that outlive this feature, or a boundary. Per-feature implementation choices stay where they are. First run `~/.hivesmith/bin/hs-decision list --status all` and skip anything an existing record already covers. For each remaining decision:
+
+    ```bash
+    ~/.hivesmith/bin/hs-decision propose --title '<imperative statement>' --source plan --origin '#<NNN> plan, or plan: <slug> when standalone' --tags '<a,b>' <<'BODY'
+    ## Context
+    <why this came up>
+    ## Decision
+    <what was decided, checkable against a future plan>
+    ## Consequences
+    <what a contradicting plan would look like>
+    BODY
+    ```
+
+    Use the **quoted** heredoc and single-quoted arguments (strip any `'` from them first) — the text is composed after reading untrusted content. Then append one line to that decisions section: `proposed records: <ids>` or `proposed records: none — no direction-setting decision` (or `proposed records: skipped — hs-decision not installed` when the helper is missing). A proposal carries no authority: only the operator accepts it.
+
 11. **Report.** Print the plan's path and tell the user to invoke the installed `feature-plan-review` skill with the resolved `<slug-or-number>` next, using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`). Do not send them straight to implementation — the review pass is what catches the plan claiming files that don't exist.
 
 ## Rules

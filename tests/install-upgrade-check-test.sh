@@ -188,7 +188,21 @@ update_reexecs_new_install_sh_after_pull() {
 
 # ---------------------------------------------------------------------------
 
+hs_decision_linked_and_unlinked() {
+    local t=hs_decision_linked_and_unlinked
+    new_sandbox
+    hs_install --global --agents claude --no-upgrade-check
+    local link="$FAKE_HOME/.hivesmith/bin/hs-decision" bad="" target
+    target="$(readlink "$link" 2>/dev/null)"
+    [[ "$target" == "$HS_RUN/scripts/decisions/decision.sh" ]] || bad+=" link='$target'"
+    hs_install --uninstall --global --agents claude
+    [[ ! -e "$link" && ! -L "$link" ]] || bad+=" link-left"
+    if [[ -z "$bad" ]]; then pass "$t"; else fail "$t" "$bad"; fi
+    rm -rf "$SB"
+}
+
 default_install_links_helper_and_status_on
+hs_decision_linked_and_unlinked
 migration_removes_cron_entry_and_auto_upgrade_key
 migration_handles_cron_with_only_our_line
 removed_flags_exit_nonzero_with_pointer

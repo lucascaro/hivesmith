@@ -32,6 +32,7 @@ Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → 
 - `docs/exec-plans/active/` — what's being built right now (decision logs append-only).
 - `docs/exec-plans/completed/` — what was built (preserved for future agent runs).
 - `docs/design-docs/` — non-obvious architectural decisions.
+- `docs/decisions/` — decision records (`hs-decision`): repo-wide decisions agents check plans, issues and ideas against. Agents propose; only the operator accepts.
 - `docs/references/` — external docs pulled in for agent context.
 - `golden-principles.md` — mechanical rules `/gc-sweep` enforces.
 

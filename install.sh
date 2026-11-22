@@ -754,7 +754,7 @@ if [[ "$MODE" == "uninstall" ]]; then
         # referenced by skills). Remove the ones we own; drop the dir if empty.
         BRAIN_BIN_DIR="$HOME/.hivesmith/bin"
         if [[ -d "$BRAIN_BIN_DIR" ]]; then
-            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden hs-metric hs-upgrade-check; do
+            for link_name in brain-read brain-append brain-index brain-redact brain-list brain-search brain-lib.sh brain-yaml.py brain-promote brain-garden hs-metric hs-upgrade-check hs-decision; do
                 link="$BRAIN_BIN_DIR/$link_name"
                 if [[ -L "$link" ]] && [[ "$(readlink "$link")" == "$HIVESMITH_DIR/"* ]]; then
                     run rm -f "$link"
@@ -1094,6 +1094,8 @@ if [[ "$MODE" == "install" || "$MODE" == "update" ]]; then
         "scripts/metrics/emit.sh:hs-metric"
         # Same posture: entry skills call it; nothing runs it on a schedule.
         "scripts/upgrade/check.sh:hs-upgrade-check"
+        # Same posture: pipeline skills call it to read and propose decision records.
+        "scripts/decisions/decision.sh:hs-decision"
     )
     for pair in "${brain_links[@]}"; do
         src_rel="${pair%%:*}"

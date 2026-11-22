@@ -14,6 +14,7 @@ Table of contents for AI agents (and humans) working in this repo. **Keep this f
 | The architectural shape — domains, layers, cross-cutting concerns | [`DESIGN.md`](DESIGN.md) |
 | Project-wide design beliefs | [`docs/design-docs/core-beliefs.md`](docs/design-docs/core-beliefs.md) |
 | Per-decision design rationale | [`docs/design-docs/`](docs/design-docs/index.md) |
+| Accepted decisions agents must honor | [`docs/decisions/`](docs/decisions/README.md) |
 | What's planned and why (product-side) | [`docs/product-specs/`](docs/product-specs/index.md) |
 | What's being built right now (engineering-side) | [`docs/exec-plans/active/`](docs/exec-plans/active/) |
 | What was built and the decisions made along the way | [`docs/exec-plans/completed/`](docs/exec-plans/completed/) |
