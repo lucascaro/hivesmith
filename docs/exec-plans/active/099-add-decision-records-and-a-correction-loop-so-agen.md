@@ -114,6 +114,7 @@ tags: merge, approval   # comma list, used for relevance matching
 supersedes:             # id or empty
 superseded_by:          # id or empty
 ---
+```
 
 ### Files to change
 

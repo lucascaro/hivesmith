@@ -81,8 +81,23 @@ D supersede 1 2 >/dev/null
 check supersede_marks_old "superseded_by: 0002" "$(cat docs/decisions/0001-first-rule.md)"
 check supersede_marks_old_status "status: superseded" "$(cat docs/decisions/0001-first-rule.md)"
 check supersede_links_new "supersedes: 0001" "$(cat docs/decisions/0002-second-rule.md)"
+check supersede_accepts_replacement "status: accepted" "$(cat docs/decisions/0002-second-rule.md)"
+check supersede_dates_replacement "accepted: " "$(cat docs/decisions/0002-second-rule.md)"
+check list_shows_replacement "Second rule" "$(D list)"
+D supersede 1 2 >/dev/null 2>&1
+rc_is supersede_identical_repeat_is_noop 0 $?
+D supersede 1 3 >/dev/null 2>&1
+rc_is supersede_twice_refused 64 $?
+check supersede_twice_keeps_link "superseded_by: 0002" "$(cat docs/decisions/0001-first-rule.md)"
+D supersede 2 1 >/dev/null 2>&1
+rc_is supersede_cycle_refused 64 $?
+D supersede 3 4 >/dev/null 2>&1
+rc_is supersede_proposed_old_refused 64 $?
 D accept 99 >/dev/null 2>&1
 rc_is accept_missing_id 2 $?
+err="$(D propose --title 2>&1 </dev/null)"; rc=$?
+rc_is flag_without_value_exits_2 2 "$rc"
+check flag_without_value_says_why "needs a value" "$err"
 
 echo "lint"
 out="$(D lint 2>&1)"; rc=$?
@@ -107,6 +122,13 @@ sed -i.bak 's/^status: proposed$/status: accepted/' "$f3" && rm -f docs/decision
 rc_is lint_rejects_accepted_without_date 1 "$(D lint >/dev/null 2>&1; echo $?)"
 sed -i.bak 's/^status: accepted$/status: proposed/' "$f3" && rm -f docs/decisions/*.bak
 
+cp docs/decisions/0002-second-rule.md "$SANDBOX/keep"
+sed -i.bak -e 's/^status: accepted$/status: proposed/' -e '/^accepted: /d' docs/decisions/0002-second-rule.md && rm -f docs/decisions/*.bak
+out="$(D lint 2>&1)"; rc=$?
+rc_is lint_rejects_proposed_replacement 1 "$rc"
+check lint_proposed_replacement_message "which is only proposed" "$out"
+cp "$SANDBOX/keep" docs/decisions/0002-second-rule.md
+
 cp "$f3" docs/decisions/0042-mismatch.md
 out="$(D lint 2>&1)"; rc=$?
 rc_is lint_rejects_id_filename_mismatch 1 "$rc"
@@ -125,6 +147,12 @@ printf '# Decisions\n' > docs/decisions/README.md
 printf -- '---\nid: NNNN\nstatus: proposed\n---\n' > docs/decisions/_template.md
 rc_is lint_skips_readme_and_template 0 "$(D lint >/dev/null 2>&1; echo $?)"
 rc_is list_skips_readme_and_template 0 "$(D list --status all | wc -l | tr -d ' ')"
+
+echo "paths"
+rm -rf "$SANDBOX/it's here"; mkdir -p "$SANDBOX/it's here"; cd "$SANDBOX/it's here" || exit 1; git init -q .
+D propose --title "Quote path" --source plan </dev/null >/dev/null
+rc_is propose_in_quoted_path 0 $?
+if [ ! -d docs/decisions/.propose.lock ]; then ok lock_released_in_quoted_path; else bad lock_released_in_quoted_path "lock left behind"; fi
 
 cd "$REPO_ROOT" || exit 1
 rc_is lint_template_dir_clean 0 "$(bash "$TOOL" lint >/dev/null 2>&1; echo $?)"

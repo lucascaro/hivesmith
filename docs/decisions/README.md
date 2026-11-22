@@ -16,7 +16,7 @@ A record is a repo-wide decision that future plans, issues and ideas are judged 
 |---|---|---|
 | `proposed` | Drafted. It carries no weight yet. | Agents, via `hs-decision propose`, or anyone by hand |
 | `accepted` | In force. Triage, plan review and ideation check new work against it. | **The operator only** (`hs-decision accept <id>`) |
-| `superseded` | Replaced by a later record. It is kept for history. | **The operator only** (`hs-decision supersede <old> <new>`) |
+| `superseded` | Replaced by a later record. It is kept for history. | **The operator only** (`hs-decision supersede <old> <new>`, which also accepts `<new>`) |
 
 An agent never accepts or supersedes a record on its own. It does so only when the operator has explicitly answered that request in the current session.
 
@@ -38,6 +38,6 @@ hs-decision propose --title "..." --source plan|gate|operator|manual \
 ## Consequences
 BODY
 hs-decision accept 7                  # operator only
-hs-decision supersede 3 7             # operator only: record 7 replaces record 3
+hs-decision supersede 3 7             # operator only: record 7 replaces accepted record 3 (and is accepted)
 hs-decision lint                      # validate every record
 ```

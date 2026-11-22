@@ -9,7 +9,7 @@
 #   BODY
 #   hs-decision list [--status accepted|proposed|superseded|all]   (default: accepted)
 #   hs-decision accept <id>          operator only — never run by an agent unprompted
-#   hs-decision supersede <old> <new>  operator only
+#   hs-decision supersede <old> <new>  operator only — also accepts <new>
 #   hs-decision lint
 #
 # Records live at <repo root>/docs/decisions/NNNN-<slug>.md. Only the FIRST
@@ -103,6 +103,9 @@ quote() {
     printf '"%s"' "$s"
 }
 
+# need <flag> <argc> — a flag that takes a value must have one.
+need() { [ "$2" -ge 2 ] || die 2 "$1 needs a value"; }
+
 reject_ctrl() {
     case "$2" in
         *[[:cntrl:]]*) die 64 "$1 must not contain newlines or control characters" ;;
@@ -113,10 +116,10 @@ cmd_propose() {
     local title="" source="" origin="" tags=""
     while [ $# -gt 0 ]; do
         case "$1" in
-            --title)  title="${2-}"; shift 2 ;;
-            --source) source="${2-}"; shift 2 ;;
-            --origin) origin="${2-}"; shift 2 ;;
-            --tags)   tags="${2-}"; shift 2 ;;
+            --title)  need "$1" $#; title="${2-}"; shift 2 ;;
+            --source) need "$1" $#; source="${2-}"; shift 2 ;;
+            --origin) need "$1" $#; origin="${2-}"; shift 2 ;;
+            --tags)   need "$1" $#; tags="${2-}"; shift 2 ;;
             *) die 2 "propose: unknown argument: $1" ;;
         esac
     done
@@ -142,8 +145,8 @@ cmd_propose() {
         [ "$tries" -lt 50 ] || die 2 "propose: lock held ($lock); remove it if no other propose is running"
         sleep 0.1
     done
-    # shellcheck disable=SC2064
-    trap "rmdir '$lock' 2>/dev/null || true" EXIT
+    LOCK="$lock"
+    trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
 
     local max=0 f n
     while IFS= read -r f; do
@@ -175,7 +178,7 @@ cmd_list() {
     local want="accepted"
     while [ $# -gt 0 ]; do
         case "$1" in
-            --status) want="${2-}"; shift 2 ;;
+            --status) need "$1" $#; want="${2-}"; shift 2 ;;
             *) die 2 "list: unknown argument: $1" ;;
         esac
     done
@@ -206,6 +209,26 @@ cmd_supersede() {
     local old new
     old="$(find_record "$1")"; new="$(find_record "$2")"
     [ "$old" != "$new" ] || die 64 "supersede: a record cannot supersede itself"
+    local oid nid ost nst
+    oid="$(fm_get "$old" id)"; nid="$(fm_get "$new" id)"
+    ost="$(fm_get "$old" status)"; nst="$(fm_get "$new" status)"
+    # An identical repeat is a no-op, so a re-run after a crash is safe.
+    if [ "$ost" = superseded ] && [ "$(fm_get "$old" superseded_by)" = "$nid" ] \
+        && [ "$(fm_get "$new" supersedes)" = "$oid" ]; then
+        printf '%s\n' "$old"; return 0
+    fi
+    # Guards keep the chain linear: an accepted rule is only ever replaced by a
+    # rule that is in force, each record is replaced at most once, and a
+    # record replaces at most one other. That also rules out cycles.
+    [ "$ost" = accepted ] || die 64 "supersede: $(basename "$old") is $ost; only an accepted record can be superseded"
+    case "$nst" in proposed|accepted) ;; *) die 64 "supersede: $(basename "$new") is $nst; the replacement must be proposed or accepted" ;; esac
+    [ -z "$(fm_get "$new" supersedes)" ] || die 64 "supersede: $(basename "$new") already supersedes $(fm_get "$new" supersedes)"
+    # Superseding is an operator act, so it also puts the replacement in force:
+    # an accepted rule never drops out of `list` with nothing taking its place.
+    if [ "$nst" = proposed ]; then
+        fm_set "$new" status accepted
+        fm_set "$new" accepted "$(date +%Y-%m-%d)"
+    fi
     fm_set "$old" status superseded
     fm_set "$old" superseded_by "$(fm_get "$new" id)"
     fm_set "$new" supersedes "$(fm_get "$old" id)"
@@ -236,6 +259,7 @@ cmd_lint() {
         if [ -n "$other" ]; then
             back="$(first_with_id "$other")"
             if [ -z "$back" ]; then p "superseded_by $other does not exist"
+            elif [ "$(fm_get "$back" status)" = proposed ]; then p "superseded_by $other, which is only proposed"
             elif [ "$(fm_get "$back" supersedes)" != "$id" ]; then p "superseded_by $other, but $other does not list supersedes: $id"; fi
         fi
         other="$(fm_get "$f" supersedes)"

@@ -103,7 +103,7 @@ hs-decision propose --title '...' --source plan|gate|operator|manual [--origin '
 ...
 BODY
 hs-decision accept <id>            # operator only
-hs-decision supersede <old> <new>  # operator only
+hs-decision supersede <old> <new>  # operator only; also accepts <new>
 hs-decision lint
 ```
 
