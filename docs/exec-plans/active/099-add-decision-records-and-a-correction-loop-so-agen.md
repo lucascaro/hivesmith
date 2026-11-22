@@ -282,4 +282,6 @@ Also from the plan:
 
 ## PR convergence ledger
 
+- **2026-11-22 iter 1** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 1f58785185867c53d13896c6c621538d26a95ebe0c74c7d29c08fed28e384cb8; threads_open: 5; action: escalated: risky fix needs human decision (supersede guards) + 5 new Greptile threads; head_sha: f7736c5e05e34f7050dc1cb8c6649a30953d7626
+
 ## Gate verdict
