@@ -69,6 +69,12 @@ long="$(printf 'L%.0s' $(seq 1 200))"
 D propose --title "$long" --source plan </dev/null >/dev/null
 line="$(D list --status all | grep 'LLLL' | cut -f3)"
 if [ "${#line}" -le 120 ]; then ok list_sanitizes_fields; else bad list_sanitizes_fields "title length ${#line}"; fi
+# A hand-written record may have a filename longer than the display cap; its
+# path must still name the file.
+longf="0900-$(printf 'p%.0s' $(seq 1 150)).md"
+printf -- '---\nid: 0900\ntitle: Long path\nstatus: proposed\ndate: 2026-01-01\nsource: manual\n---\n' > "docs/decisions/$longf"
+check list_keeps_long_path_intact "docs/decisions/$longf" "$(D list --status all | grep 'Long path' | cut -f5)"
+rm -f "docs/decisions/$longf"
 
 echo "accept / supersede"
 D accept 1 >/dev/null
@@ -108,14 +114,15 @@ check accept_resume_sets_status "status: accepted" "$(cat "$ha")"
 rc_is accept_resume_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
 
 # Interrupted supersede: each partial state must be finishable by re-running.
-for partial in links_only old_link_only; do
+for partial in links_only new_link_only old_link_only; do
     printf 'b\n' | D propose --title "Old $partial" --source plan >/dev/null
     printf 'b\n' | D propose --title "New $partial" --source plan >/dev/null
     po="$(ls docs/decisions/*-old-"${partial//_/-}".md)"; pn="$(ls docs/decisions/*-new-"${partial//_/-}".md)"
     oi="$(basename "$po" | cut -c1-4)"; ni="$(basename "$pn" | cut -c1-4)"
     D accept "$oi" >/dev/null
-    sed -i.bak "s/^superseded_by:\$/superseded_by: $ni/" "$po"
-    [ "$partial" = links_only ] && sed -i.bak "s/^supersedes:\$/supersedes: $oi/" "$pn"
+    # new_link_only is where supersede stops if interrupted after its first link write.
+    [ "$partial" = new_link_only ] || sed -i.bak "s/^superseded_by:\$/superseded_by: $ni/" "$po"
+    [ "$partial" = old_link_only ] || sed -i.bak "s/^supersedes:\$/supersedes: $oi/" "$pn"
     rm -f docs/decisions/*.bak
     D supersede "$oi" "$ni" >/dev/null 2>&1
     rc_is "supersede_resumes_$partial" 0 $?

@@ -93,8 +93,10 @@ find_record() {
     die 2 "no record with id $id in docs/decisions/"
 }
 
-# Strip control characters and cap length — list output enters agent context.
-clean() { printf '%s' "$1" | LC_ALL=C tr -d '\000-\037\177' | cut -c1-120; }
+# Strip control characters — list output enters agent context. clean() also
+# caps length; paths are only stripped, so they still name the file.
+strip_ctrl() { printf '%s' "$1" | LC_ALL=C tr -d '\000-\037\177'; }
+clean() { strip_ctrl "$1" | cut -c1-120; }
 
 quote() {
     local s="$1"
@@ -190,7 +192,7 @@ cmd_list() {
         printf '%s\t%s\t%s\t%s\t%s\n' \
             "$(clean "$(fm_get "$f" id)")" "$(clean "$st")" \
             "$(clean "$(fm_get "$f" title)")" "$(clean "$(fm_get "$f" tags)")" \
-            "docs/decisions/$(clean "$(basename "$f")")"
+            "docs/decisions/$(strip_ctrl "$(basename "$f")")"
     done < <(records)
 }
 
