@@ -113,6 +113,18 @@ for partial in links_only old_link_only; do
     check "supersede_resume_${partial}_status" "status: superseded" "$(cat "$po")"
     check "supersede_resume_${partial}_link" "supersedes: $oi" "$(cat "$pn")"
 done
+
+# A record replaces at most one other: a replacement that already supersedes
+# something cannot take on a second.
+for t in Guard-A Guard-B Guard-C; do printf 'b\n' | D propose --title "$t" --source plan >/dev/null; done
+ga="$(ls docs/decisions/*-guard-a.md)"; gb="$(ls docs/decisions/*-guard-b.md)"; gc="$(ls docs/decisions/*-guard-c.md)"
+ia="$(basename "$ga" | cut -c1-4)"; ib="$(basename "$gb" | cut -c1-4)"; ic="$(basename "$gc" | cut -c1-4)"
+D accept "$ia" >/dev/null; D accept "$ib" >/dev/null
+D supersede "$ib" "$ic" >/dev/null
+D supersede "$ia" "$ic" >/dev/null 2>&1
+rc_is supersede_replacement_already_linked_refused 64 $?
+check supersede_replacement_already_linked_keeps_old "status: accepted" "$(cat "$ga")"
+check supersede_replacement_already_linked_keeps_link "supersedes: $ib" "$(cat "$gc")"
 rc_is supersede_resumes_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
 err="$(D propose --title 2>&1 </dev/null)"; rc=$?
 rc_is flag_without_value_exits_2 2 "$rc"
