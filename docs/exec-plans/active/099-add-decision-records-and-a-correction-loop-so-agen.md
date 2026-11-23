@@ -290,3 +290,10 @@ Also from the plan:
 - **2026-11-23 iter 5** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: a3c800b9e2c4d32688ef11f07c7bc08c7471a0d2
 
 ## Gate verdict
+
+- **2026-11-23** — verdict: PASS; phase: 1/2; checks: 7 passed / 0 failed / 0 followups / 2 deferred; followups: none; one-line: phase 1 (advisory records, conflict checks, propose sweeps, operator-only accept) delivered; criteria 4–5 deferred to phase 2.
+  - 2026-11-23 dimensions:
+    - acceptance — PASS — C1, C2, C3 and C6 pass from offline checks (decision-test 71 checks, skill-portability 103 checks); C4 and C5 are DEFERRED (phase > 1)
+    - non-goals — PASS — skills only list and propose; no history mining, brain untouched, no #98 code (the #98 spec file comes from the brainstorm)
+    - doc accuracy — PASS — README, changeset, templates (byte-identical), AGENTS and CI lists match decision.sh
+  - 2026-11-23 proposed records: 0001 (only the operator accepts or supersedes records; the installed feature-loop predates its step 34, so plan approval proposed nothing)
