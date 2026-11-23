@@ -287,5 +287,6 @@ Also from the plan:
 - **2026-11-22 iter 2** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: d3c957d92ba50c31b820290d9577054321c19b96b64fcc3867a991f4262c5333; threads_open: 1; action: escalated: risky fix needs human decision (supersede not resumable; norm_id exit code); head_sha: dd6dbff61848feb68092dc69796c57c05fcabb23
 - **2026-11-22 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: f456b15b7b5bf139abe63bbe82ad01569de533485d41289bfd491eff8519d10c; threads_open: 0; action: escalated: risky fix needs human decision (accepted: date written after status); head_sha: 9e73f8d157f521ac6031933e45efc6f7cc9fc1fd
 - **2026-11-22 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 6b37a81135364be293f9d2d683c8310d6fa45cb8774a59adfe50de0e6aafd8fb; threads_open: 0; action: autofix+push; head_sha: f3133f4ea210023f75e1ce0c965cfcb3327f7b26
+- **2026-11-23 iter 5** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: a3c800b9e2c4d32688ef11f07c7bc08c7471a0d2
 
 ## Gate verdict
