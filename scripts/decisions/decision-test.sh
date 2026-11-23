@@ -95,6 +95,25 @@ D supersede 3 4 >/dev/null 2>&1
 rc_is supersede_proposed_old_refused 64 $?
 D accept 99 >/dev/null 2>&1
 rc_is accept_missing_id 2 $?
+D accept abc >/dev/null 2>&1
+rc_is accept_bad_id_exits_64 64 $?
+
+# Interrupted supersede: each partial state must be finishable by re-running.
+for partial in links_only old_link_only; do
+    printf 'b\n' | D propose --title "Old $partial" --source plan >/dev/null
+    printf 'b\n' | D propose --title "New $partial" --source plan >/dev/null
+    po="$(ls docs/decisions/*-old-"${partial//_/-}".md)"; pn="$(ls docs/decisions/*-new-"${partial//_/-}".md)"
+    oi="$(basename "$po" | cut -c1-4)"; ni="$(basename "$pn" | cut -c1-4)"
+    D accept "$oi" >/dev/null
+    sed -i.bak "s/^superseded_by:\$/superseded_by: $ni/" "$po"
+    [ "$partial" = links_only ] && sed -i.bak "s/^supersedes:\$/supersedes: $oi/" "$pn"
+    rm -f docs/decisions/*.bak
+    D supersede "$oi" "$ni" >/dev/null 2>&1
+    rc_is "supersede_resumes_$partial" 0 $?
+    check "supersede_resume_${partial}_status" "status: superseded" "$(cat "$po")"
+    check "supersede_resume_${partial}_link" "supersedes: $oi" "$(cat "$pn")"
+done
+rc_is supersede_resumes_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
 err="$(D propose --title 2>&1 </dev/null)"; rc=$?
 rc_is flag_without_value_exits_2 2 "$rc"
 check flag_without_value_says_why "needs a value" "$err"

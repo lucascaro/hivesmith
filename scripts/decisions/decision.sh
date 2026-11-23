@@ -86,7 +86,7 @@ norm_id() {
 
 find_record() {
     local id f
-    id="$(norm_id "$1")"
+    id="$(norm_id "$1")" || exit $?
     for f in "$DIR/$id"-*.md; do
         [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
     done
@@ -207,31 +207,39 @@ cmd_accept() {
 cmd_supersede() {
     [ $# -eq 2 ] || die 2 "usage: supersede <old-id> <new-id>"
     local old new
-    old="$(find_record "$1")"; new="$(find_record "$2")"
+    old="$(find_record "$1")" || exit $?; new="$(find_record "$2")" || exit $?
     [ "$old" != "$new" ] || die 64 "supersede: a record cannot supersede itself"
     local oid nid ost nst
     oid="$(fm_get "$old" id)"; nid="$(fm_get "$new" id)"
     ost="$(fm_get "$old" status)"; nst="$(fm_get "$new" status)"
-    # An identical repeat is a no-op, so a re-run after a crash is safe.
-    if [ "$ost" = superseded ] && [ "$(fm_get "$old" superseded_by)" = "$nid" ] \
-        && [ "$(fm_get "$new" supersedes)" = "$oid" ]; then
-        printf '%s\n' "$old"; return 0
+    local osb nsup
+    osb="$(fm_get "$old" superseded_by)"; nsup="$(fm_get "$new" supersedes)"
+    # A link already pointing at this pair means an earlier run of this same
+    # command was interrupted (or finished): skip the guards and complete the
+    # writes, which are idempotent. Any other link is a conflict for the guards.
+    if { [ "$osb" = "$nid" ] || [ "$nsup" = "$oid" ]; } \
+        && { [ -z "$osb" ] || [ "$osb" = "$nid" ]; } \
+        && { [ -z "$nsup" ] || [ "$nsup" = "$oid" ]; }; then
+        :
+    else
+        # Guards keep the chain linear: an accepted rule is only ever replaced
+        # by a rule in force, each record is replaced at most once, and a
+        # record replaces at most one other. That also rules out cycles.
+        [ "$ost" = accepted ] || die 64 "supersede: $(basename "$old") is $ost; only an accepted record can be superseded"
+        case "$nst" in proposed|accepted) ;; *) die 64 "supersede: $(basename "$new") is $nst; the replacement must be proposed or accepted" ;; esac
+        [ -z "$nsup" ] || die 64 "supersede: $(basename "$new") already supersedes $nsup"
     fi
-    # Guards keep the chain linear: an accepted rule is only ever replaced by a
-    # rule that is in force, each record is replaced at most once, and a
-    # record replaces at most one other. That also rules out cycles.
-    [ "$ost" = accepted ] || die 64 "supersede: $(basename "$old") is $ost; only an accepted record can be superseded"
-    case "$nst" in proposed|accepted) ;; *) die 64 "supersede: $(basename "$new") is $nst; the replacement must be proposed or accepted" ;; esac
-    [ -z "$(fm_get "$new" supersedes)" ] || die 64 "supersede: $(basename "$new") already supersedes $(fm_get "$new" supersedes)"
     # Superseding is an operator act, so it also puts the replacement in force:
     # an accepted rule never drops out of `list` with nothing taking its place.
+    # Write order: replacement first, links next, the old status last, so every
+    # interrupted state is one the resume check above recognizes.
     if [ "$nst" = proposed ]; then
         fm_set "$new" status accepted
         fm_set "$new" accepted "$(date +%Y-%m-%d)"
     fi
+    fm_set "$new" supersedes "$oid"
+    fm_set "$old" superseded_by "$nid"
     fm_set "$old" status superseded
-    fm_set "$old" superseded_by "$(fm_get "$new" id)"
-    fm_set "$new" supersedes "$(fm_get "$old" id)"
     printf '%s\n' "$old"
 }
 
