@@ -98,6 +98,15 @@ rc_is accept_missing_id 2 $?
 D accept abc >/dev/null 2>&1
 rc_is accept_bad_id_exits_64 64 $?
 
+# Interrupted accept: only the date landed. A re-run must finish it.
+printf 'b\n' | D propose --title "Half accepted" --source plan >/dev/null
+ha="$(ls docs/decisions/*-half-accepted.md)"; hi="$(basename "$ha" | cut -c1-4)"
+printf '%s\n' "$(awk 'NR>1 && $0=="---" && !d {print "accepted: 2026-01-01"; d=1} {print}' "$ha")" > "$ha"
+D accept "$hi" >/dev/null 2>&1
+rc_is accept_resumes_after_date_only 0 $?
+check accept_resume_sets_status "status: accepted" "$(cat "$ha")"
+rc_is accept_resume_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
+
 # Interrupted supersede: each partial state must be finishable by re-running.
 for partial in links_only old_link_only; do
     printf 'b\n' | D propose --title "Old $partial" --source plan >/dev/null

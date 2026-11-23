@@ -190,7 +190,7 @@ cmd_list() {
         printf '%s\t%s\t%s\t%s\t%s\n' \
             "$(clean "$(fm_get "$f" id)")" "$(clean "$st")" \
             "$(clean "$(fm_get "$f" title)")" "$(clean "$(fm_get "$f" tags)")" \
-            "docs/decisions/$(basename "$f")"
+            "docs/decisions/$(clean "$(basename "$f")")"
     done < <(records)
 }
 
@@ -199,8 +199,10 @@ cmd_accept() {
     local f
     f="$(find_record "$1")"
     [ "$(fm_get "$f" status)" = proposed ] || die 64 "accept: $(basename "$f") is not proposed"
-    fm_set "$f" status accepted
+    # Date before status: an interrupted run leaves the record proposed, so a
+    # re-run of accept repairs it.
     fm_set "$f" accepted "$(date +%Y-%m-%d)"
+    fm_set "$f" status accepted
     printf '%s\n' "$f"
 }
 
@@ -234,8 +236,8 @@ cmd_supersede() {
     # Write order: replacement first, links next, the old status last, so every
     # interrupted state is one the resume check above recognizes.
     if [ "$nst" = proposed ]; then
-        fm_set "$new" status accepted
         fm_set "$new" accepted "$(date +%Y-%m-%d)"
+        fm_set "$new" status accepted
     fi
     fm_set "$new" supersedes "$oid"
     fm_set "$old" superseded_by "$nid"
