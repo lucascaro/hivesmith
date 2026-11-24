@@ -36,7 +36,7 @@ Agents working in a repo have nothing durable to judge a plan, idea or issue aga
 - When no accepted record covers an action, an agent escalates and never self-approves. This is shown by one run with records and one run without.
 - No record is ever accepted without an explicit operator action.
 - Records are named `YYYYMMDD-<slug>.md` with the slug as id. Records proposed on parallel branches collide only on an identical slug, which `hs-decision lint` reports as a duplicate.
-- `hs-decision prune` lists stale proposals and superseded records by default, and deletes them only with `--apply`. It never touches accepted records.
+- `hs-decision prune` lists stale proposals and superseded records by default, and deletes them only with `--apply`. It never deletes accepted records; it only clears links that point at the records it deletes.
 - `/doc-garden` reports decision-record drift: lint problems, failing checks, and prune candidates.
 
 ## Non-goals
