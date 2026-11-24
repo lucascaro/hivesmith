@@ -8,9 +8,11 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
+| P1 | #99 | Add decision records and a correction loop so agents can act within recorded guidance | GATE | [099-add-decision-records-and-a-correction-loop-so-agen](099-add-decision-records-and-a-correction-loop-so-agen.md) |
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
 | P2 | #32 | Decentralize indices and changelog to eliminate merge conflicts | IMPLEMENT | [032-decentralize-indices-and-changelog](032-decentralize-indices-and-changelog.md) |
 | P2 | #35 | Make plan-html the default in feature-loop and add per-section feedback boxes | REVIEW | [035-plan-html-default-and-per-section-feedback](035-plan-html-default-and-per-section-feedback.md) |
+| P2 | #98 | Add a coordinator session that delegates repo maintenance to subagents and runs periodic jobs | RESEARCH | [098-add-a-coordinator-session-that-delegates-repo-main](098-add-a-coordinator-session-that-delegates-repo-main.md) |
 | P2 | #— | hs-autofix does not resolve merge conflicts | REVIEW | [033-hs-autofix-does-not-resolve-merge-conflicts](033-hs-autofix-does-not-resolve-merge-conflicts.md) |
 | — | — | Verify the entry-skill upgrade check in a live harness | TRIAGE | [081-walk-upgrade-check-harness-smoke](081-walk-upgrade-check-harness-smoke.md) |
 
