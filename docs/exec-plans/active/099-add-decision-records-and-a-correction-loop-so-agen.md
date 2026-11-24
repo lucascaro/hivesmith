@@ -415,6 +415,8 @@ Phase 3 (not in this PR) covers the approval stand-in: plan auto-approve, auto-m
 - **2026-11-24** — The Phase 2 changeset is `.changesets/100-…`, not `099-…-phase-2`. Why: `.changesets/README.md` requires max+1 ids, and `099-decision-records-phase-2` would sort *before* the existing 099 file and rewrite CHANGELOG lines. CHANGELOG.md is generated, so the Phase 1 wording is fixed in its changeset only.
 - **2026-11-24** — The record template gets no `forbid:`/`paths:` placeholder keys. Why: `fm_get` would read a placeholder comment as a live regex, so a copied template would enforce garbage. The keys are documented in the README.
 - **2026-11-24** — #99 was reopened because PR #100's `Fixes #99` closed it at phase 1. The phase-2 commit still carries `Fixes #99` (a force-push to amend it was denied), so the merge must squash with an explicit message that leaves it out.
+- **2026-11-24** — Operator, on review iteration 1: `prune --apply` clears every `supersedes:`/`superseded_by:` link to a record before deleting it, and lint goes back to rejecting a dangling `supersedes:`. Why: re-proposing a pruned title reused its slug and inherited a successor's link, which failed lint and CI. This reverses the fresh reviewer's "lint tolerates dangling" simplification.
+- **2026-11-24** — Operator: `propose` rejects any slug that starts with 8 digits. Why: `norm_slug` would strip those digits as a date prefix, making the record unaddressable or resolving to the wrong one.
 
 ## Progress
 
@@ -443,6 +445,7 @@ Also from the plan:
 - **2026-11-22 iter 3** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: f456b15b7b5bf139abe63bbe82ad01569de533485d41289bfd491eff8519d10c; threads_open: 0; action: escalated: risky fix needs human decision (accepted: date written after status); head_sha: 9e73f8d157f521ac6031933e45efc6f7cc9fc1fd
 - **2026-11-22 iter 4** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 6b37a81135364be293f9d2d683c8310d6fa45cb8774a59adfe50de0e6aafd8fb; threads_open: 0; action: autofix+push; head_sha: f3133f4ea210023f75e1ce0c965cfcb3327f7b26
 - **2026-11-23 iter 5** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: a3c800b9e2c4d32688ef11f07c7bc08c7471a0d2
+- **2026-11-24 iter 1 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ad6462d4c20f0c141d97cb41bf5efca2f0767ce6cd3d409a471b9459e5d4bd0b; threads_open: 1; action: escalated:risky-fix-needs-human-decision; head_sha: e12559c.
 
 ## Gate verdict
 

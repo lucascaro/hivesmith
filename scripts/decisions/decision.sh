@@ -54,8 +54,8 @@ fm_set() {
     tmp="$(mktemp)"
     awk -v k="$2" -v v="$3" '
         NR == 1 { print; inblk = ($0 == "---"); next }
-        inblk && $0 == "---" { if (!done) print k ": " v; inblk = 0; print; next }
-        inblk && index($0, k ":") == 1 { print k ": " v; done = 1; next }
+        inblk && $0 == "---" { if (!done) print (v == "" ? k ":" : k ": " v); inblk = 0; print; next }
+        inblk && index($0, k ":") == 1 { print (v == "" ? k ":" : k ": " v); done = 1; next }
         { print }' "$1" > "$tmp"
     cat "$tmp" > "$1"
     rm -f "$tmp"
@@ -164,6 +164,9 @@ cmd_propose() {
     local slug
     slug="$(printf '%s' "$title" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sed -e 's/[^a-z0-9]\{1,\}/-/g' -e 's/^-//' -e 's/-$//' | cut -c1-50 | sed 's/-$//')"
     [ -n "$slug" ] || die 64 "propose: --title needs at least one ASCII letter or digit"
+    # An 8-digit lead would read as the filename's date prefix on lookup.
+    # shellcheck disable=SC2254  # $D8 is a glob on purpose
+    case "$slug" in $D8-*|$D8) die 64 "propose: a title must not start with an 8-digit number: $title" ;; esac
 
     mkdir -p "$DIR"
     # The slug is the id. Re-proposing the same title (a resumed or re-run
@@ -307,14 +310,11 @@ cmd_lint() {
             elif [ "$(fm_get "$back" status)" = proposed ]; then p "superseded_by $other, which is only proposed"
             elif [ "$(fm_get "$back" supersedes)" != "$id" ]; then p "superseded_by $other, but $other does not list supersedes: $id"; fi
         fi
-        # A missing superseded record is fine: prune deletes superseded records,
-        # and git keeps their history.
         other="$(fm_get "$f" supersedes)"
         if [ -n "$other" ]; then
             back="$(first_with_id "$other")"
-            if [ -n "$back" ] && [ "$(fm_get "$back" superseded_by)" != "$id" ]; then
-                p "supersedes $other, but $other does not list superseded_by: $id"
-            fi
+            if [ -z "$back" ]; then p "supersedes $other, which does not exist"
+            elif [ "$(fm_get "$back" superseded_by)" != "$id" ]; then p "supersedes $other, but $other does not list superseded_by: $id"; fi
         fi
         if [ -n "$(fm_get "$f" forbid)" ] && [ -z "$(fm_get "$f" paths)" ]; then
             p "forbid: without paths:"
@@ -375,6 +375,18 @@ cmd_check() {
     return "$worst"
 }
 
+# unlink_record <slug> — blank every supersedes:/superseded_by: naming <slug>.
+unlink_record() {
+    local g k
+    [ -n "$1" ] || return 0
+    while IFS= read -r g; do
+        for k in supersedes superseded_by; do
+            [ "$(fm_get "$g" "$k")" = "$1" ] && fm_set "$g" "$k" ""
+        done
+    done < <(records)
+    return 0
+}
+
 cmd_prune() {
     local apply=0
     while [ $# -gt 0 ]; do
@@ -401,7 +413,13 @@ cmd_prune() {
         [ -n "$reason" ] || continue
         n=$((n + 1))
         printf '%s\tdocs/decisions/%s\n' "$reason" "$(strip_ctrl "$(basename "$f")")"
-        [ "$apply" -eq 0 ] || rm -f "$f"
+        [ "$apply" -eq 1 ] || continue
+        # Clear every link to the record before deleting it, so lint stays
+        # strict and a later record can never inherit the slug's old links.
+        # Links first, file last: an interrupted run leaves the record in place
+        # and a re-run finishes it.
+        unlink_record "$(fm_get "$f" id)"
+        rm -f "$f"
     done < <(records)
     if [ "$apply" -eq 1 ]; then
         printf 'prune: deleted %d record(s); commit the result\n' "$n" >&2

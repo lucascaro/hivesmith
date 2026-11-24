@@ -49,6 +49,11 @@ D propose --title "First  RULE!" --source plan </dev/null >/dev/null 2>&1
 rc_is propose_slug_clash_different_title_exits_64 64 $?
 D propose --title "!!!" --source plan </dev/null >/dev/null 2>&1
 rc_is propose_rejects_title_without_alnum 64 $?
+D propose --title "12345678 foo" --source plan </dev/null >/dev/null 2>&1
+rc_is propose_rejects_8_digit_leading_slug 64 $?
+D propose --title "1234567 foo" --source plan </dev/null >/dev/null 2>&1
+rc_is propose_allows_7_digit_leading_slug 0 $?
+rm -f docs/decisions/*-1234567-foo.md
 
 # shellcheck disable=SC2016  # the body must stay literal: that is the point of the test
 printf '$(touch pwned) `touch pwned2`\n' | D propose --title "Shell body" --source manual >/dev/null
@@ -215,7 +220,9 @@ check lint_mismatch_names_file "20260101-mismatch.md" "$out"
 rm -f docs/decisions/20260101-mismatch.md
 
 f1="$(R first-rule)"; cp "$f1" "$SANDBOX/keep1"; rm -f "$f1"
-rc_is lint_tolerates_dangling_supersedes 0 "$(D lint >/dev/null 2>&1; echo $?)"
+out="$(D lint 2>&1)"; rc=$?
+rc_is lint_rejects_dangling_supersedes 1 "$rc"
+check lint_dangling_supersedes_message "which does not exist" "$out"
 cp "$SANDBOX/keep1" "$f1"
 
 fresh
@@ -247,6 +254,12 @@ if [ ! -e docs/decisions/20200101-old-prop.md ] && [ ! -e docs/decisions/2020010
     && [ -e docs/decisions/20200101-kept.md ] && [ -e "docs/decisions/$td-fresh-prop.md" ] \
     && [ -e docs/decisions/20200101-bad-date.md ]; then ok prune_apply_deletes_candidates_only
 else bad prune_apply_deletes_candidates_only "$(find docs/decisions -name '*.md' | tr '\n' ' ')"; fi
+check prune_apply_clears_supersedes_link "supersedes:" "$(grep '^supersedes:' docs/decisions/20200101-kept.md)"
+nocheck prune_apply_leaves_no_dangling_link "gone" "$(cat docs/decisions/20200101-kept.md)"
+rc_is prune_apply_keeps_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
+# The reviewer's repro: re-proposing a pruned title must not inherit its links.
+D propose --title gone --source plan </dev/null >/dev/null
+rc_is reproposed_pruned_title_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
 
 echo "check"
 fresh
