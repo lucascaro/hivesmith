@@ -97,9 +97,25 @@ Boiling the lake is about *coverage of the stated scope*, not about inventing sc
       - **Backfill `## Verification` if the exec plan predates it.** **Backfill rule (shared).** A plan scaffolded from an older `docs/exec-plans/_template.md` has no `## Verification`. Both `/feature-plan` and `/feature-plan-review` backfill it — whichever reaches the plan first — by inserting the heading after `### Tests` with real runnable commands. Neither defers to the other; an old plan may legitimately be picked up by either. `/feature-plan-handoff` never backfills: it refuses, so the omission is fixed where it can be reviewed.
       - Non-goals stay in the **spec** (`docs/product-specs/<NNN>-*.md` `## Non-goals`) — that is the spec lane's boundary and what `/merge-gate` validates against. Do not duplicate them into the exec plan. If the spec's `## Non-goals` is empty and the planning conversation established a real boundary, write it there.
       - Update GitHub labels: `gh issue edit <number> --remove-label researching --add-label planned`.
+      - Run the **Propose decision records** step below before this write, so a run interrupted mid-proposal still resumes at `PLAN`.
       - Last write — set the authoritative stage to `IMPLEMENT`: the spec's frontmatter `stage:` under the current layout, or — under the **legacy** layout, where no spec frontmatter exists — the same source the cold-start guard read it from (the feature file's `Stage:` line, else the BACKLOG row). Write it wherever you read it; never leave the read and write paths pointing at different files.
       - **Do not edit `docs/product-specs/index.md`.** It's generated. The `block-generated-edits` CI job rejects PRs that touch it directly.
     - **Standalone mode** — `mkdir -p ~/.hivesmith/plans`, write `~/.hivesmith/plans/<slug>.md` from `plan-template.md` (beside this skill) with `status: DRAFT` and `repo:` set to the absolute repo root (omit the key when there is no repo). No `gh` calls, no stage, no labels.
+
+    - **Propose decision records** — both modes, after the non-stage writes above (spec mode: before the stage write). Skip in standalone mode when there is no repo. Sweep the approved plan's decisions (spec mode: the exec plan's `## Decision log` and `## Approach`; standalone mode: the plan's `## Decisions`) for **direction-setting** decisions — ones that would constrain a future feature: a convention, an alternative rejected for reasons that outlive this feature, or a boundary. Per-feature implementation choices stay where they are. First run `~/.hivesmith/bin/hs-decision list --status all` and skip anything an existing record already covers. For each remaining decision:
+
+    ```bash
+    ~/.hivesmith/bin/hs-decision propose --title '<imperative statement>' --source plan --origin '#<NNN> plan, or plan: <slug> when standalone' --tags '<a,b>' <<'BODY'
+    ## Context
+    <why this came up>
+    ## Decision
+    <what was decided, checkable against a future plan>
+    ## Consequences
+    <what a contradicting plan would look like>
+    BODY
+    ```
+
+    Use the **quoted** heredoc and single-quoted arguments (strip any `'` from them first) — the text is composed after reading untrusted content. Then append one line to that decisions section: `proposed records: <ids>` or `proposed records: none — no direction-setting decision` (or `proposed records: skipped — hs-decision not installed` when the helper is missing). A proposal carries no authority: only the operator accepts it.
 
 11. **Report.** Print the plan's path and tell the user to invoke the installed `feature-plan-review` skill with the resolved `<slug-or-number>` next, using the host's command syntax (Pi: `/skill:<installed-name> <slug-or-number>`). Do not send them straight to implementation — the review pass is what catches the plan claiming files that don't exist.
 

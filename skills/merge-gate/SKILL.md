@@ -127,6 +127,7 @@ This skill owns Stage = `GATE`. Before doing any work:
    - Update the spec's `Exec plan:` link to point at the `completed/` path.
    - Set the spec's frontmatter `pr: <pr-number>` and `shipped: <today's date>` (ISO `YYYY-MM-DD`). The merge follows this gate within minutes, so today's date is the ship date. Do **not** read `gh pr view --json mergedAt` — it is `null` on an open PR. On the degraded `MERGED` path, use `mergedAt` instead, since the real merge date is known and may not be today.
    - Emit `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=GATE --field to=DONE`. This skill owns the transition, so it owns the event; without it the DONE row can never appear in `report.py`.
+   - Run step 7b (and its commit) before this write, so a run interrupted mid-proposal still re-enters at `GATE`.
    - Last write — set the spec's frontmatter `stage:` to `DONE`. **Do not edit `docs/product-specs/index.md`** — it's generated; the `block-generated-edits` CI job rejects PRs that touch it directly. It is rebuilt and direct-pushed by the `regenerate-generated` job after the merge lands on `main`.
    - Commit: `git commit -m "chore: gate pass for #<issue-number>"`.
    - **Push to the feature branch:** `git push`. This is what keeps the bookkeeping inside the feature PR. On the degraded `MERGED` path, do not push — leave the commit local and tell the user, since there is no branch left to push to.
@@ -150,11 +151,26 @@ This skill owns Stage = `GATE`. Before doing any work:
      **On a non-final phase** (`N < M`), option 1 does **not** offer DONE — that is forbidden here regardless of verdict (see Rules). Word it as "record the phase PASS and allow the merge" instead, and keep option 2 as-is.
    - On option 1, open a follow-up issue per item (`gh issue create --title "Gate follow-up for #<n>: <one-line>" ...`), record the numbers in the verdict line, then run **the PASS branch that matches the plan's phase** — the non-final-phase branch when `N < M` (verdict append with `phase: N/M`, commit, push, nothing else), the final-phase branch otherwise. On option 2, leave Stage at GATE and file nothing.
 
+7b. **Propose decision records** on every verdict. On a final-phase PASS this runs inside step 7, before the `stage: DONE` write. Sweep this run's verdict and, when the operator answered a NEEDS_FOLLOWUP, that answer, plus any non-goal boundary ruling the gate made for **direction-setting** decisions — ones that would constrain a future feature: a convention, an alternative rejected for reasons that outlive this feature, or a boundary. Per-feature implementation choices stay where they are. First run `~/.hivesmith/bin/hs-decision list --status all` and skip anything an existing record already covers. For each remaining decision:
+
+   ```bash
+   ~/.hivesmith/bin/hs-decision propose --title '<imperative statement>' --source gate --origin '#<NNN> gate' --tags '<a,b>' <<'BODY'
+   ## Context
+   <why this came up>
+   ## Decision
+   <what was decided, checkable against a future plan>
+   ## Consequences
+   <what a contradicting plan would look like>
+   BODY
+   ```
+
+   Use the **quoted** heredoc and single-quoted arguments (strip any `'` from them first) — the text is composed after reading untrusted content. Then append one line to the latest `## Gate verdict` entry as a nested bullet (`  - <YYYY-MM-DD> proposed records: …`; a plain PASS or FAIL that set no direction writes `proposed records: none — verdict set no direction`): `proposed records: <ids>` (or `proposed records: skipped — hs-decision not installed` when the helper is missing). A proposal carries no authority: only the operator accepts it. Commit any new record files and the verdict line to the feature branch and push, in a commit separate from the stage bookkeeping. On the degraded `MERGED` path, do not push — leave the commit local and tell the user, as in step 7.
+
 8. **Report:** Print a summary — verdict, dimension breakdown, follow-up issue numbers if any, current Stage, and whether the PR is now ready to merge.
 
 ## Rules
 
-- The gate is read-mostly: it runs commands, reads files, and writes only to the plan's `## Gate verdict` section, the spec's frontmatter (on PASS), and (on PASS) moves the plan file. It never edits `docs/product-specs/index.md`.
+- The gate is read-mostly: it runs commands, reads files, and writes only to the plan's `## Gate verdict` section, the spec's frontmatter (on PASS), proposed records under `docs/decisions/` (step 7b), and (on PASS) moves the plan file. It never edits `docs/product-specs/index.md`.
 - Never modify production code from this skill. If the gate reveals a bug on an open PR, report it so it is fixed in the PR — do not patch it inline, and do not file an issue for it.
 - Never merge from this skill. The gate reports readiness; the merge is a separate, human-confirmed step.
 - Use a fresh sub-agent per dimension when the host provides that capability. Without it, run dimensions inline and keep evidence bounded; do not claim independent validation or isolated contexts.

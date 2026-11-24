@@ -75,9 +75,9 @@ The table below uses bare slash commands for hosts that support them (such as Cl
 
 One-time scaffolding copied into your project by `/hivesmith-init`:
 
-- `docs/product-specs/`, `docs/exec-plans/{active,completed}/`, `docs/design-docs/`, `docs/references/`, `docs/generated/` — the system-of-record tree
+- `docs/product-specs/`, `docs/exec-plans/{active,completed}/`, `docs/design-docs/`, `docs/decisions/`, `docs/references/`, `docs/generated/` — the system-of-record tree
 - `docs/product-specs/_template.md`, `docs/exec-plans/_template.md` — file shapes the pipeline writes to
-- `docs/exec-plans/tech-debt-tracker.md`, `docs/design-docs/core-beliefs.md`
+- `docs/exec-plans/tech-debt-tracker.md`, `docs/design-docs/core-beliefs.md`, `docs/decisions/README.md` + `_template.md`
 - `AGENTS.md` table of contents — or `AGENTS.hivesmith.md` appended to an existing `AGENTS.md`
 - `DESIGN.md`, `RELIABILITY.md`, `SECURITY.md`, `QUALITY_SCORE.md`, `PRODUCT_SENSE.md`, `PLANS.md`, `FRONTEND.md` — top-level stubs
 - `golden-principles.md` — mechanical rules `/gc-sweep` enforces
@@ -85,6 +85,29 @@ One-time scaffolding copied into your project by `/hivesmith-init`:
 - `scripts/release.sh` (stack-agnostic scaffold)
 - `CONTRIBUTING.md` skeleton
 - `features/BACKLOG.md`, `features/templates/FEATURE.md`, `features/ingest.sh` — legacy layout, only scaffolded when explicitly requested or migrating an existing project
+
+### Decision records
+
+`docs/decisions/NNNN-<slug>.md` holds repo-wide decisions that agents judge new work against. Each record moves through `proposed` → `accepted` → `superseded`.
+
+- Pipeline skills propose records automatically when a plan, gate or brainstorm sets direction. Per-feature choices stay in the exec plan.
+- Triage, plan review, brainstorm and `/feature-loop` read the accepted records and cite any conflict as `conflicts with docs/decisions/NNNN-<slug>.md`.
+- Only the operator accepts or supersedes a record.
+- Records are advisory today: they flag conflicts but never approve anything on the operator's behalf.
+
+The `hs-decision` helper is installed to `~/.hivesmith/bin/`:
+
+```bash
+hs-decision list [--status accepted|proposed|superseded|all]
+hs-decision propose --title '...' --source plan|gate|operator|manual [--origin '...'] [--tags a,b] <<'BODY'
+...
+BODY
+hs-decision accept <id>            # operator only
+hs-decision supersede <old> <new>  # operator only; also accepts <new>
+hs-decision lint
+```
+
+`/hivesmith-init` scaffolds `docs/decisions/`. In an older project, the first `propose` creates the directory.
 
 ## Requirements
 
