@@ -88,23 +88,28 @@ One-time scaffolding copied into your project by `/hivesmith-init`:
 
 ### Decision records
 
-`docs/decisions/NNNN-<slug>.md` holds repo-wide decisions that agents judge new work against. Each record moves through `proposed` → `accepted` → `superseded`.
+`docs/decisions/<YYYYMMDD>-<slug>.md` holds repo-wide decisions that agents judge new work against. The slug is the id, so parallel branches don't collide on numbers. Each record moves through `proposed` → `accepted` → `superseded`.
 
 - Pipeline skills propose records automatically when a plan, gate or brainstorm sets direction. Per-feature choices stay in the exec plan.
-- Triage, plan review, brainstorm and `/feature-loop` read the accepted records and cite any conflict as `conflicts with docs/decisions/NNNN-<slug>.md`.
+- Triage, plan review, brainstorm and `/feature-loop` read the accepted records and cite any conflict as `conflicts with docs/decisions/<YYYYMMDD>-<slug>.md`.
 - Only the operator accepts or supersedes a record.
+- When you correct an agent, it proposes a record in the same session. If the mistake is a code pattern, the record carries a `forbid:` regex and `paths:`, and once you accept it, `hs-decision check` fails whenever the mistake comes back. `check` runs through `/feature-implement`'s build/test list and `/doc-garden`. It doesn't run in your CI unless you add it there.
+- `/doc-garden` reports record drift and opens one PR pruning stale proposals and superseded records.
 - Records are advisory today: they flag conflicts but never approve anything on the operator's behalf.
 
 The `hs-decision` helper is installed to `~/.hivesmith/bin/`:
 
 ```bash
 hs-decision list [--status accepted|proposed|superseded|all]
-hs-decision propose --title '...' --source plan|gate|operator|manual [--origin '...'] [--tags a,b] <<'BODY'
+hs-decision propose --title '...' --source plan|gate|operator|manual [--origin '...'] [--tags a,b] \
+    [--forbid 'ERE' --paths 'src,lib'] <<'BODY'
 ...
 BODY
-hs-decision accept <id>            # operator only
+hs-decision accept <slug>            # operator only
 hs-decision supersede <old> <new>  # operator only; also accepts <new>
 hs-decision lint
+hs-decision check                  # fail if code matches an accepted record's forbid:
+hs-decision prune [--apply]        # superseded + proposals older than 30 days; dry run by default
 ```
 
 `/hivesmith-init` scaffolds `docs/decisions/`. In an older project, the first `propose` creates the directory.

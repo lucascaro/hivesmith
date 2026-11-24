@@ -4,18 +4,22 @@
 #
 # Usage:
 #   hs-decision propose --title T --source plan|gate|operator|manual \
-#       [--origin O] [--tags a,b] <<'BODY'
+#       [--origin O] [--tags a,b] [--forbid ERE --paths spec,spec] <<'BODY'
 #   ## Context ... ## Decision ... ## Consequences ...
 #   BODY
 #   hs-decision list [--status accepted|proposed|superseded|all]   (default: accepted)
-#   hs-decision accept <id>          operator only — never run by an agent unprompted
+#   hs-decision accept <slug>          operator only — never run by an agent unprompted
 #   hs-decision supersede <old> <new>  operator only — also accepts <new>
 #   hs-decision lint
+#   hs-decision check                  fail if code matches an accepted record's forbid:
+#   hs-decision prune [--apply]        superseded + proposals older than 30 days
 #
-# Records live at <repo root>/docs/decisions/NNNN-<slug>.md. Only the FIRST
-# `---` frontmatter block is ever parsed, so a body cannot override it.
-# Exit codes: 0 ok, 1 lint problems, 2 usage / not in a git repo / not found,
-# 64 invalid input.
+# Records live at <repo root>/docs/decisions/YYYYMMDD-<slug>.md; the slug is
+# the id and the date prefix only sorts. Only the FIRST `---` frontmatter block
+# is ever parsed, so a body cannot override it. Proposing an identical title
+# again is a no-op that prints the existing path.
+# Exit codes: 0 ok, 1 lint problems / check hits, 2 usage / not in a git repo /
+# not found / check could not run, 64 invalid input.
 set -euo pipefail
 
 die() { local code="$1"; shift; printf 'hs-decision: %s\n' "$*" >&2; exit "$code"; }
@@ -59,38 +63,53 @@ fm_set() {
 
 has_frontmatter() { [ "$(head -n 1 "$1")" = "---" ] && awk 'NR > 1 && $0 == "---" { f = 1; exit } END { exit !f }' "$1"; }
 
+D8='[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+
+# records — every record file, including legacy 4-digit ones so that list and
+# check never silently drop a record lint would ask to rename.
 records() {
     local f
     [ -d "$DIR" ] || return 0
-    for f in "$DIR"/[0-9][0-9][0-9][0-9]-*.md; do
+    for f in "$DIR"/[0-9][0-9][0-9][0-9]*-*.md; do
         [ -f "$f" ] && printf '%s\n' "$f"
     done
     return 0
 }
 
-# first_with_id <id> — path of the record carrying that id prefix, or empty.
-first_with_id() {
+# file_slug <file> — the slug a record's filename carries.
+file_slug() { local b; b="$(basename "$1" .md)"; printf '%s\n' "${b#*-}"; }
+
+# with_slug <slug> — every dated record file carrying that slug.
+with_slug() {
     local f
-    for f in "$DIR/$1"-*.md; do
-        [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
+    # shellcheck disable=SC2086  # $D8 is a glob on purpose
+    for f in "$DIR"/$D8-"$1".md; do
+        [ -f "$f" ] && printf '%s\n' "$f"
     done
     return 0
 }
 
-norm_id() {
-    case "$1" in
-        ''|*[!0-9]*) die 64 "id must be numeric: $1" ;;
+# first_with_id <slug> — path of the first record carrying that slug, or empty.
+first_with_id() { with_slug "$1" | head -n 1; }
+
+# norm_slug <arg> — a slug from a slug, a basename, or a basename.md.
+norm_slug() {
+    local s="${1%.md}"
+    case "$s" in $D8-*) s="${s#*-}" ;; esac
+    case "$s" in
+        ''|*[!a-z0-9-]*) die 64 "not a record slug: $1" ;;
     esac
-    printf '%04d' "$((10#$1))"
+    printf '%s\n' "$s"
 }
 
 find_record() {
-    local id f
-    id="$(norm_id "$1")" || exit $?
-    for f in "$DIR/$id"-*.md; do
-        [ -f "$f" ] && { printf '%s\n' "$f"; return 0; }
-    done
-    die 2 "no record with id $id in docs/decisions/"
+    local slug hits
+    slug="$(norm_slug "$1")" || exit $?
+    hits="$(with_slug "$slug")"
+    [ -n "$hits" ] || die 2 "no record with slug $slug in docs/decisions/"
+    [ "$(printf '%s\n' "$hits" | wc -l | tr -d ' ')" -eq 1 ] \
+        || die 64 "ambiguous slug $slug: $(printf '%s' "$hits" | tr '\n' ' ')"
+    printf '%s\n' "$hits"
 }
 
 # Strip control characters — list output enters agent context. clean() also
@@ -115,13 +134,15 @@ reject_ctrl() {
 }
 
 cmd_propose() {
-    local title="" source="" origin="" tags=""
+    local title="" source="" origin="" tags="" forbid="" paths=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --title)  need "$1" $#; title="${2-}"; shift 2 ;;
             --source) need "$1" $#; source="${2-}"; shift 2 ;;
             --origin) need "$1" $#; origin="${2-}"; shift 2 ;;
             --tags)   need "$1" $#; tags="${2-}"; shift 2 ;;
+            --forbid) need "$1" $#; forbid="${2-}"; shift 2 ;;
+            --paths)  need "$1" $#; paths="${2-}"; shift 2 ;;
             *) die 2 "propose: unknown argument: $1" ;;
         esac
     done
@@ -130,6 +151,11 @@ cmd_propose() {
     reject_ctrl --title "$title"
     reject_ctrl --origin "$origin"
     reject_ctrl --tags "$tags"
+    reject_ctrl --forbid "$forbid"
+    reject_ctrl --paths "$paths"
+    # A repo-wide default would match the plans and changelogs that quote the
+    # mistake, so a check always names where it applies.
+    [ -z "$forbid" ] || [ -n "$paths" ] || die 64 "propose: --forbid needs --paths"
 
     local body=""
     [ -t 0 ] || body="$(cat)"
@@ -137,31 +163,29 @@ cmd_propose() {
 
     local slug
     slug="$(printf '%s' "$title" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sed -e 's/[^a-z0-9]\{1,\}/-/g' -e 's/^-//' -e 's/-$//' | cut -c1-50 | sed 's/-$//')"
-    [ -n "$slug" ] || slug="decision"
+    [ -n "$slug" ] || die 64 "propose: --title needs at least one ASCII letter or digit"
 
     mkdir -p "$DIR"
-    # Serialize id allocation across concurrent proposers in this checkout.
-    local lock="$DIR/.propose.lock" tries=0
-    until mkdir "$lock" 2>/dev/null; do
-        tries=$((tries + 1))
-        [ "$tries" -lt 50 ] || die 2 "propose: lock held ($lock); remove it if no other propose is running"
-        sleep 0.1
-    done
-    LOCK="$lock"
-    trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
-
-    local max=0 f n
-    while IFS= read -r f; do
-        n="$(basename "$f")"; n="${n%%-*}"; n=$((10#$n))
-        [ "$n" -gt "$max" ] && max="$n"
-    done < <(records)
-    local id path
-    id="$(printf '%04d' "$((max + 1))")"
-    path="$DIR/$id-$slug.md"
+    # The slug is the id. Re-proposing the same title (a resumed or re-run
+    # pipeline step) is a no-op; a different title with the same slug is a
+    # real clash and must be loud.
+    local existing
+    existing="$(first_with_id "$slug")"
+    if [ -n "$existing" ]; then
+        [ "$(fm_get "$existing" title)" = "$title" ] \
+            || die 64 "propose: slug $slug already used by docs/decisions/$(basename "$existing")"
+        printf '%s\n' "$existing"
+        return 0
+    fi
+    local path
+    path="$DIR/$(date +%Y%m%d)-$slug.md"
+    # noclobber: a concurrent proposer of the same slug loses instead of
+    # overwriting.
+    ( set -C; : > "$path" ) 2>/dev/null || die 64 "propose: $(basename "$path") already exists"
 
     {
         printf -- '---\n'
-        printf 'id: %s\n' "$id"
+        printf 'id: %s\n' "$slug"
         printf 'title: %s\n' "$(quote "$title")"
         printf 'status: proposed\n'
         printf 'date: %s\n' "$(date +%Y-%m-%d)"
@@ -170,6 +194,10 @@ cmd_propose() {
         printf 'tags: %s\n' "$tags"
         printf 'supersedes:\n'
         printf 'superseded_by:\n'
+        if [ -n "$forbid" ]; then
+            printf 'forbid: %s\n' "$(quote "$forbid")"
+            printf 'paths: %s\n' "$(quote "$paths")"
+        fi
         printf -- '---\n\n'
         printf '%s\n' "$body"
     } > "$path"
@@ -197,7 +225,7 @@ cmd_list() {
 }
 
 cmd_accept() {
-    [ $# -eq 1 ] || die 2 "usage: accept <id>"
+    [ $# -eq 1 ] || die 2 "usage: accept <slug>"
     local f
     f="$(find_record "$1")"
     [ "$(fm_get "$f" status)" = proposed ] || die 64 "accept: $(basename "$f") is not proposed"
@@ -209,7 +237,7 @@ cmd_accept() {
 }
 
 cmd_supersede() {
-    [ $# -eq 2 ] || die 2 "usage: supersede <old-id> <new-id>"
+    [ $# -eq 2 ] || die 2 "usage: supersede <old-slug> <new-slug>"
     local old new
     old="$(find_record "$1")" || exit $?; new="$(find_record "$2")" || exit $?
     [ "$old" != "$new" ] || die 64 "supersede: a record cannot supersede itself"
@@ -256,8 +284,13 @@ cmd_lint() {
         for k in id title status date source; do
             [ -n "$(fm_get "$f" "$k")" ] || p "missing required key: $k"
         done
+        case "$(basename "$f")" in
+            $D8-*) ;;
+            [0-9][0-9][0-9][0-9]-*) p "legacy numeric id; rename to YYYYMMDD-<slug>.md and set id: <slug>"; continue ;;
+            *) p "filename must be YYYYMMDD-<slug>.md"; continue ;;
+        esac
         id="$(fm_get "$f" id)"
-        [ "$id" = "$(basename "$f" | cut -c1-4)" ] || p "id '$id' does not match filename prefix"
+        [ "$id" = "$(file_slug "$f")" ] || p "id '$id' does not match the filename slug"
         case " $seen " in *" $id "*) p "duplicate id $id" ;; esac
         seen="$seen $id"
         st="$(fm_get "$f" status)"
@@ -274,11 +307,17 @@ cmd_lint() {
             elif [ "$(fm_get "$back" status)" = proposed ]; then p "superseded_by $other, which is only proposed"
             elif [ "$(fm_get "$back" supersedes)" != "$id" ]; then p "superseded_by $other, but $other does not list supersedes: $id"; fi
         fi
+        # A missing superseded record is fine: prune deletes superseded records,
+        # and git keeps their history.
         other="$(fm_get "$f" supersedes)"
         if [ -n "$other" ]; then
             back="$(first_with_id "$other")"
-            if [ -z "$back" ]; then p "supersedes $other, which does not exist"
-            elif [ "$(fm_get "$back" superseded_by)" != "$id" ]; then p "supersedes $other, but $other does not list superseded_by: $id"; fi
+            if [ -n "$back" ] && [ "$(fm_get "$back" superseded_by)" != "$id" ]; then
+                p "supersedes $other, but $other does not list superseded_by: $id"
+            fi
+        fi
+        if [ -n "$(fm_get "$f" forbid)" ] && [ -z "$(fm_get "$f" paths)" ]; then
+            p "forbid: without paths:"
         fi
     done < <(records)
     if [ "$problems" -gt 0 ]; then
@@ -288,7 +327,90 @@ cmd_lint() {
     printf 'lint: %d record(s) ok\n' "$count"
 }
 
-[ $# -ge 1 ] || die 2 "usage: hs-decision propose|list|accept|supersede|lint"
+# check_one <file> — run one accepted record's forbid: check. Prints hits.
+# Returns 0 clean, 1 hits, 2 could not run.
+check_one() {
+    local f="$1" slug forbid paths e n=0 out rc
+    slug="$(clean "$(fm_get "$f" id)")"
+    forbid="$(fm_get "$f" forbid)"
+    paths="$(fm_get "$f" paths)"
+    local specs=()
+    local IFS=,
+    set -f
+    for e in $paths; do
+        e="${e#"${e%%[![:space:]]*}"}"; e="${e%"${e##*[![:space:]]}"}"
+        [ -n "$e" ] && { specs[n]="$e"; n=$((n + 1)); }
+    done
+    set +f
+    unset IFS
+    if [ "$n" -eq 0 ]; then
+        printf 'check: %s: forbid: has no paths:\n' "$slug"; return 2
+    fi
+    if [ -z "$(git -C "$ROOT" ls-files --cached --others --exclude-standard -- "${specs[@]}" | head -n 1)" ]; then
+        printf 'check: %s: paths: match no files\n' "$slug"; return 2
+    fi
+    rc=0
+    out="$(git -C "$ROOT" grep -nIE --untracked -e "$forbid" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
+    case "$rc" in
+        0) printf '%s\n' "$out" | while IFS= read -r e; do
+               printf 'check: %s: %s\n' "$slug" "$(clean "$(printf '%s' "$e" | cut -d: -f1,2)")"
+           done
+           return 1 ;;
+        1) return 0 ;;
+        *) printf 'check: %s: could not run (git grep exit %s)\n' "$slug" "$rc"; return 2 ;;
+    esac
+}
+
+cmd_check() {
+    [ $# -eq 0 ] || die 2 "usage: check"
+    local f n=0 worst=0 rc
+    while IFS= read -r f; do
+        [ "$(fm_get "$f" status)" = accepted ] || continue
+        [ -n "$(fm_get "$f" forbid)" ] || continue
+        n=$((n + 1)); rc=0
+        check_one "$f" || rc=$?
+        [ "$rc" -gt "$worst" ] && worst="$rc"
+    done < <(records)
+    [ "$worst" -eq 0 ] && printf 'check: %d rule(s) ok\n' "$n"
+    return "$worst"
+}
+
+cmd_prune() {
+    local apply=0
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --apply) apply=1; shift ;;
+            *) die 2 "prune: unknown argument: $1" ;;
+        esac
+    done
+    local cutoff
+    cutoff="$(date -d '30 days ago' +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d)"
+    local f st d reason n=0
+    while IFS= read -r f; do
+        st="$(fm_get "$f" status)"; reason=""
+        case "$st" in
+            superseded) reason=superseded ;;
+            proposed)
+                d="$(fm_get "$f" date)"
+                # A missing or malformed date is never a reason to delete.
+                case "$d" in
+                    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
+                        [ "$(printf '%s' "$d" | tr -d -)" \< "$cutoff" ] && reason=stale-proposal ;;
+                esac ;;
+        esac
+        [ -n "$reason" ] || continue
+        n=$((n + 1))
+        printf '%s\tdocs/decisions/%s\n' "$reason" "$(strip_ctrl "$(basename "$f")")"
+        [ "$apply" -eq 0 ] || rm -f "$f"
+    done < <(records)
+    if [ "$apply" -eq 1 ]; then
+        printf 'prune: deleted %d record(s); commit the result\n' "$n" >&2
+    else
+        printf 'prune: %d candidate(s); dry run, pass --apply to delete\n' "$n" >&2
+    fi
+}
+
+[ $# -ge 1 ] || die 2 "usage: hs-decision propose|list|accept|supersede|lint|check|prune"
 cmd="$1"; shift
 case "$cmd" in
     propose)   cmd_propose "$@" ;;
@@ -296,6 +418,8 @@ case "$cmd" in
     accept)    cmd_accept "$@" ;;
     supersede) cmd_supersede "$@" ;;
     lint)      cmd_lint "$@" ;;
-    -h|--help) sed -n '2,18p' "$0" ;;
+    check)     cmd_check "$@" ;;
+    prune)     cmd_prune "$@" ;;
+    -h|--help) sed -n '2,23p' "$0" ;;
     *) die 2 "unknown command: $cmd" ;;
 esac

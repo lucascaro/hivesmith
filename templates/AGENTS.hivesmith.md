@@ -38,6 +38,11 @@ Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → 
 
 The legacy `features/` layout is read with one-release fallback; new work lands in `docs/`.
 
+**When the operator corrects you.** Turn the correction into something durable in the same session, before you continue:
+- If the mistake is a code pattern, run `~/.hivesmith/bin/hs-decision propose --source operator --title "<the rule>" --forbid '<ERE matching the mistake>' --paths '<pathspecs where it applies>'` with a Context / Decision / Consequences body. The `forbid:` is the regression check: once the operator accepts the record, `hs-decision check` fails if the mistake comes back.
+- If it is not a code pattern (a process or tone correction), record a brain lesson with `brain-append`, or propose a record without `--forbid`. Say `no mechanical check: <why>` in your reply.
+- Report the path you wrote. Never accept the record yourself.
+
 **Changelog:** user-visible changes go under `## [Unreleased]` in `CHANGELOG.md` via `/changelog-update`. `/release` stamps the date and cuts the tag — do not edit release dates by hand. When a change is `type: fixed` **and** undoes a defect a recent merged PR introduced, record `regression_of: <PR>` in the changeset frontmatter — declared, never inferred from `git blame`. Omit it rather than guessing; absence is a meaningful state.
 
 **Build / test / lint commands** — `/feature-implement` expects all of these to pass before opening a PR:
@@ -45,5 +50,6 @@ The legacy `features/` layout is read with one-release fallback; new work lands 
 - **Build:** `<command>`
 - **Lint:** `<command>`
 - **Tests:** `<command>`
+- **Decision checks:** `~/.hivesmith/bin/hs-decision lint && ~/.hivesmith/bin/hs-decision check` (keep this line: it enforces accepted decision records)
 - **Everything:** `<single command that runs all of the above>`
 <!-- END HIVESMITH -->
