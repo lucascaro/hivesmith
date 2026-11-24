@@ -3,8 +3,8 @@
 - **Spec:** [docs/product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md](../../product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md)
 - **Issue:** #99
 - **Status:** active
-- **PR:** —
-- **Branch:** —
+- **PR:** #102
+- **Branch:** feature/99-decision-records-p2
 - **Phase:** 2 of 3
 
 ## Summary
@@ -414,6 +414,7 @@ Phase 3 (not in this PR) covers the approval stand-in: plan auto-approve, auto-m
 - **2026-11-24** — The Phase 2 plan was approved via HTML. C4 is reworded so a regression check is required only when the mistake can be expressed as a code pattern; otherwise the report says no mechanical check applies. The fresh reviewer's simplifications replaced the earlier exit-3 and clear-`supersedes` designs.
 - **2026-11-24** — The Phase 2 changeset is `.changesets/100-…`, not `099-…-phase-2`. Why: `.changesets/README.md` requires max+1 ids, and `099-decision-records-phase-2` would sort *before* the existing 099 file and rewrite CHANGELOG lines. CHANGELOG.md is generated, so the Phase 1 wording is fixed in its changeset only.
 - **2026-11-24** — The record template gets no `forbid:`/`paths:` placeholder keys. Why: `fm_get` would read a placeholder comment as a live regex, so a copied template would enforce garbage. The keys are documented in the README.
+- **2026-11-24** — #99 was reopened because PR #100's `Fixes #99` closed it at phase 1. The phase-2 commit still carries `Fixes #99` (a force-push to amend it was denied), so the merge must squash with an explicit message that leaves it out.
 
 ## Progress
 

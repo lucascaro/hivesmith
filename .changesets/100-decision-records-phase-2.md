@@ -2,6 +2,7 @@
 issue: 99
 type: added
 bump: minor
+pr: 102
 ---
 - **Decision records, phase 2 of 3: slug ids, pruning, and corrections that stay corrected.**
   - **Slug ids:** records are now `docs/decisions/YYYYMMDD-<slug>.md`, and the slug is the id. Two branches proposing records at the same time no longer fight over the next number. Proposing an identical title again is a no-op; a different title with the same slug is refused. `accept` and `supersede` take a slug.
