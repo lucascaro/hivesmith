@@ -661,7 +661,7 @@ Metrics tests:
   - Reporting: a PR comment, an `auto_approved` metric and a summary line.
   - Records can list more protected paths with `merge_exclude:`, unioned across all accepted records.
 - **2026-11-25** — Phase 3 plan approved via HTML (round 1, no notes, approved 10s after serve). Second opinion: two rounds, both revise at confidence 8. The 20 + 3 must-fix items were applied, and the round-2 fixes were not re-reviewed (cap of two rounds). The round-1 `second_opinion` metric row records `duration_s=0` by mistake; the reviewer actually took about 259s.
-- **2026-11-25** — proposed records: records-stand-in-for-operator-stops-only-through-hs-dec
+- **2026-11-25** — proposed records: records-stand-in-for-operator-stops-only-through-h
 
 ## Progress
 
