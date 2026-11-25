@@ -333,6 +333,9 @@ cmd_lint() {
         if has_token "$f" authorizes plan && [ -z "$(csv_items "$(fm_get "$f" plan_paths)")" ]; then
             p "authorizes: plan without plan_paths:"
         fi
+        for k in authorizes plan_paths merge_exclude; do
+            case "$(fm_get "$f" "$k")" in *$'\r'*) p "$k: carriage return in value (save the record with LF line endings)" ;; esac
+        done
         for k in plan_paths merge_exclude; do
             while IFS= read -r other; do
                 case "$other" in
@@ -470,9 +473,10 @@ cleanup_auth() { [ -z "$AUTH_TMP" ] || rm -rf "$AUTH_TMP"; }
 # csv_items <value> — one entry per line, trimmed of spaces and tabs only (a CR
 # is kept, so a CRLF value never equals its LF twin), empty entries dropped.
 csv_items() {
-    local IFS=, e
+    local IFS=, e CR=$'\r'
     set -f
     for e in $1; do
+        e="${e//"$CR"/}"  # lint flags a CR; never let one silently defeat a match
         e="${e#"${e%%[! 	]*}"}"; e="${e%"${e##*[! 	]}"}"
         [ -n "$e" ] && printf '%s\n' "$e"
     done
@@ -480,7 +484,12 @@ csv_items() {
 }
 
 # has_token <file> <key> <token> — exact match against a comma list.
-has_token() { csv_items "$(fm_get "$1" "$2")" | grep -qxF -- "$3"; }
+# No pipe into `grep -q`: under pipefail its early exit SIGPIPEs the writer.
+has_token() {
+    local NL=$'\n'
+    case "$NL$(csv_items "$(fm_get "$1" "$2")")$NL" in *"$NL$3$NL"*) return 0 ;; esac
+    return 1
+}
 
 lc() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'; }
 
@@ -497,11 +506,12 @@ norm_path() {
 
 # glob_match <path> <glob> — a trailing / is a directory prefix; otherwise a
 # shell pattern in which * also crosses /.
+# Both patterns are left unquoted on purpose: a `*` inside a prefix must glob.
+# shellcheck disable=SC2254
 glob_match() {
     case "$2" in
-        */) case "$1" in "$2"*) return 0 ;; esac; return 1 ;;
+        */) case "$1" in $2*) return 0 ;; esac; return 1 ;;
     esac
-    # shellcheck disable=SC2254  # the glob is the point
     case "$1" in $2) return 0 ;; esac
     return 1
 }
@@ -588,7 +598,7 @@ auth_plan() {
     uint --confidence "$conf"; uint --must-fix "$mustfix"; uint --conflicts "$conflicts"
     [ "$files" = - ] || die 64 "authorize plan: --files - (read paths from stdin) is required"
     local line list=() n=0
-    while IFS= read -r line; do
+    while IFS= read -r line || [ -n "$line" ]; do
         list[n]="$(norm_path "$line")" || exit $?
         n=$((n + 1))
     done

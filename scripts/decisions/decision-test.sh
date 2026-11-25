@@ -589,6 +589,23 @@ check authorize_plan_probe_without_says_why "authorizes plan" "$out"
 setup_auth; mkrec p accepted "authorizes: plan" "plan_paths: skills/"; mkrec e accepted "merge_exclude: skills/"; push_base
 rc_is authorize_plan_merge_exclude_does_not_apply 0 "$(AP skills/x.md >/dev/null; echo $?)"
 
+# Regressions from review pass 1 on PR #103.
+setup_auth; mkrec p accepted "authorizes: plan,merge" "plan_paths: src/"; push_base
+rc_is authorize_plan_comma_no_space_merge_exit0 0 "$(AP src/x.sh >/dev/null; echo $?)"
+plan_fixture
+out="$(printf 'src/x.sh\ndocs/decisions/x.md' | D authorize plan --complexity S --verdict approve \
+    --confidence 9 --must-fix 0 --conflicts 0 --files - 2>&1)"; rc=$?
+rc_is authorize_plan_unterminated_last_line_checked 1 "$rc"
+check authorize_plan_unterminated_says_why "protected path docs/decisions/x.md" "$out"
+merge_fixture "merge_exclude: svc/*/secrets/"; pr_change; mkdir -p svc/a/secrets; echo x > svc/a/secrets/k; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_exclude_star_in_prefix_escalates 1 "$rc"
+check authorize_merge_exclude_star_says_why "protected path svc/a/secrets/k" "$out"
+merge_fixture "merge_exclude: src/$(printf '\r')"; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_exclude_crlf_still_applies 1 "$rc"
+check authorize_merge_exclude_crlf_says_why "protected path src/a.txt" "$out"
+
 echo "lint (authorize keys)"
 setup_auth; mkrec a accepted "authorizes: nomerge"
 check lint_rejects_bad_authorizes "unknown authorizes token 'nomerge'" "$(D lint 2>&1)"
@@ -598,6 +615,8 @@ setup_auth; mkrec a accepted "authorizes: plan" "plan_paths: *"
 check lint_rejects_whole_repo_plan_paths "covers the whole repo" "$(D lint 2>&1)"
 setup_auth; mkrec a accepted "merge_exclude: :(top)x"
 check lint_rejects_magic_in_merge_exclude "merge_exclude: entry ':(top)x' must be a repo-relative glob" "$(D lint 2>&1)"
+setup_auth; mkrec a accepted "merge_exclude: skills/$(printf '\r')"
+check lint_rejects_cr_in_merge_exclude "merge_exclude: carriage return in value" "$(D lint 2>&1)"
 setup_auth; mkrec a accepted "authorizes: plan, merge" "plan_paths: src/" "merge_exclude: skills/"
 rc_is lint_accepts_authorize_keys 0 "$(D lint >/dev/null 2>&1; echo $?)"
 

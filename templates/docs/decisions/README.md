@@ -44,6 +44,8 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
 
 `hs-decision authorize` trusts only records **accepted on origin's default branch, fetched when it runs**. It never reads the worktree's records, so a branch cannot authorize itself, and superseding or deleting a record upstream takes effect at the next call.
 
+`origin` is the trust anchor: authorize trusts whatever the local `origin` remote points at. An agent that can rewrite git config (`git remote set-url`, `url.<base>.insteadOf`) could point it at records it wrote itself, but such an agent can also run `gh pr merge` directly, so authorize does not try to defend against it. Keep agents that you do not trust with repo config away from repos where records authorize anything.
+
 - **`authorize plan`** exits 0 only when:
   - an accepted record has `authorizes: plan`;
   - the feature is complexity `S`;

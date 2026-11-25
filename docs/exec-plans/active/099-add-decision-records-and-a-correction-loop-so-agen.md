@@ -662,6 +662,7 @@ Metrics tests:
   - Records can list more protected paths with `merge_exclude:`, unioned across all accepted records.
 - **2026-11-25** — Phase 3 plan approved via HTML (round 1, no notes, approved 10s after serve). Second opinion: two rounds, both revise at confidence 8. The 20 + 3 must-fix items were applied, and the round-2 fixes were not re-reviewed (cap of two rounds). The round-1 `second_opinion` metric row records `duration_s=0` by mistake; the reviewer actually took about 259s.
 - **2026-11-25** — proposed records: records-stand-in-for-operator-stops-only-through-h
+- **2026-11-25** — Review pass 1 escalation answered by the operator: fix all four authorize bugs with regression tests (has_token SIGPIPE, unterminated stdin path, unquoted trailing-/ glob, CR in record values: stripped and flagged by lint); document the `origin` trust-anchor limit rather than verifying it against gh; on the merge stand-in, require the PR head to be the `chore: gate pass` commit.
 
 ## Progress
 
@@ -696,6 +697,7 @@ Also from the plan:
 - **2026-11-24 iter 2 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 721a88bc1123b3bc64501c07a09d4d092050769ef7d9eaf7829e0cd5d1b20bb6; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 59b953b.
 - **2026-11-24 iter 3 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: b09ea5e259b0822e0aac5018c2f078a83c4523d4dfae1d5d4c5e8f0c9dab1940; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: fb7b91a.
 - **2026-11-24 iter 4 (phase 2, PR #102)** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: 98b8d31.
+- **2026-11-25 iter 1 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: edbd7eea63a0ac5872b3eb3bbe0c5cde57a11cc187adf9a8ade82b49ab4ebc86; threads_open: 3; action: escalated: risky fix needs human decision (has_token SIGPIPE, unterminated stdin path, quoted trailing-/ glob, origin trust anchor, DONE-resume head check, CRLF merge_exclude); head_sha: ca7e3f8a2239ee65973da3e0386561bd7347a071
 
 ## Gate verdict
 
