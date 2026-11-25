@@ -12,6 +12,8 @@
 set -uo pipefail
 
 export GIT_CONFIG_GLOBAL=/dev/null
+# Under a git hook these would point every command at the real repo.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 export GIT_CONFIG_SYSTEM=/dev/null
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -317,6 +319,254 @@ echo "paths"
 rm -rf "$SANDBOX/it's here"; mkdir -p "$SANDBOX/it's here"; cd "$SANDBOX/it's here" || exit 1; git init -q .
 D propose --title "Quote path" --source plan </dev/null >/dev/null
 rc_is propose_in_quoted_path 0 $?
+
+echo "authorize"
+# origin is a bare repo; records are read from what it holds right now, never
+# from the worktree. Every negative case flips one condition of a passing
+# fixture and asserts its own reason, so none can pass just because
+# `authorize` is missing (that is exit 2, "unknown command").
+O="$SANDBOX/o.git"
+setup_auth() {
+    rm -rf "$O" "$SANDBOX/c2"; git init -q --bare "$O"; git -C "$O" symbolic-ref HEAD refs/heads/main
+    fresh; git checkout -q -b main; git remote add origin "$O"
+    mkdir -p src docs/decisions; echo ok > src/a.txt; echo readme > docs/decisions/README.md
+}
+mkrec() {  # mkrec <slug> <status> [frontmatter line...]
+    local slug="$1" st="$2" l; shift 2
+    {
+        printf -- '---\nid: %s\ntitle: "%s"\nstatus: %s\ndate: 2026-01-01\nsource: manual\norigin: ""\ntags:\nsupersedes:\nsuperseded_by:\n' "$slug" "$slug" "$st"
+        [ "$st" = accepted ] && printf 'accepted: 2026-01-01\n'
+        for l in "$@"; do printf '%s\n' "$l"; done
+        printf -- '---\n\nbody\n'
+    } > "docs/decisions/20260101-$slug.md"
+}
+push_base() { T base; git push -q origin main 2>/dev/null; }
+pr_branch() { git checkout -q -b pr; }
+pr_change() { pr_branch; echo change >> src/a.txt; T pr; }
+AM() { D authorize merge --head "$(git rev-parse HEAD)" --pr-base main 2>&1; }
+merge_fixture() { setup_auth; mkrec m accepted "authorizes: merge" "$@"; push_base; }
+
+merge_fixture; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_accepted_on_origin_exit0 0 "$rc"
+check authorize_merge_names_record "authorized: m (docs/decisions/20260101-m.md)" "$out"
+
+setup_auth; push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_no_record_escalates 1 "$rc"
+check authorize_merge_no_record_says_why "escalate: no accepted record on origin/main authorizes merge" "$out"
+
+setup_auth; mkrec m proposed "authorizes: merge"; push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_proposed_record_escalates 1 "$rc"
+check authorize_merge_proposed_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+setup_auth; mkrec m proposed "authorizes: merge"; push_base; pr_branch
+mkrec m accepted "authorizes: merge"; echo change >> src/a.txt; T pr
+out="$(AM)"; rc=$?
+rc_is authorize_merge_branch_only_acceptance_escalates 1 "$rc"
+check authorize_merge_branch_only_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+merge_fixture; pr_change
+git clone -q "$O" "$SANDBOX/c2" 2>/dev/null
+sed -i.bak 's/^status: accepted$/status: superseded/' "$SANDBOX/c2/docs/decisions/20260101-m.md" && rm -f "$SANDBOX/c2/docs/decisions/"*.bak
+git -C "$SANDBOX/c2" -c user.name=t -c user.email=t@t commit -qam revoke && git -C "$SANDBOX/c2" push -q origin main 2>/dev/null
+out="$(AM)"; rc=$?
+rc_is authorize_merge_revoked_on_origin_escalates 1 "$rc"
+check authorize_merge_revoked_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+setup_auth; push_base; pr_change
+git clone -q "$O" "$SANDBOX/c2" 2>/dev/null
+( cd "$SANDBOX/c2" && mkrec m accepted "authorizes: merge" && T accept && git push -q origin main 2>/dev/null )
+out="$(AM)"; rc=$?
+rc_is authorize_merge_stale_local_origin_ref_ignored 0 "$rc"
+
+merge_fixture; pr_change; mkdir -p docs/decisions; echo x > docs/decisions/x.md; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_touching_decisions_escalates 1 "$rc"
+check authorize_merge_touching_decisions_says_why "escalate: PR touches protected path docs/decisions/x.md" "$out"
+
+merge_fixture; pr_change; mkdir -p scripts/decisions; echo x > scripts/decisions/y.sh; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_touching_decision_script_escalates 1 "$rc"
+check authorize_merge_decision_script_says_why "protected path scripts/decisions/y.sh" "$out"
+
+merge_fixture; pr_change; git mv docs/decisions/README.md docs/README2.md; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_move_out_of_decisions_escalates 1 "$rc"
+check authorize_merge_move_says_why "protected path docs/decisions/README.md" "$out"
+
+merge_fixture; pr_change; git rm -q docs/decisions/README.md; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_delete_in_decisions_escalates 1 "$rc"
+check authorize_merge_delete_says_why "protected path docs/decisions/README.md" "$out"
+
+merge_fixture; pr_change; mkdir -p SCRIPTS/Decisions; echo x > SCRIPTS/Decisions/z.sh; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_case_variant_protected_path_escalates 1 "$rc"
+check authorize_merge_case_variant_says_why "protected path SCRIPTS/Decisions/z.sh" "$out"
+
+merge_fixture; pr_change; printf 'x\n' > "docs/decisions/20260101-$(printf '\303\251').md"; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_non_ascii_decisions_path_escalates 1 "$rc"
+check authorize_merge_non_ascii_says_why "escalate: PR touches protected path docs/decisions/" "$out"
+
+merge_fixture; pr_change; echo dirty >> src/a.txt
+out="$(AM)"; rc=$?
+rc_is authorize_merge_dirty_worktree_escalates 1 "$rc"
+check authorize_merge_dirty_says_why "escalate: worktree is not clean" "$out"
+
+merge_fixture; pr_change; echo new > untracked.txt
+out="$(AM)"; rc=$?
+rc_is authorize_merge_untracked_file_escalates 1 "$rc"
+check authorize_merge_untracked_says_why "escalate: worktree is not clean" "$out"
+
+merge_fixture; pr_change
+out="$(D authorize merge --head "$(git rev-parse main)" --pr-base main 2>&1)"; rc=$?
+rc_is authorize_merge_head_mismatch_escalates 1 "$rc"
+check authorize_merge_head_mismatch_says_why "escalate: HEAD is not the PR head" "$out"
+
+merge_fixture; pr_change
+out="$(D authorize merge --head "$(git rev-parse HEAD)" --pr-base dev 2>&1)"; rc=$?
+rc_is authorize_merge_pr_base_not_default_escalates 1 "$rc"
+check authorize_merge_pr_base_says_why "escalate: PR base dev is not the default branch main" "$out"
+
+merge_fixture; mkrec f accepted 'forbid: "BADWORD"' 'paths: "src/"'; T rule; git push -q origin main 2>/dev/null
+pr_branch; echo BADWORD >> src/a.txt; T pr
+out="$(AM)"; rc=$?
+rc_is authorize_merge_forbid_hit_escalates 1 "$rc"
+check authorize_merge_forbid_hit_says_why "escalate: accepted record f forbid: check fails on the PR head" "$out"
+
+merge_fixture; mkrec f accepted 'forbid: "BADWORD"' 'paths: "nope/"'; T rule; git push -q origin main 2>/dev/null
+pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_forbid_paths_match_nothing_exits_2 2 "$rc"
+check authorize_merge_forbid_could_not_run_says_why "forbid: check of f could not run" "$out"
+
+merge_fixture; pr_branch
+out="$(AM)"; rc=$?
+rc_is authorize_merge_empty_diff_exits_2 2 "$rc"
+check authorize_merge_empty_diff_says_why "the PR changes no files" "$out"
+
+merge_fixture; git checkout -q --orphan pr2; git rm -rqf . ; echo o > o.txt; T orphan
+out="$(AM)"; rc=$?
+rc_is authorize_merge_base_failure_exits_2 2 "$rc"
+check authorize_merge_base_failure_says_why "no merge base with origin/main" "$out"
+
+merge_fixture; pr_change; git remote set-url origin "$SANDBOX/missing.git"
+out="$(AM)"; rc=$?
+rc_is authorize_fetch_failure_exits_2 2 "$rc"
+check authorize_fetch_failure_says_why "cannot resolve origin's default branch" "$out"
+
+# origin/HEAD left pointing at a renamed-away master that still holds a merge
+# record: authorize must follow the remote's real default (main), not the ref.
+setup_auth; push_base
+git checkout -q -b master; mkrec m accepted "authorizes: merge"; T old; git push -q origin master 2>/dev/null
+git checkout -q main; git fetch -q origin; git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/master
+pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_stale_origin_head_after_rename_uses_remote_default 1 "$rc"
+check authorize_stale_origin_head_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+merge_fixture "merge_exclude: skills/"; pr_change; mkdir -p skills; echo x > skills/x.md; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_exclude_hit_escalates 1 "$rc"
+check authorize_merge_exclude_says_why "protected path skills/x.md" "$out"
+
+merge_fixture; mkrec e accepted "merge_exclude: skills/"; T rule; git push -q origin main 2>/dev/null
+pr_change; mkdir -p skills; echo x > skills/x.md; T more
+out="$(AM)"; rc=$?
+rc_is authorize_merge_exclude_from_other_record_applies 1 "$rc"
+check authorize_merge_exclude_other_says_why "protected path skills/x.md" "$out"
+
+setup_auth; mkrec m accepted "authorizes: plan, merge" "plan_paths: src/"; push_base; pr_change
+rc_is authorize_tokens_plan_comma_space_merge_exit0 0 "$(AM >/dev/null; echo $?)"
+
+setup_auth; mkrec m accepted "authorizes: nomerge"; push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_token_nomerge_escalates 1 "$rc"
+check authorize_token_nomerge_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+setup_auth; mkrec m accepted "authorizes: merge"
+LC_ALL=C sed -i.bak 's/$/'"$(printf '\r')"'/' docs/decisions/20260101-m.md && rm -f docs/decisions/*.bak
+push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_crlf_record_escalates 1 "$rc"
+check authorize_crlf_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+# plan: passing fixture is S / approve / 8 / 0 / 0 / a file under plan_paths.
+AP() {
+    printf '%s\n' "$@" | D authorize plan --complexity "${CX:-S}" --verdict "${V:-approve}" \
+        --confidence "${C:-8}" --must-fix "${MF:-0}" --conflicts "${CF:-0}" --files - 2>&1
+}
+plan_fixture() { setup_auth; mkrec p accepted "authorizes: plan" "plan_paths: src/, docs/notes.md"; push_base; }
+plan_fixture
+out="$(AP src/x.sh docs/notes.md)"; rc=$?
+rc_is authorize_plan_all_conditions_exit0 0 "$rc"
+check authorize_plan_names_record "authorized: p (docs/decisions/20260101-p.md)" "$out"
+rc_is authorize_plan_confidence_8_exit0 0 "$(C=8 AP src/x.sh >/dev/null; echo $?)"
+out="$(CX=M AP src/x.sh)"; rc=$?
+rc_is authorize_plan_complexity_m_escalates 1 "$rc"
+check authorize_plan_complexity_says_why "escalate: complexity M; plan auto-approve covers S only" "$out"
+out="$(V=revise AP src/x.sh)"; rc=$?
+rc_is authorize_plan_verdict_revise_escalates 1 "$rc"
+check authorize_plan_verdict_says_why "second opinion verdict is revise, not approve" "$out"
+out="$(C=7 AP src/x.sh)"; rc=$?
+rc_is authorize_plan_confidence_7_escalates 1 "$rc"
+check authorize_plan_confidence_says_why "confidence 7 is below 8" "$out"
+out="$(MF=1 AP src/x.sh)"; rc=$?
+rc_is authorize_plan_must_fix_escalates 1 "$rc"
+check authorize_plan_must_fix_says_why "has 1 must-fix item(s)" "$out"
+out="$(CF=1 AP src/x.sh)"; rc=$?
+rc_is authorize_plan_conflict_escalates 1 "$rc"
+check authorize_plan_conflict_says_why "plan has 1 decision-record conflict(s)" "$out"
+out="$(AP src/x.sh other/y.sh)"; rc=$?
+rc_is authorize_plan_file_outside_scope_escalates 1 "$rc"
+check authorize_plan_scope_says_why "first miss: other/y.sh" "$out"
+out="$(AP src/x.sh docs/decisions/x.md)"; rc=$?
+rc_is authorize_plan_touching_decisions_escalates 1 "$rc"
+check authorize_plan_protected_says_why "escalate: plan touches protected path docs/decisions/x.md" "$out"
+out="$(AP src/x.sh ./scripts/decisions/x)"; rc=$?
+rc_is authorize_dot_slash_protected_path_escalates 1 "$rc"
+check authorize_dot_slash_says_why "protected path scripts/decisions/x" "$out"
+out="$(D authorize plan --complexity S --verdict approve --confidence 9 --must-fix 0 --conflicts 0 --files - </dev/null 2>&1)"; rc=$?
+rc_is authorize_plan_empty_files_exits_2 2 "$rc"
+check authorize_plan_empty_files_says_why "empty file list" "$out"
+out="$(D authorize plan --probe 2>&1)"; rc=$?
+rc_is authorize_plan_probe_exit0_with_plan_record 0 "$rc"
+check authorize_plan_probe_names_record "authorized: p" "$out"
+rc_is authorize_rejects_dotdot_path_64 64 "$(AP src/../docs/decisions/x >/dev/null 2>&1; echo $?)"
+rc_is authorize_rejects_absolute_path_64 64 "$(AP /etc/passwd >/dev/null 2>&1; echo $?)"
+rc_is authorize_rejects_pathspec_magic_64 64 "$(AP ':(top)src/x' >/dev/null 2>&1; echo $?)"
+out="$(C=abc AP src/x.sh)"; rc=$?
+rc_is authorize_bad_number_exits_64 64 "$rc"
+check authorize_bad_number_says_why "--confidence must be a non-negative integer" "$out"
+out="$(D authorize deploy 2>&1)"; rc=$?
+rc_is authorize_unknown_stop_exits_64 64 "$rc"
+check authorize_unknown_stop_says_why "unknown stop: deploy" "$out"
+
+merge_fixture
+out="$(AP src/x.sh)"; rc=$?
+rc_is authorize_plan_merge_only_record_escalates 1 "$rc"
+check authorize_plan_merge_only_says_why "no accepted record on origin/main authorizes plan" "$out"
+out="$(D authorize plan --probe 2>&1)"; rc=$?
+rc_is authorize_plan_probe_escalates_without 1 "$rc"
+check authorize_plan_probe_without_says_why "authorizes plan" "$out"
+
+setup_auth; mkrec p accepted "authorizes: plan" "plan_paths: skills/"; mkrec e accepted "merge_exclude: skills/"; push_base
+rc_is authorize_plan_merge_exclude_does_not_apply 0 "$(AP skills/x.md >/dev/null; echo $?)"
+
+echo "lint (authorize keys)"
+setup_auth; mkrec a accepted "authorizes: nomerge"
+check lint_rejects_bad_authorizes "unknown authorizes token 'nomerge'" "$(D lint 2>&1)"
+setup_auth; mkrec a accepted "authorizes: plan"
+check lint_requires_plan_paths "authorizes: plan without plan_paths:" "$(D lint 2>&1)"
+setup_auth; mkrec a accepted "authorizes: plan" "plan_paths: *"
+check lint_rejects_whole_repo_plan_paths "covers the whole repo" "$(D lint 2>&1)"
+setup_auth; mkrec a accepted "merge_exclude: :(top)x"
+check lint_rejects_magic_in_merge_exclude "merge_exclude: entry ':(top)x' must be a repo-relative glob" "$(D lint 2>&1)"
+setup_auth; mkrec a accepted "authorizes: plan, merge" "plan_paths: src/" "merge_exclude: skills/"
+rc_is lint_accepts_authorize_keys 0 "$(D lint >/dev/null 2>&1; echo $?)"
 
 cd "$REPO_ROOT" || exit 1
 rc_is lint_template_dir_clean 0 "$(bash "$TOOL" lint >/dev/null 2>&1; echo $?)"

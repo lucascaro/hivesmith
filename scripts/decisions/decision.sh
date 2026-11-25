@@ -13,13 +13,20 @@
 #   hs-decision lint
 #   hs-decision check                  fail if code matches an accepted record's forbid:
 #   hs-decision prune [--apply]        superseded + proposals older than 30 days
+#   hs-decision authorize merge --head <sha> --pr-base <branch>
+#   hs-decision authorize plan --complexity S|M|L --verdict V --confidence N \
+#       --must-fix N --conflicts N --files - < paths
+#   hs-decision authorize plan --probe
+#                                      exit 0 = an accepted record stands in for
+#                                      the operator; any other exit = escalate
 #
 # Records live at <repo root>/docs/decisions/YYYYMMDD-<slug>.md; the slug is
 # the id and the date prefix only sorts. Only the FIRST `---` frontmatter block
 # is ever parsed, so a body cannot override it. Proposing an identical title
 # again is a no-op that prints the existing path.
-# Exit codes: 0 ok, 1 lint problems / check hits, 2 usage / not in a git repo /
-# not found / check could not run, 64 invalid input.
+# Exit codes: 0 ok, 1 lint problems / check hits / authorize escalates,
+# 2 usage / not in a git repo / not found / check or authorize could not run,
+# 64 invalid input. For authorize, every non-zero exit means "ask the operator".
 set -euo pipefail
 
 # Messages interpolate record values, which are untrusted: strip control bytes.
@@ -320,6 +327,22 @@ cmd_lint() {
         if [ -n "$(fm_get "$f" forbid)" ] && [ -z "$(fm_get "$f" paths)" ]; then
             p "forbid: without paths:"
         fi
+        while IFS= read -r k; do
+            case "$k" in plan|merge) ;; *) p "unknown authorizes token '$k' (want plan, merge)" ;; esac
+        done < <(csv_items "$(fm_get "$f" authorizes)")
+        if has_token "$f" authorizes plan && [ -z "$(csv_items "$(fm_get "$f" plan_paths)")" ]; then
+            p "authorizes: plan without plan_paths:"
+        fi
+        for k in plan_paths merge_exclude; do
+            while IFS= read -r other; do
+                case "$other" in
+                    :*|/*|*..*) p "$k: entry '$other' must be a repo-relative glob (no leading : or /, no ..)" ;;
+                esac
+                if [ "$k" = plan_paths ]; then
+                    case "$other" in '*'|'**'|.|./|'*/'|'**/') p "plan_paths: '$other' covers the whole repo" ;; esac
+                fi
+            done < <(csv_items "$(fm_get "$f" "$k")")
+        done
     done < <(records)
     if [ "$problems" -gt 0 ]; then
         printf 'lint: %d problem(s) in %d record(s)\n' "$problems" "$count" >&2
@@ -429,7 +452,239 @@ cmd_prune() {
     fi
 }
 
-[ $# -ge 1 ] || die 2 "usage: hs-decision propose|list|accept|supersede|lint|check|prune"
+# ---------------------------------------------------------------------------
+# authorize — the only way a record stands in for an operator stop.
+#
+# Trust anchor: records accepted on origin's default branch, fetched now. The
+# worktree's own records are never read, so a PR cannot authorize itself, and
+# a supersede or delete upstream takes effect at the next call.
+# ---------------------------------------------------------------------------
+
+# Changing these changes the rules a PR is judged by.
+BUILTIN_PROTECTED="docs/decisions/,scripts/decisions/"
+AUTH_TMP=""
+BASE_SHA=""
+BASE_NAME=""
+cleanup_auth() { [ -z "$AUTH_TMP" ] || rm -rf "$AUTH_TMP"; }
+
+# csv_items <value> — one entry per line, trimmed of spaces and tabs only (a CR
+# is kept, so a CRLF value never equals its LF twin), empty entries dropped.
+csv_items() {
+    local IFS=, e
+    set -f
+    for e in $1; do
+        e="${e#"${e%%[! 	]*}"}"; e="${e%"${e##*[! 	]}"}"
+        [ -n "$e" ] && printf '%s\n' "$e"
+    done
+    set +f
+}
+
+# has_token <file> <key> <token> — exact match against a comma list.
+has_token() { csv_items "$(fm_get "$1" "$2")" | grep -qxF -- "$3"; }
+
+lc() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'; }
+
+# norm_path <path> — a repo-relative path, or exit 64 for anything that could
+# dodge a prefix test: empty, absolute, pathspec magic, control bytes, `..`.
+norm_path() {
+    local p="$1"
+    case "$p" in ''|/*|:*|*[[:cntrl:]]*) die 64 "authorize: not a repo-relative path: $p" ;; esac
+    while case "$p" in ./*) true ;; *) false ;; esac; do p="${p#./}"; done
+    while case "$p" in *//*) true ;; *) false ;; esac; do p="${p//\/\//\/}"; done
+    case "/$p/" in */../*|*/./*|//) die 64 "authorize: not a repo-relative path: $1" ;; esac
+    printf '%s\n' "$p"
+}
+
+# glob_match <path> <glob> — a trailing / is a directory prefix; otherwise a
+# shell pattern in which * also crosses /.
+glob_match() {
+    case "$2" in
+        */) case "$1" in "$2"*) return 0 ;; esac; return 1 ;;
+    esac
+    # shellcheck disable=SC2254  # the glob is the point
+    case "$1" in $2) return 0 ;; esac
+    return 1
+}
+
+# fetch_base — resolve origin's default branch from the remote itself (a local
+# origin/HEAD goes stale after a rename and is one command away from being
+# re-pointed), fetch it, and pin it to a commit so later reads agree.
+fetch_base() {
+    local line name
+    # No `| head`: under pipefail a SIGPIPE would read as a failed ls-remote.
+    line="$(git -C "$ROOT" ls-remote --symref origin HEAD 2>/dev/null)" || line=""
+    line="${line%%$'\n'*}"
+    case "$line" in
+        "ref: refs/heads/"*) name="${line#ref: refs/heads/}"; name="${name%%	*}" ;;
+        *) die 2 "authorize: cannot resolve origin's default branch" ;;
+    esac
+    case "$name" in ''|*[!A-Za-z0-9._/-]*) die 2 "authorize: unexpected default branch name: $name" ;; esac
+    git -C "$ROOT" fetch --quiet --no-tags origin "refs/heads/$name" 2>/dev/null \
+        || die 2 "authorize: fetch of origin/$name failed"
+    BASE_SHA="$(git -C "$ROOT" rev-parse --verify --quiet 'FETCH_HEAD^{commit}')" \
+        || die 2 "authorize: no FETCH_HEAD after fetching origin/$name"
+    BASE_NAME="$name"
+}
+
+# base_records — copy the base commit's regular record files into a temp dir
+# and point DIR at it, so records() and check_one see only base records.
+base_records() {
+    local entry meta path name
+    AUTH_TMP="$(mktemp -d)"
+    trap cleanup_auth EXIT
+    mkdir -p "$AUTH_TMP/d"
+    while IFS= read -r -d '' entry; do
+        meta="${entry%%	*}"; path="${entry#*	}"
+        case "${meta%% *}" in 100644|100755) ;; *) continue ;; esac
+        name="${path#docs/decisions/}"
+        case "$name" in */*|*[!A-Za-z0-9._-]*) continue ;; esac
+        case "$name" in [0-9][0-9][0-9][0-9]*-*.md) ;; *) continue ;; esac
+        git -C "$ROOT" cat-file blob "${meta##* }" > "$AUTH_TMP/d/$name"
+    done < <(git -C "$ROOT" ls-tree -z "$BASE_SHA" docs/decisions/)
+    DIR="$AUTH_TMP/d"
+}
+
+# accepted_with <token> — base records that are accepted and authorize <token>.
+accepted_with() {
+    local f
+    while IFS= read -r f; do
+        [ "$(fm_get "$f" status)" = accepted ] || continue
+        has_token "$f" authorizes "$1" && printf '%s\n' "$f"
+    done < <(records)
+    return 0
+}
+
+escalate() { printf 'escalate: %s\n' "$(strip_ctrl "$*")"; exit 1; }
+authorized() {
+    printf 'authorized: %s (docs/decisions/%s)\n' "$(clean "$(fm_get "$1" id)")" "$(strip_ctrl "$(basename "$1")")"
+    exit 0
+}
+
+uint() { case "$2" in ''|*[!0-9]*) die 64 "authorize: $1 must be a non-negative integer" ;; esac; }
+
+auth_plan() {
+    local probe=0 cx="" verdict="" conf="" mustfix="" conflicts="" files=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --probe)      probe=1; shift ;;
+            --complexity) need "$1" $#; cx="${2-}"; shift 2 ;;
+            --verdict)    need "$1" $#; verdict="${2-}"; shift 2 ;;
+            --confidence) need "$1" $#; conf="${2-}"; shift 2 ;;
+            --must-fix)   need "$1" $#; mustfix="${2-}"; shift 2 ;;
+            --conflicts)  need "$1" $#; conflicts="${2-}"; shift 2 ;;
+            --files)      need "$1" $#; files="${2-}"; shift 2 ;;
+            *) die 64 "authorize plan: unknown argument: $1" ;;
+        esac
+    done
+    local rec
+    if [ "$probe" -eq 1 ]; then
+        fetch_base; base_records
+        rec="$(accepted_with plan)"; rec="${rec%%$'\n'*}"
+        [ -n "$rec" ] || escalate "no accepted record on origin/$BASE_NAME authorizes plan"
+        authorized "$rec"
+    fi
+    case "$cx" in S|M|L) ;; *) die 64 "authorize plan: --complexity must be S|M|L" ;; esac
+    case "$verdict" in approve|revise|block) ;; *) die 64 "authorize plan: --verdict must be approve|revise|block" ;; esac
+    uint --confidence "$conf"; uint --must-fix "$mustfix"; uint --conflicts "$conflicts"
+    [ "$files" = - ] || die 64 "authorize plan: --files - (read paths from stdin) is required"
+    local line list=() n=0
+    while IFS= read -r line; do
+        list[n]="$(norm_path "$line")" || exit $?
+        n=$((n + 1))
+    done
+    [ "$n" -gt 0 ] || die 2 "authorize plan: empty file list"
+
+    fetch_base; base_records
+    [ -n "$(accepted_with plan)" ] || escalate "no accepted record on origin/$BASE_NAME authorizes plan"
+    [ "$cx" = S ] || escalate "complexity $cx; plan auto-approve covers S only"
+    [ "$verdict" = approve ] || escalate "second opinion verdict is $verdict, not approve"
+    [ "$conf" -ge 8 ] || escalate "second opinion confidence $conf is below 8"
+    [ "$mustfix" -eq 0 ] || escalate "second opinion has $mustfix must-fix item(s)"
+    [ "$conflicts" -eq 0 ] || escalate "plan has $conflicts decision-record conflict(s)"
+    local p g ok
+    for p in "${list[@]}"; do
+        while IFS= read -r g; do
+            glob_match "$(lc "$p")" "$(lc "$g")" && escalate "plan touches protected path $p"
+        done < <(csv_items "$BUILTIN_PROTECTED")
+    done
+    while IFS= read -r rec; do
+        ok=1
+        for p in "${list[@]}"; do
+            g=""
+            while IFS= read -r g; do glob_match "$p" "$g" && { g=MATCH; break; }; done < <(csv_items "$(fm_get "$rec" plan_paths)")
+            [ "$g" = MATCH ] || { ok=0; break; }
+        done
+        [ "$ok" -eq 1 ] && authorized "$rec"
+    done < <(accepted_with plan)
+    escalate "no single accepted plan record's plan_paths covers every file (first miss: $p)"
+}
+
+auth_merge() {
+    local head="" prbase=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --head)    need "$1" $#; head="${2-}"; shift 2 ;;
+            --pr-base) need "$1" $#; prbase="${2-}"; shift 2 ;;
+            *) die 64 "authorize merge: unknown argument: $1" ;;
+        esac
+    done
+    case "$head" in ''|*[!0-9a-f]*) die 64 "authorize merge: --head must be a commit sha" ;; esac
+    [ -n "$prbase" ] || die 64 "authorize merge: --pr-base is required"
+
+    fetch_base
+    [ "$prbase" = "$BASE_NAME" ] || escalate "PR base $prbase is not the default branch $BASE_NAME"
+    [ -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" ] || escalate "worktree is not clean (uncommitted or untracked files)"
+    local cur want
+    cur="$(git -C "$ROOT" rev-parse --verify HEAD)"
+    want="$(git -C "$ROOT" rev-parse --verify --quiet "$head^{commit}")" || escalate "HEAD is not the PR head $head"
+    [ "$cur" = "$want" ] || escalate "HEAD is not the PR head $head"
+
+    base_records
+    local rec
+    rec="$(accepted_with merge)"; rec="${rec%%$'\n'*}"
+    [ -n "$rec" ] || escalate "no accepted record on origin/$BASE_NAME authorizes merge"
+
+    local mb
+    mb="$(git -C "$ROOT" merge-base "$BASE_SHA" HEAD 2>/dev/null)" || die 2 "authorize merge: no merge base with origin/$BASE_NAME"
+    local excl f path g n=0
+    excl="$BUILTIN_PROTECTED"
+    while IFS= read -r f; do
+        [ "$(fm_get "$f" status)" = accepted ] || continue
+        excl="$excl,$(fm_get "$f" merge_exclude)"
+    done < <(records)
+    while IFS= read -r -d '' path; do
+        n=$((n + 1))
+        while IFS= read -r g; do
+            glob_match "$(lc "$path")" "$(lc "$g")" && escalate "PR touches protected path $(strip_ctrl "$path")"
+        done < <(csv_items "$excl")
+    done < <(git -C "$ROOT" diff -z --name-only --no-renames "$mb" HEAD)
+    [ "$n" -gt 0 ] || die 2 "authorize merge: the PR changes no files"
+
+    local rc
+    while IFS= read -r f; do
+        [ "$(fm_get "$f" status)" = accepted ] || continue
+        [ -n "$(fm_get "$f" forbid)" ] || continue
+        rc=0; check_one "$f" || rc=$?
+        case "$rc" in
+            0) ;;
+            1) escalate "accepted record $(clean "$(fm_get "$f" id)") forbid: check fails on the PR head" ;;
+            *) die 2 "authorize merge: forbid: check of $(clean "$(fm_get "$f" id)") could not run" ;;
+        esac
+    done < <(records)
+    authorized "$rec"
+}
+
+cmd_authorize() {
+    [ $# -ge 1 ] || die 2 "usage: authorize plan|merge ..."
+    local stop="$1"; shift
+    case "$stop" in
+        plan)  auth_plan "$@" ;;
+        merge) auth_merge "$@" ;;
+        *) die 64 "authorize: unknown stop: $stop (want plan|merge)" ;;
+    esac
+}
+
+[ $# -ge 1 ] || die 2 "usage: hs-decision propose|list|accept|supersede|lint|check|prune|authorize"
 cmd="$1"; shift
 case "$cmd" in
     propose)   cmd_propose "$@" ;;
@@ -439,6 +694,7 @@ case "$cmd" in
     lint)      cmd_lint "$@" ;;
     check)     cmd_check "$@" ;;
     prune)     cmd_prune "$@" ;;
-    -h|--help) sed -n '2,22p' "$0" ;;
+    authorize) cmd_authorize "$@" ;;
+    -h|--help) awk 'NR == 1 { next } /^#/ { print; next } { exit }' "$0" ;;
     *) die 2 "unknown command: $cmd" ;;
 esac
