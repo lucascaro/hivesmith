@@ -2,7 +2,7 @@
 issue: 99
 type: added
 bump: minor
-pr: 0
+pr: 103
 ---
 - **Decision records, phase 3 of 3: an accepted record can stand in for you at the plan stop and the merge stop.**
   - **The mechanism:** `hs-decision authorize plan|merge` is the only way a record skips an operator stop. Exit 0 authorizes. Any other exit escalates to you with an `escalate: <reason>` line.

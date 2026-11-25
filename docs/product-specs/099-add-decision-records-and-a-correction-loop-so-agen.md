@@ -4,7 +4,8 @@ title: Add decision records and a correction loop so agents can act within recor
 type: enhancement
 complexity: L
 priority: P1
-stage: IMPLEMENT
+pr: 103
+stage: REVIEW
 ---
 
 # Add decision records and a correction loop so agents can act within recorded guidance
