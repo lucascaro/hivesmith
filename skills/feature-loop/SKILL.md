@@ -411,7 +411,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 51. **[The merge stop]** **First, try the record stand-in.** This applies on any PASS, final or per-phase.
     1. Check out the PR head (`gh pr checkout <pr-number>`). Leave the tree clean: commit or discard nothing on the operator's behalf.
     2. Read `gh pr view <pr-number> --json headRefOid,baseRefName`.
-    3. Confirm the gate passed on this exact head: `git log -1 --format=%s <headRefOid>` must start with `chore: gate pass` (the commit `/hs-merge-gate` writes on PASS). This matters most on a `DONE` resume, where anything pushed after the gate would otherwise reach the merge ungated. If it does not match, skip the stand-in and escalate with `escalate: PR head <headRefOid> is not the gate-pass commit; re-run /hs-merge-gate`.
+    3. Confirm the gate passed on this exact head: `git log -1 --format=%s <headRefOid>` must start with `chore: gate pass` (the commit `/merge-gate` writes on PASS). This matters most on a `DONE` resume, where anything pushed after the gate would otherwise reach the merge ungated. If it does not match, skip the stand-in and escalate with `escalate: PR head <headRefOid> is not the gate-pass commit; re-run /merge-gate`.
     4. Run `~/.hivesmith/bin/hs-decision authorize merge --head <headRefOid> --pr-base <baseRefName>`.
 
     - **Exit 0** — stdout is `authorized: <id> (docs/decisions/<file>)`; `<slug>` below is that `<id>` and `<file>` the parenthesised file name. Run `gh pr merge <pr-number> --squash --delete-branch --match-head-commit <headRefOid>`, then confirm `gh pr view <pr-number> --json state -q .state` is `MERGED`. **Only after that:**
