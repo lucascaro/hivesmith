@@ -254,7 +254,7 @@ if [ ! -e docs/decisions/20200101-old-prop.md ] && [ ! -e docs/decisions/2020010
     && [ -e docs/decisions/20200101-kept.md ] && [ -e "docs/decisions/$td-fresh-prop.md" ] \
     && [ -e docs/decisions/20200101-bad-date.md ]; then ok prune_apply_deletes_candidates_only
 else bad prune_apply_deletes_candidates_only "$(find docs/decisions -name '*.md' | tr '\n' ' ')"; fi
-check prune_apply_clears_supersedes_link "supersedes:" "$(grep '^supersedes:' docs/decisions/20200101-kept.md)"
+rc_is prune_apply_clears_supersedes_link "supersedes:" "$(grep '^supersedes:' docs/decisions/20200101-kept.md)"
 nocheck prune_apply_leaves_no_dangling_link "gone" "$(cat docs/decisions/20200101-kept.md)"
 rc_is prune_apply_keeps_lint_clean 0 "$(D lint >/dev/null 2>&1; echo $?)"
 # The reviewer's repro: re-proposing a pruned title must not inherit its links.

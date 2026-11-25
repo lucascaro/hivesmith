@@ -438,6 +438,6 @@ case "$cmd" in
     lint)      cmd_lint "$@" ;;
     check)     cmd_check "$@" ;;
     prune)     cmd_prune "$@" ;;
-    -h|--help) sed -n '2,23p' "$0" ;;
+    -h|--help) sed -n '2,22p' "$0" ;;
     *) die 2 "unknown command: $cmd" ;;
 esac
