@@ -39,7 +39,7 @@ The table below uses bare slash commands for hosts that support them (such as Cl
 | `/feature-plan-handoff [# \| slug]` | Gate a plan for readiness and print copy-pasteable pickup instructions for a fresh agent in any harness or worktree |
 | `/feature-implement [#]` | Code, test, commit, open a PR, drive convergence via `/review-loop` |
 | `/feature-new [description]` | Create a GitHub issue then run ingest + triage |
-| `/feature-loop [# \| description]` | Drive one feature autonomously to a merge-ready PR — clarifying questions, then one plan approval and one merge stop |
+| `/feature-loop [# \| description]` | Drive one feature autonomously to a merge-ready PR — clarifying questions, then one plan approval and one merge stop (an accepted decision record can stand in for either) |
 | `/plan-html <task>` | Render a plan as self-contained HTML with per-section feedback textareas + ✓ Approve button, backed by a localhost feedback server. Used by `feature-loop` at its plan stop by default; set `HIVESMITH_PLAN_HTML=0` to opt out. |
 
 **Loop primitives**
@@ -95,7 +95,11 @@ One-time scaffolding copied into your project by `/hivesmith-init`:
 - Only the operator accepts or supersedes a record.
 - When you correct an agent, it proposes a record in the same session. If the mistake is a code pattern, the record carries a `forbid:` regex and `paths:`, and once you accept it, `hs-decision check` fails whenever the mistake comes back. `check` runs through `/feature-implement`'s build/test list and `/doc-garden`. It doesn't run in your CI unless you add it there.
 - `/doc-garden` reports record drift and opens one PR pruning stale proposals and superseded records.
-- Records are advisory today: they flag conflicts but never approve anything on the operator's behalf.
+- An accepted record can stand in for the plan stop or the merge stop, and only through `hs-decision authorize`, which `/feature-loop` runs before each stop. A record opts in with `authorizes: plan` and/or `merge`.
+  - **Plan stop:** a record with `authorizes: plan` and `plan_paths:` approves an `S` plan when the second opinion is `approve` at confidence ≥8, it has no must-fix items and no conflicts, and every file is in scope.
+  - **Merge stop:** a record with `authorizes: merge` merges a PR whose gate passed, after the script re-runs every accepted `forbid:` check on the exact head. The merge-gate's decision-records dimension checks compliance on every PR. The script refuses any PR that touches `docs/decisions/`, `scripts/decisions/` or a path listed under `merge_exclude:` in any accepted record.
+  - **Which records count:** only records accepted on origin's default branch, fetched at that moment.
+  - **Anything else escalates** to you. Every stand-in is reported as a PR comment or Decision log line, an `auto_approved` metric, and a summary line.
 
 The `hs-decision` helper is installed to `~/.hivesmith/bin/`:
 
@@ -110,6 +114,8 @@ hs-decision supersede <old> <new>  # operator only; also accepts <new>
 hs-decision lint
 hs-decision check                  # fail if code matches an accepted record's forbid:
 hs-decision prune [--apply]        # superseded + proposals older than 30 days; dry run by default
+hs-decision authorize merge --head <sha> --pr-base <branch>   # exit 0 = a record stands in for the merge stop
+hs-decision authorize plan --complexity S --verdict approve --confidence 9 --must-fix 0 --conflicts 0 --files - < paths
 ```
 
 `/hivesmith-init` scaffolds `docs/decisions/`. In an older project, the first `propose` creates the directory.

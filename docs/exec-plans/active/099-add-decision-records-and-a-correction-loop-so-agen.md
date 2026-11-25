@@ -669,6 +669,8 @@ Metrics tests:
 - **2026-11-21** — Phase 1 implemented: the helper with 39 test checks, 7 skills wired, scaffold, install/CI/docs, and 23 portability assertions. All AGENTS.md checks pass.
 
 - **2026-11-24** — Phase 2 implemented on `feature/99-decision-records-p2`. decision-test passes 105 checks on bash 5 and on /bin/bash 3.2, portability 111, and all suites, shellcheck and install smoke pass.
+- **2026-11-25** — Phase 3 implemented on `feature/99-decision-records-p3`: `hs-decision authorize`, with decision-test at 205 checks on bash 5 and /bin/bash 3.2. Also the metrics, skill wiring, docs and changeset 101. Every AGENTS.md check passes.
+
 ## Open questions
 
 **Phase 2 scope** (tracked in this spec; merge-gate marks these DEFERRED for Phase 1):

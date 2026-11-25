@@ -297,7 +297,7 @@ If the PR turns out to have been merged already (e.g. the user merged in a separ
 
 ## 5. Rules
 
-- Never merge from inside the loop. Convergence is "no BLOCKING or IMPORTANT findings"; merging is the human's call (or a separate skill).
+- Never merge from inside the loop. Convergence is "no BLOCKING or IMPORTANT findings"; merging is the human's call, or an accepted record's through `/feature-loop`'s `hs-decision authorize merge` stand-in.
 - Never overwrite the user's pre-authorization. If the user said "do not change file X", autofix's RISKY classifier should hold — escalate instead.
 - Always push after autofix runs and CI completes before re-reviewing — re-reviewing the old diff wastes a turn.
 - **Cost measurement never steers the loop.** The escalation-wait lookup, the phase timings (`review_s` / `autofix_s` / `ci_wait_s`) and step 4b's origin classification are recorded, never read back into a stop, escalate or retry decision. If one of them fails or is missing, omit its field and carry on.

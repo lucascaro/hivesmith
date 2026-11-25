@@ -57,7 +57,7 @@ Prerequisite for #98, which uses these records as its autonomy guardrail. Split 
 - Phase 3 adds the approval stand-in (plan auto-approve, auto-merge behind an exit-0 script) and the escalation criterion ("When no accepted record covers an action…").
 
 **Open questions:**
-- What counts as "low-risk" for merge eligibility, and is that defined per record or globally?
+- ~~What counts as "low-risk" for merge eligibility, and is that defined per record or globally?~~ Settled in phase 3 (operator): a PR is merge-eligible when the gate passes, including an explicit decision-records dimension, and an accepted record has `authorizes: merge`. There is no path scope. Records can add protected paths with `merge_exclude:`, unioned across every accepted record.
 - How do records relate to `docs/design-docs/` and the placeholder `core-beliefs.md`: does one replace the other, or do they coexist?
 - ~~What form a regression check takes for a correction that isn't about code.~~ Settled in phase 2: none. A process or tone correction gets a lesson or an unchecked record, and the agent says so.
 
