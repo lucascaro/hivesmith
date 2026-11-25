@@ -65,7 +65,7 @@ MERGEABLE = {"MERGEABLE", "CONFLICTING", "UNKNOWN"}
 ACTIONS = ["autofix+push (conflict)", "autofix+push", "escalated", "stop"]
 # The dimension names that outlived the rename, mapped to schema fields.
 DIM_FIELD = {"acceptance": "acceptance", "non-goals": "non_goals",
-             "doc accuracy": "doc_accuracy"}
+             "doc accuracy": "doc_accuracy", "decision records": "decision_records"}
 
 
 def fields_of(rest: str) -> dict:

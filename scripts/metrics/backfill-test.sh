@@ -56,6 +56,7 @@ cat > docs/exec-plans/completed/101-modern.md <<'P'
     - acceptance — PASS — fine
     - non-goals — PASS
     - doc accuracy — PASS — fine
+    - decision records — PASS — fine
 P
 
 # A legacy plan: the retired heading, the retired dimension, prose in enum
@@ -90,6 +91,7 @@ check test_legacy_qa_verdict_heading_parsed '"feature": "102"'        "$out"
 check test_retired_dimension_preserved      '"legacy_dimension": "build/lint/test' "$out"
 # Legacy entries carry BOTH retired dimensions; keeping only the first loses data.
 check test_all_retired_dimensions_kept      'build/lint/test,regression' "$out"
+check test_backfill_maps_decision_records_dimension '"decision_records": "PASS"' "$out"
 check test_ledger_backfilled                '"event": "review_iteration"' "$out"
 check test_pr_recovered_from_plan_header    '"pr": 201'               "$out"
 check test_every_row_is_marked_backfilled   '"backfilled": true'      "$out"
