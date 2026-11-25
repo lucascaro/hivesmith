@@ -3,9 +3,9 @@
 - **Spec:** [docs/product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md](../../product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md)
 - **Issue:** #99
 - **Status:** active
-- **PR:** #102
-- **Branch:** feature/99-decision-records-p2
-- **Phase:** 2 of 3
+- **PR:** —
+- **Branch:** —
+- **Phase:** 3 of 3
 
 ## Summary
 
@@ -101,6 +101,7 @@ Conventions this feature touches:
     - acceptance — PASS — C4, C7, C8, C9 shown by decision-test (113 checks: check_fails_after_accept, lint_flags_duplicate_slug_across_dates, prune_* tests), correction paragraph in AGENTS.md and template, doc-garden signal 6; C1–C3, C6 still hold; C5 DEFERRED (phase > 2)
     - non-goals — PASS — no agent accept/supersede, no history mining, brain untouched, no scheduler/coordinator; no phase-3 auto-approve or auto-merge
     - doc accuracy — PASS — README, docs/decisions and template copies (byte-identical), changesets, AGENTS and CI lists match decision.sh; committed CHANGELOG.md is regenerated after merge (verify-generated green)
+- 2026-11-25 — Phase 2 merged (#102, eeec4d0). Operator chose to reset to PLAN for phase 3 (approval stand-in + C5), since phase 3 has no plan yet.
 
 ## Approach
 

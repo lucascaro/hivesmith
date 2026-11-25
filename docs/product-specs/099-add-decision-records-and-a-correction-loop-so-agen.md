@@ -5,7 +5,7 @@ type: enhancement
 complexity: L
 priority: P1
 pr: 102
-stage: GATE
+stage: PLAN
 ---
 
 # Add decision records and a correction loop so agents can act within recorded guidance
