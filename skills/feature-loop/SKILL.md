@@ -309,7 +309,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 
     `--conflicts` counts the `conflicts with docs/decisions/` flags raised at triage and in the second opinion.
 
-    - **Exit 0** — the record stands in. Do not present the plan. Step 34 still runs in full: sections written, records proposed, and `stage: IMPLEMENT` as the last write. Use `plan_approved --field rounds=1 --field via=record` with no `seconds_to_approval`. Also emit `HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event auto_approved --field feature=<NNN> --field stop=plan --field record=<slug>`, and append `plan auto-approved by docs/decisions/<file> (hs-decision authorize plan)` to the Decision log.
+    - **Exit 0** — the record stands in. Its stdout is `authorized: <id> (docs/decisions/<file>)`: `<slug>` below is that `<id>`, and `<file>` is the parenthesised path's file name. Do not present the plan. Step 34 still runs in full: sections written, records proposed, and `stage: IMPLEMENT` as the last write. Use `plan_approved --field rounds=1 --field via=record` with no `seconds_to_approval`. Also emit `HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event auto_approved --field feature=<NNN> --field stop=plan --field record=<slug>`, and append `plan auto-approved by docs/decisions/<file> (hs-decision authorize plan)` to the Decision log.
     - **Any other exit, or the helper missing** — this is an escalation. Present the stop below and lead it with the `escalate:` line, or with `no record stand-in: hs-decision not installed`.
 
     Otherwise present the plan, with its second opinion, for approval:
@@ -413,7 +413,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     2. Read `gh pr view <pr-number> --json headRefOid,baseRefName`.
     3. Run `~/.hivesmith/bin/hs-decision authorize merge --head <headRefOid> --pr-base <baseRefName>`.
 
-    - **Exit 0** — run `gh pr merge <pr-number> --squash --delete-branch --match-head-commit <headRefOid>`, then confirm `gh pr view <pr-number> --json state -q .state` is `MERGED`. **Only after that:**
+    - **Exit 0** — stdout is `authorized: <id> (docs/decisions/<file>)`; `<slug>` below is that `<id>` and `<file>` the parenthesised file name. Run `gh pr merge <pr-number> --squash --delete-branch --match-head-commit <headRefOid>`, then confirm `gh pr view <pr-number> --json state -q .state` is `MERGED`. **Only after that:**
       - comment with `gh pr comment <pr-number> --body "Auto-merged under docs/decisions/<file> (accepted on <baseRefName>). Gate: PASS; decision records: PASS."`;
       - emit `HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event auto_approved --field feature=<NNN> --field stop=merge --field record=<slug> --field pr=<pr-number>`;
       - skip the question and step 52.

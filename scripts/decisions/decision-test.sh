@@ -455,8 +455,41 @@ check authorize_merge_base_failure_says_why "no merge base with origin/main" "$o
 
 merge_fixture; pr_change; git remote set-url origin "$SANDBOX/missing.git"
 out="$(AM)"; rc=$?
+rc_is authorize_ls_remote_failure_exits_2 2 "$rc"
+check authorize_ls_remote_failure_says_why "cannot resolve origin's default branch" "$out"
+
+# ls-remote succeeds but the fetch itself dies: a pack-objects hook that fails
+# (honoured only from protected config, hence GIT_CONFIG_GLOBAL for this call).
+# origin must hold a commit the worktree lacks, or no pack is sent at all.
+merge_fixture; pr_change
+git clone -q "$O" "$SANDBOX/c2" 2>/dev/null
+( cd "$SANDBOX/c2" && echo n > new.txt && T upstream && git push -q origin main 2>/dev/null )
+printf '[uploadpack]\n\tpackObjectsHook = false\n' > "$SANDBOX/failpack.cfg"
+out="$(GIT_CONFIG_GLOBAL="$SANDBOX/failpack.cfg" AM)"; rc=$?
 rc_is authorize_fetch_failure_exits_2 2 "$rc"
-check authorize_fetch_failure_says_why "cannot resolve origin's default branch" "$out"
+check authorize_fetch_failure_says_why "fetch of origin/main failed" "$out"
+
+merge_fixture; git push -q origin main:refs/heads/a+b 2>/dev/null; git -C "$O" symbolic-ref HEAD refs/heads/a+b; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_odd_default_branch_name_exits_2 2 "$rc"
+check authorize_odd_default_branch_name_says_why "unexpected default branch name" "$out"
+
+# base_records reads only regular, flat, dated record files from the base: a
+# symlinked, nested or oddly named "accepted" record must not authorize.
+setup_auth; mkdir -p notes; mkrec m accepted "authorizes: merge"; mv docs/decisions/20260101-m.md notes/rec.md
+ln -s ../../notes/rec.md docs/decisions/20260101-s.md; push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_symlinked_record_ignored 1 "$rc"
+check authorize_merge_symlinked_record_says_why "no accepted record on origin/main authorizes merge" "$out"
+
+setup_auth; mkrec m accepted "authorizes: merge"; mkdir -p docs/decisions/sub
+mv docs/decisions/20260101-m.md docs/decisions/sub/20260101-m.md; push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_nested_record_ignored 1 "$rc"
+
+setup_auth; mkrec m accepted "authorizes: merge"; mv docs/decisions/20260101-m.md "docs/decisions/20260101-bad name.md"; push_base; pr_change
+out="$(AM)"; rc=$?
+rc_is authorize_merge_odd_record_name_ignored 1 "$rc"
 
 # origin/HEAD left pointing at a renamed-away master that still holds a merge
 # record: authorize must follow the remote's real default (main), not the ref.
