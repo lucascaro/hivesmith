@@ -96,6 +96,11 @@ Conventions this feature touches:
 - **A skill change cannot verify itself in the session that makes it.** Installed skills come from main. Gate criteria should be offline-checkable (test scripts). "A real run produces records" belongs in a post-merge follow-up, or is tested via `scripts/dev-link-local.sh` plus a restart.
 - A reversed decision tends to leave stale comments behind. Supersession needs a cleanup pass (title only; entry not opened).
 - 2026-11-24 — Review iter 3 escalated: lint/die echoed untrusted record values raw. Operator chose to apply the fix: `die` and lint's `p` strip control bytes at the shared output point (covers every message), with test `lint_strips_control_chars`.
+- **2026-11-24** — verdict: PASS; phase: 2/3; checks: 8 passed / 0 failed / 0 followups / 1 deferred; followups: none; one-line: phase 2 (slug ids, prune with link clearing, doc-garden drift pass, correction loop with forbid/paths regression check) delivered; C5 deferred to phase 3.
+  - 2026-11-24 dimensions:
+    - acceptance — PASS — C4, C7, C8, C9 shown by decision-test (113 checks: check_fails_after_accept, lint_flags_duplicate_slug_across_dates, prune_* tests), correction paragraph in AGENTS.md and template, doc-garden signal 6; C1–C3, C6 still hold; C5 DEFERRED (phase > 2)
+    - non-goals — PASS — no agent accept/supersede, no history mining, brain untouched, no scheduler/coordinator; no phase-3 auto-approve or auto-merge
+    - doc accuracy — PASS — README, docs/decisions and template copies (byte-identical), changesets, AGENTS and CI lists match decision.sh; committed CHANGELOG.md is regenerated after merge (verify-generated green)
 
 ## Approach
 
