@@ -1,5 +1,5 @@
 ---
-id: NNNN
+id: <slug>            # the filename after its YYYYMMDD- prefix
 title: "<Short imperative statement of the decision>"
 status: proposed
 date: YYYY-MM-DD

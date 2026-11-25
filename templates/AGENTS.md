@@ -35,6 +35,7 @@ All of these must pass before a PR merges. `/feature-implement` runs them.
 - **Build:** `<command>`
 - **Lint:** `<command>`
 - **Tests:** `<command>`
+- **Decision checks:** `~/.hivesmith/bin/hs-decision lint && ~/.hivesmith/bin/hs-decision check` (keep this line: it enforces accepted decision records)
 - **Everything:** `<single command that runs all of the above>`
 
 ## Module Map

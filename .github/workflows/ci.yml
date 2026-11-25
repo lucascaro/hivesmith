@@ -225,6 +225,8 @@ jobs:
             echo "── $s"
             bash "$s" || fail=1
           done
+          echo "── decision records: lint + accepted-record regression checks"
+          { bash scripts/decisions/decision.sh lint && bash scripts/decisions/decision.sh check; } || fail=1
           exit $fail
 
   metrics:

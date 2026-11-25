@@ -1,5 +1,5 @@
 ---
-id: 0001
+id: only-the-operator-accepts-or-supersedes-decision-r
 title: "Only the operator accepts or supersedes decision records"
 status: proposed
 date: 2026-11-23
