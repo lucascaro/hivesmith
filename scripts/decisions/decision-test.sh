@@ -201,6 +201,10 @@ out="$(D lint 2>&1)"; rc=$?
 rc_is lint_rejects_bad_status 1 "$rc"
 check lint_bad_status_names_file "$(basename "$f3")" "$out"
 sed -i.bak 's/^status: maybe$/status: proposed/' "$f3" && rm -f docs/decisions/*.bak
+printf '%s\n' "$(cat "$f3")" | sed "s/^status: proposed$/status: x$(printf '\033')[31my/" > "$SANDBOX/esc" && cp "$SANDBOX/esc" "$f3"
+out="$(D lint 2>&1)"
+nocheck lint_strips_control_chars "$(printf '\033')" "$out"
+sed -i.bak 's/^status: .*$/status: proposed/' "$f3" && rm -f docs/decisions/*.bak
 
 sed -i.bak 's/^status: proposed$/status: accepted/' "$f3" && rm -f docs/decisions/*.bak
 rc_is lint_rejects_accepted_without_date 1 "$(D lint >/dev/null 2>&1; echo $?)"

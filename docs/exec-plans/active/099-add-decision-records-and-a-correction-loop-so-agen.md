@@ -95,6 +95,7 @@ Conventions this feature touches:
 - **An exception to a contract must reach every restatement of it.** Adding an exception to "never automatic" means updating the question text at the merge stop, the label and stage writes, and the "no write needed" justifications, not just the headline rule. That covers feature-loop :61/:382/:397, merge-gate :159, review-loop :300 and pr-queue :331.
 - **A skill change cannot verify itself in the session that makes it.** Installed skills come from main. Gate criteria should be offline-checkable (test scripts). "A real run produces records" belongs in a post-merge follow-up, or is tested via `scripts/dev-link-local.sh` plus a restart.
 - A reversed decision tends to leave stale comments behind. Supersession needs a cleanup pass (title only; entry not opened).
+- 2026-11-24 — Review iter 3 escalated: lint/die echoed untrusted record values raw. Operator chose to apply the fix: `die` and lint's `p` strip control bytes at the shared output point (covers every message), with test `lint_strips_control_chars`.
 
 ## Approach
 
@@ -448,6 +449,7 @@ Also from the plan:
 - **2026-11-23 iter 5** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: a3c800b9e2c4d32688ef11f07c7bc08c7471a0d2
 - **2026-11-24 iter 1 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ad6462d4c20f0c141d97cb41bf5efca2f0767ce6cd3d409a471b9459e5d4bd0b; threads_open: 1; action: escalated:risky-fix-needs-human-decision; head_sha: e12559c.
 - **2026-11-24 iter 2 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 721a88bc1123b3bc64501c07a09d4d092050769ef7d9eaf7829e0cd5d1b20bb6; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 59b953b.
+- **2026-11-24 iter 3 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: b09ea5e259b0822e0aac5018c2f078a83c4523d4dfae1d5d4c5e8f0c9dab1940; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: fb7b91a.
 
 ## Gate verdict
 

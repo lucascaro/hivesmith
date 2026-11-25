@@ -22,7 +22,8 @@
 # not found / check could not run, 64 invalid input.
 set -euo pipefail
 
-die() { local code="$1"; shift; printf 'hs-decision: %s\n' "$*" >&2; exit "$code"; }
+# Messages interpolate record values, which are untrusted: strip control bytes.
+die() { local code="$1"; shift; printf 'hs-decision: %s\n' "$(printf '%s' "$*" | LC_ALL=C tr -d '\000-\037\177')" >&2; exit "$code"; }
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || die 2 "not inside a git repository"
 DIR="$ROOT/docs/decisions"
@@ -280,7 +281,7 @@ cmd_supersede() {
 
 cmd_lint() {
     local problems=0 count=0 f base id st k seen="" other back
-    p() { problems=$((problems + 1)); printf 'lint: %s: %s\n' "$base" "$1"; }
+    p() { problems=$((problems + 1)); printf 'lint: %s: %s\n' "$(strip_ctrl "$base")" "$(strip_ctrl "$1")"; }
     while IFS= read -r f; do
         count=$((count + 1)); base="docs/decisions/$(basename "$f")"
         if ! has_frontmatter "$f"; then p "missing --- frontmatter block"; continue; fi
