@@ -51,7 +51,7 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
   - the feature is complexity `S`;
   - the second opinion is `approve` with confidence ≥8;
   - there are no must-fix items and no record conflicts;
-  - no planned file is under `docs/decisions/` or `scripts/decisions/`;
+  - no planned path is under `docs/decisions/` or `scripts/decisions/`, or is one of those directories or a parent of them;
   - every planned file matches that one record's `plan_paths`.
 
   `/feature-loop` also runs the second opinion on small fast-lane plans when `authorize plan --probe` finds such a record.
@@ -61,6 +61,8 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
   - an accepted record has `authorizes: merge`;
   - the PR's changed files avoid `docs/decisions/`, `scripts/decisions/` and every `merge_exclude:` (renames and deletes count, as do paths that differ only in case);
   - every accepted `forbid:` check passes on that head. A check that cannot run escalates.
+
+  Before calling it, `/feature-loop` also requires the PR head to be the gate-pass commit and CI to be green, both on that head and on the default branch. Red, pending or missing CI escalates.
 
   `/feature-loop` then merges with `--match-head-commit`, posts a PR comment naming the record, and emits an `auto_approved` metric. The merge-gate's **decision records** dimension checks every PR against the accepted records, whether or not it auto-merges.
 

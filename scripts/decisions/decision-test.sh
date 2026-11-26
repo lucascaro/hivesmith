@@ -469,6 +469,22 @@ out="$(GIT_CONFIG_GLOBAL="$SANDBOX/failpack.cfg" AM)"; rc=$?
 rc_is authorize_fetch_failure_exits_2 2 "$rc"
 check authorize_fetch_failure_says_why "fetch of origin/main failed" "$out"
 
+# A concurrent fetch repoints FETCH_HEAD (here at the PR head) after ours.
+mkdir -p "$SANDBOX/shim"
+REAL_GIT="$(command -v git)"
+cat > "$SANDBOX/shim/git" <<SHIM
+#!/bin/bash
+"$REAL_GIT" "\$@" || exit \$?
+case " \$* " in *" fetch "*)
+    printf '%s\\t\\tbranch pr\\n' "\$("$REAL_GIT" rev-parse HEAD)" > "\$("$REAL_GIT" rev-parse --git-path FETCH_HEAD)" ;;
+esac
+SHIM
+chmod +x "$SANDBOX/shim/git"
+merge_fixture; pr_change
+out="$(PATH="$SANDBOX/shim:$PATH" AM)"; rc=$?
+rc_is authorize_fetch_head_overwritten_escalates 1 "$rc"
+check authorize_fetch_head_overwritten_says_why "FETCH_HEAD was overwritten" "$out"
+
 merge_fixture; git push -q origin main:refs/heads/a+b 2>/dev/null; git -C "$O" symbolic-ref HEAD refs/heads/a+b; pr_change
 out="$(AM)"; rc=$?
 rc_is authorize_odd_default_branch_name_exits_2 2 "$rc"
@@ -559,6 +575,11 @@ check authorize_plan_scope_says_why "first miss: other/y.sh" "$out"
 out="$(AP src/x.sh docs/decisions/x.md)"; rc=$?
 rc_is authorize_plan_touching_decisions_escalates 1 "$rc"
 check authorize_plan_protected_says_why "escalate: plan touches protected path docs/decisions/x.md" "$out"
+for d in docs/decisions docs/decisions/ docs Scripts; do
+    out="$(AP src/x.sh "$d")"; rc=$?
+    rc_is "authorize_plan_dir_or_parent_escalates[$d]" 1 "$rc"
+    check "authorize_plan_dir_or_parent_says_why[$d]" "protected path $d" "$out"
+done
 out="$(AP src/x.sh ./scripts/decisions/x)"; rc=$?
 rc_is authorize_dot_slash_protected_path_escalates 1 "$rc"
 check authorize_dot_slash_says_why "protected path scripts/decisions/x" "$out"

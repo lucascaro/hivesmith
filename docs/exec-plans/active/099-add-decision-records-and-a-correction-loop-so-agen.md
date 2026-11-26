@@ -663,6 +663,7 @@ Metrics tests:
 - **2026-11-25** — Phase 3 plan approved via HTML (round 1, no notes, approved 10s after serve). Second opinion: two rounds, both revise at confidence 8. The 20 + 3 must-fix items were applied, and the round-2 fixes were not re-reviewed (cap of two rounds). The round-1 `second_opinion` metric row records `duration_s=0` by mistake; the reviewer actually took about 259s.
 - **2026-11-25** — proposed records: records-stand-in-for-operator-stops-only-through-h
 - **2026-11-25** — Review pass 1 escalation answered by the operator: fix all four authorize bugs with regression tests (has_token SIGPIPE, unterminated stdin path, unquoted trailing-/ glob, CR in record values: stripped and flagged by lint); document the `origin` trust-anchor limit rather than verifying it against gh; on the merge stand-in, require the PR head to be the `chore: gate pass` commit.
+- **2026-11-26** — Review pass 2 escalation answered by the operator: authorize plan escalates on a protected directory or a parent of one; authorize cross-checks FETCH_HEAD against the ls-remote SHA; the merge stand-in requires green CI on the PR head **and** on the default branch (a red main escalates). The operator also asked for the red `graphify-init-tests` on main to be fixed now, in a separate PR handled by a subagent.
 
 ## Progress
 
@@ -698,6 +699,7 @@ Also from the plan:
 - **2026-11-24 iter 3 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: b09ea5e259b0822e0aac5018c2f078a83c4523d4dfae1d5d4c5e8f0c9dab1940; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: fb7b91a.
 - **2026-11-24 iter 4 (phase 2, PR #102)** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: 98b8d31.
 - **2026-11-25 iter 1 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: edbd7eea63a0ac5872b3eb3bbe0c5cde57a11cc187adf9a8ade82b49ab4ebc86; threads_open: 3; action: escalated: risky fix needs human decision (has_token SIGPIPE, unterminated stdin path, quoted trailing-/ glob, origin trust anchor, DONE-resume head check, CRLF merge_exclude); head_sha: ca7e3f8a2239ee65973da3e0386561bd7347a071
+- **2026-11-25 iter 2 (phase 3, PR #103)** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 4b3be1c8ca2e376480418b62902b221d07da5333c470c7505c7d6024e9374ef9; threads_open: 0; action: escalated: risky fix needs human decision (bare protected dir in authorize plan; no green-CI requirement on record merge); head_sha: c704793f2872913059bb71ac1a5f2a691a38e469
 
 ## Gate verdict
 

@@ -520,10 +520,11 @@ glob_match() {
 # origin/HEAD goes stale after a rename and is one command away from being
 # re-pointed), fetch it, and pin it to a commit so later reads agree.
 fetch_base() {
-    local line name
+    local out line name want
     # No `| head`: under pipefail a SIGPIPE would read as a failed ls-remote.
-    line="$(git -C "$ROOT" ls-remote --symref origin HEAD 2>/dev/null)" || line=""
-    line="${line%%$'\n'*}"
+    out="$(git -C "$ROOT" ls-remote --symref origin HEAD 2>/dev/null)" || out=""
+    line="${out%%$'\n'*}"
+    want="${out#*$'\n'}"; want="${want%%	*}"
     case "$line" in
         "ref: refs/heads/"*) name="${line#ref: refs/heads/}"; name="${name%%	*}" ;;
         *) die 2 "authorize: cannot resolve origin's default branch" ;;
@@ -533,6 +534,10 @@ fetch_base() {
         || die 2 "authorize: fetch of origin/$name failed"
     BASE_SHA="$(git -C "$ROOT" rev-parse --verify --quiet 'FETCH_HEAD^{commit}')" \
         || die 2 "authorize: no FETCH_HEAD after fetching origin/$name"
+    # FETCH_HEAD is shared with any concurrent fetch in this repo: trust it only
+    # when it is the commit ls-remote just reported for the default branch.
+    [ "$BASE_SHA" = "$want" ] \
+        || escalate "origin/$name moved or FETCH_HEAD was overwritten during authorize ($want vs $BASE_SHA)"
     BASE_NAME="$name"
 }
 
@@ -611,10 +616,13 @@ auth_plan() {
     [ "$conf" -ge 8 ] || escalate "second opinion confidence $conf is below 8"
     [ "$mustfix" -eq 0 ] || escalate "second opinion has $mustfix must-fix item(s)"
     [ "$conflicts" -eq 0 ] || escalate "plan has $conflicts decision-record conflict(s)"
-    local p g ok
+    local p g ok lp
     for p in "${list[@]}"; do
+        lp="$(lc "$p")"; lp="${lp%/}/"
         while IFS= read -r g; do
             glob_match "$(lc "$p")" "$(lc "$g")" && escalate "plan touches protected path $p"
+            # A bare directory or a parent of one would cover the protected tree.
+            case "$(lc "$g")" in "$lp"*) escalate "plan touches protected path $p (contains $g)" ;; esac
         done < <(csv_items "$BUILTIN_PROTECTED")
     done
     while IFS= read -r rec; do
