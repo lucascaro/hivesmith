@@ -399,9 +399,13 @@ PYEOF
 # Two properties this must preserve:
 #   * A missing target degrades to a no-op, not exit 127 on every tool call —
 #     this settings.json is COMMITTED and the out dir can be wiped.
-#   * graphify's own uninstaller (install.py _strip_graphify_hook) filters
-#     PreToolUse by matcher plus the substring "graphify". Both survive, since
-#     the matchers are untouched and the path contains "graphify".
+#   * graphify's own uninstaller (install.py _strip_graphify_hook) drops a
+#     PreToolUse/SessionStart command containing "graphify" plus either
+#     `hook-guard` or "graphify-out/". The wrapper path satisfies the latter.
+#
+# graphify >= ~0.9.119 also registers a SessionStart (matcher "compact")
+# `graphify hook-guard compact`. It gets the same treatment: the wrapper
+# releases its own per-session claims, then defers to graphify.
 #
 # Matching is on `hook-guard`, NOT on a `graphify ` prefix: repos wired before
 # this wrapper existed carry the already-guarded
@@ -429,12 +433,13 @@ def wrapped(kind):
 
 
 changed = False
-for entry in settings.get("hooks", {}).get("PreToolUse", []):
+hooks = settings.get("hooks", {})
+for entry in hooks.get("PreToolUse", []) + hooks.get("SessionStart", []):
     for hook in entry.get("hooks", []):
         cmd = hook.get("command", "")
         if "graphify-nudge.sh" in cmd:
             continue  # already migrated
-        m = re.search(r"hook-guard\s+(search|read)\b", cmd)
+        m = re.search(r"hook-guard\s+(search|read|compact)\b", cmd)
         if not m:
             continue
         hook["command"] = wrapped(m.group(1))
@@ -499,6 +504,11 @@ if kept:
     hooks["PostToolUse"] = kept
 else:
     hooks.pop("PostToolUse", None)
+# graphify's own uninstaller can leave its events as empty lists (it does for
+# SessionStart); drop them so a full uninstall still removes the file.
+for event in ("PreToolUse", "SessionStart"):
+    if hooks.get(event) == []:
+        hooks.pop(event)
 if not hooks:
     settings.pop("hooks", None)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# graphify-nudge.sh — PreToolUse wrapper around `graphify hook-guard`.
+# graphify-nudge.sh — PreToolUse/SessionStart wrapper around `graphify hook-guard`.
 #
 # graphify's own nudge has three problems this wrapper fixes without forking its
 # gating logic:
@@ -27,7 +27,12 @@
 #      the `permissionDecision` key, which is Claude Code's contract, not
 #      graphify's.
 #
-# Usage: graphify-nudge.sh <search|read>     (tool payload JSON on stdin)
+# Usage: graphify-nudge.sh <search|read|compact>     (hook payload JSON on stdin)
+#
+# `compact` is the SessionStart (matcher "compact") hook. Compaction drops the
+# nudges from the model's context while keeping the session id, so it releases
+# this session's claims before handing off to graphify, which resets its own
+# budget and restates the graph.
 
 # set -u only, deliberately — same exception graphify-refresh.sh takes and for
 # the same reason. Under `set -e` any unexpected non-zero (a missing `stat`, an
@@ -37,7 +42,7 @@ set -u
 
 kind="${1:-}"
 case "$kind" in
-    search|read) ;;
+    search|read|compact) ;;
     *) exit 0 ;;
 esac
 
@@ -77,6 +82,13 @@ sid="${sid//[^A-Za-z0-9_-]/_}"
 sid="${sid:0:64}"
 [ -n "$sid" ] || sid="unknown"
 claim="$CLAIMS/$sid.$kind"
+
+if [ "$kind" = compact ]; then
+    rm -f "$CLAIMS/$sid.search" "$CLAIMS/$sid.read" 2>/dev/null
+    command -v graphify >/dev/null 2>&1 || exit 0
+    printf '%s' "$payload" | graphify hook-guard compact 2>/dev/null
+    exit 0
+fi
 
 # BSD (macOS) and GNU stat disagree on flags, and the probe order matters: on
 # GNU coreutils `-f` means --file-system, so `stat -f %m` prints a filesystem

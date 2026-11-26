@@ -251,7 +251,9 @@ test_uninstall_reverses() {
         assert_file_lacks "$hooks/post-commit" 'graphify-hook-start' || rc=1
     fi
     [ -f "$t/main-repo/.claude/settings.json" ] \
-        && { assert_file_lacks "$t/main-repo/.claude/settings.json" 'graphify-refresh.sh' || rc=1; }
+        && { assert_file_lacks "$t/main-repo/.claude/settings.json" 'graphify-refresh.sh' || rc=1
+             assert_file_lacks "$t/main-repo/.claude/settings.json" 'graphify-nudge.sh' || rc=1
+             assert_file_lacks "$t/main-repo/.claude/settings.json" 'SessionStart' || rc=1; }
     assert_file_lacks "$t/main-repo/AGENTS.md" 'BEGIN HIVESMITH GRAPHIFY' || rc=1
     rm -rf "$t"; return "$rc"
 }
@@ -569,6 +571,30 @@ test_nudge_throttles_per_session() {
     rm -rf "$t"; return "$rc"
 }
 
+test_nudge_compact_releases_claims() {
+    # graphify >= 0.9.119 registers a SessionStart "compact" hook. Compaction
+    # drops the nudges from context, so our claims must go too, and graphify's
+    # own reset (shim) must still run.
+    local t; t="$(mktemp -d)"; local rc=0
+    nudge_fixture "$t" "$NUDGE_SOFT"
+    run_nudge "$t" "$NUDGE_PAYLOAD" >/dev/null
+    run_nudge "$t" "$NUDGE_PAYLOAD" read >/dev/null
+    run_nudge "$t" '{"session_id":"sess-b","tool_input":{"pattern":"foo"}}' >/dev/null
+    rm -f "$t/graphify-out/shim-invocations"
+    run_nudge "$t" '{"session_id":"sess-a","hook_event_name":"SessionStart","source":"compact"}' compact >/dev/null \
+        || { printf '  ASSERT FAIL: compact exited non-zero\n' >&2; rc=1; }
+    [ -s "$t/graphify-out/shim-invocations" ] \
+        || { printf '  ASSERT FAIL: compact did not reach graphify\n' >&2; rc=1; }
+    local c="$t/graphify-out/cache/hook_nudges"
+    [ ! -e "$c/sess-a.search" ] && [ ! -e "$c/sess-a.read" ] \
+        || { printf '  ASSERT FAIL: compact left this session claimed\n' >&2; rc=1; }
+    [ -e "$c/sess-b.search" ] \
+        || { printf '  ASSERT FAIL: compact released another session\n' >&2; rc=1; }
+    [ -n "$(run_nudge "$t" "$NUDGE_PAYLOAD")" ] \
+        || { printf '  ASSERT FAIL: no nudge after compaction\n' >&2; rc=1; }
+    rm -rf "$t"; return "$rc"
+}
+
 test_nudge_passes_through_deny() {
     local t; t="$(mktemp -d)"; local rc=0
     nudge_fixture "$t" "$NUDGE_DENY"
@@ -779,6 +805,7 @@ run_test "hook target untracked and guarded"      test_hook_target_is_untracked_
 run_test "nudge text is advisory"                test_nudge_text_is_advisory
 run_test "nudge throttles per session and kind"  test_nudge_throttles_per_session
 run_test "nudge passes a deny through verbatim"  test_nudge_passes_through_deny
+run_test "nudge compact releases claims"         test_nudge_compact_releases_claims
 run_test "nudge respects the query stamp"        test_nudge_respects_query_stamp
 run_test "nudge survives a GNU-style stat"       test_nudge_survives_gnu_stat
 run_test "nudge has a stale-graph variant"       test_nudge_stale_variant
