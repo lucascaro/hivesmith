@@ -51,7 +51,7 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
   - the feature is complexity `S`;
   - the second opinion is `approve` with confidence ≥8;
   - there are no must-fix items and no record conflicts;
-  - no planned path is under `docs/decisions/` or `scripts/decisions/`, or is one of those directories or a parent of them;
+  - no planned path is a `.gitattributes` file or under `docs/decisions/` or `scripts/decisions/`, or is one of those directories or a parent of them;
   - every planned file matches that one record's `plan_paths`.
 
   Planned paths are compared literally, so a path written as a glob (`docs/*`) is not expanded against the protected list. The merge stop checks the real diff, which is where a protected edit is caught.
@@ -61,8 +61,8 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
   - the PR targets the default branch;
   - the worktree is clean and `HEAD` is that exact head;
   - an accepted record has `authorizes: merge`;
-  - the PR's changed files avoid `docs/decisions/`, `scripts/decisions/` and every `merge_exclude:` (renames and deletes count, as do paths that differ only in case);
-  - every accepted `forbid:` check passes on that head commit itself (its tree, not the working copy). A check that cannot run escalates.
+  - the PR's changed files avoid `docs/decisions/`, `scripts/decisions/`, every `.gitattributes` and every `merge_exclude:` (renames and deletes count, as do paths that differ only in case);
+  - every accepted `forbid:` check passes on that head commit itself (its tree, not the working copy, binary files included). A check that cannot run exits 2, so the operator decides.
 
   Before calling it, `/feature-loop` also requires the PR head to be the gate-pass commit and CI to be green, both on that head and on the default branch. Red, pending or missing CI escalates.
 

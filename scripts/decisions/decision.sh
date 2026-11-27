@@ -386,10 +386,10 @@ check_one() {
     fi
     rc=0
     if [ -n "$rev" ]; then
-        out="$(git -C "$ROOT" grep -nIE -e "$forbid" "$rev" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
+        out="$(git -C "$ROOT" grep -naE -e "$forbid" "$rev" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
         out="${out//$'\n'"$rev:"/$'\n'}"; out="${out#"$rev:"}"
     else
-        out="$(git -C "$ROOT" grep -nIE --untracked -e "$forbid" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
+        out="$(git -C "$ROOT" grep -naE --untracked -e "$forbid" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
     fi
     case "$rc" in
         0) printf '%s\n' "$out" | while IFS= read -r e; do
@@ -477,7 +477,8 @@ cmd_prune() {
 # ---------------------------------------------------------------------------
 
 # Changing these changes the rules a PR is judged by.
-BUILTIN_PROTECTED="docs/decisions/,scripts/decisions/"
+# *.gitattributes: a `binary` or filter attribute could change what the checks see.
+BUILTIN_PROTECTED="docs/decisions/,scripts/decisions/,*.gitattributes"
 AUTH_TMP=""
 BASE_SHA=""
 BASE_NAME=""

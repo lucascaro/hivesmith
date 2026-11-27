@@ -97,7 +97,7 @@ One-time scaffolding copied into your project by `/hivesmith-init`:
 - `/doc-garden` reports record drift and opens one PR pruning stale proposals and superseded records.
 - An accepted record can stand in for the plan stop or the merge stop, and only through `hs-decision authorize`, which `/feature-loop` runs before each stop. A record opts in with `authorizes: plan` and/or `merge`.
   - **Plan stop:** a record with `authorizes: plan` and `plan_paths:` approves an `S` plan when the second opinion is `approve` at confidence ≥8, it has no must-fix items and no conflicts, and every file is in scope.
-  - **Merge stop:** a record with `authorizes: merge` merges a PR whose gate passed, after the script re-runs every accepted `forbid:` check on the exact head. The merge-gate's decision-records dimension checks compliance on every PR. The script refuses any PR that touches `docs/decisions/`, `scripts/decisions/` or a path listed under `merge_exclude:` in any accepted record.
+  - **Merge stop:** a record with `authorizes: merge` merges a PR whose gate passed, after the script re-runs every accepted `forbid:` check on the exact head. The merge-gate's decision-records dimension checks compliance on every PR. The script refuses any PR that touches `docs/decisions/`, `scripts/decisions/`, a `.gitattributes` file or a path listed under `merge_exclude:` in any accepted record.
   - **Which records count:** only records accepted on origin's default branch, fetched at that moment.
   - **Anything else escalates** to you. Every stand-in is reported as a PR comment or Decision log line, an `auto_approved` metric, and a summary line.
 

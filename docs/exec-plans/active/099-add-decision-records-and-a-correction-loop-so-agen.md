@@ -666,6 +666,7 @@ Metrics tests:
 - **2026-11-26** — Review pass 2 escalation answered by the operator: authorize plan escalates on a protected directory or a parent of one; authorize cross-checks FETCH_HEAD against the ls-remote SHA; the merge stand-in requires green CI on the PR head **and** on the default branch (a red main escalates). The operator also asked for the red `graphify-init-tests` on main to be fixed now, in a separate PR handled by a subagent.
 - **2026-11-27** — Review pass 3 escalation: the operator chose to leave glob metacharacters in planned paths unhandled by `authorize plan`, relying on the merge stop's diff check. Documented in docs/decisions/README.md as a known limit. `graphify-init-tests` fixed on main by PR #104 (merged at the operator's request).
 - **2026-11-27** — Review pass 4 escalation: the operator chose to grep the PR head commit (not the worktree) for the merge-path `forbid:` re-check, so assume-unchanged/skip-worktree cannot hide a committed violation. Pass 4 also split the template README from hivesmith's own (project-neutral advice).
+- **2026-11-27** — Review pass 5 (the cap) escalation: the operator chose `git grep -a` for both forbid greps, `*.gitattributes` added to the built-in protected paths, and the README corrected (a check that cannot run exits 2). The operator then chose to stop the review loop at its cap and proceed to the gate; merge-gate's decision-records dimension reviews the final head.
 
 ## Progress
 
@@ -704,6 +705,8 @@ Also from the plan:
 - **2026-11-25 iter 2 (phase 3, PR #103)** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 4b3be1c8ca2e376480418b62902b221d07da5333c470c7505c7d6024e9374ef9; threads_open: 0; action: escalated: risky fix needs human decision (bare protected dir in authorize plan; no green-CI requirement on record merge); head_sha: c704793f2872913059bb71ac1a5f2a691a38e469
 - **2026-11-26 iter 3 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ffc07294c82b37e7cca1789cf74c5fbf2fb7492fae72fdb95bddcc3fb9f44b33; threads_open: 0; action: escalated: risky fix needs human decision (glob metacharacters in planned paths bypass protected check); head_sha: 5bb78cede335bf011a2468b3dedde15a79514e7b
 - **2026-11-27 iter 4 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0f3bafe9b314eb6a0589d5d93e975096fb08ade51289df52bf3869c6c06c81a2; threads_open: 0; action: escalated: risky fix needs human decision (merge forbid re-check greps the worktree, not the head commit); head_sha: af7b06d31ae0587250e8fde53e0c8c7108a915e5
+- **2026-11-27 iter 5 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: f5da059de0cf0bcb1cde4fac0a269f9bee1d789684deac23c7bc7b816ed79a7c; threads_open: 0; action: escalated: risky fix needs human decision (forbid grep skips binary files) — max iterations reached; head_sha: f4e02ee7b523a7f031ec20709b4f72743b65e780
+- **2026-11-27 operator stop (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop (operator decision at the 5-iteration cap, after the iter-5 RISKY fix was applied with tests by operator decision; not a converged review pass); head_sha: see the commit after f4e02ee
 
 ## Gate verdict
 

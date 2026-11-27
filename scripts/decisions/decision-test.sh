@@ -437,6 +437,20 @@ out="$(AM)"; rc=$?
 rc_is authorize_merge_forbid_hit_escalates 1 "$rc"
 check authorize_merge_forbid_hit_says_why "escalate: accepted record f forbid: check fails on the PR head" "$out"
 
+# Binary content must not hide a forbidden pattern from the merge check.
+merge_fixture; mkrec f accepted 'forbid: "BADWORD"' 'paths: "src/"'; T rule; git push -q origin main 2>/dev/null
+pr_branch; printf 'BADWORD\000x\n' > src/bin.dat; T pr
+out="$(AM)"; rc=$?
+rc_is authorize_merge_forbid_in_binary_escalates 1 "$rc"
+check authorize_merge_forbid_in_binary_says_why "src/bin.dat:" "$out"
+rc_is check_forbid_in_binary_fails 1 "$(D check >/dev/null 2>&1; echo $?)"
+merge_fixture; pr_change; printf 'src/* binary\n' > .gitattributes; T attrs
+out="$(AM)"; rc=$?
+rc_is authorize_merge_gitattributes_protected 1 "$rc"
+check authorize_merge_gitattributes_says_why "protected path .gitattributes" "$out"
+merge_fixture; pr_change; mkdir -p sub; printf 'x binary\n' > sub/.gitattributes; T attrs
+rc_is authorize_merge_nested_gitattributes_protected 1 "$(AM >/dev/null; echo $?)"
+
 # A committed forbidden pattern hidden from the worktree by index flags.
 for flag in assume-unchanged skip-worktree; do
     merge_fixture; mkrec f accepted 'forbid: "BADWORD"' 'paths: "src/"'; T rule; git push -q origin main 2>/dev/null
@@ -595,6 +609,9 @@ check authorize_plan_scope_says_why "first miss: other/y.sh" "$out"
 out="$(AP src/x.sh docs/decisions/x.md)"; rc=$?
 rc_is authorize_plan_touching_decisions_escalates 1 "$rc"
 check authorize_plan_protected_says_why "escalate: plan touches protected path docs/decisions/x.md" "$out"
+out="$(AP src/.gitattributes)"; rc=$?
+rc_is authorize_plan_gitattributes_escalates 1 "$rc"
+check authorize_plan_gitattributes_says_why "protected path src/.gitattributes" "$out"
 for d in docs/decisions docs/decisions/ docs Scripts; do
     out="$(AP src/x.sh "$d")"; rc=$?
     rc_is "authorize_plan_dir_or_parent_escalates[$d]" 1 "$rc"
