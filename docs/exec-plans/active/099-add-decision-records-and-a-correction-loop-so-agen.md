@@ -721,3 +721,10 @@ Also from the plan:
     - acceptance — PASS — C4, C7, C8, C9 shown by decision-test (113 checks: check_fails_after_accept, lint_flags_duplicate_slug_across_dates, prune_* tests), correction paragraph in AGENTS.md and template, doc-garden signal 6; C1–C3, C6 still hold; C5 DEFERRED (phase > 2)
     - non-goals — PASS — no agent accept/supersede, no history mining, brain untouched, no scheduler/coordinator; no phase-3 auto-approve or auto-merge
     - doc accuracy — PASS — README, docs/decisions and template copies (byte-identical), changesets, AGENTS and CI lists match decision.sh; committed CHANGELOG.md is regenerated after merge (verify-generated green)
+- **2026-11-27** — verdict: PASS; phase: 3/3; checks: 9 passed / 0 failed / 0 followups; followups: none; one-line: records stand in for the plan and merge stops only through `hs-decision authorize` exiting 0 (trust anchor = accepted on origin's default branch, protected paths incl. .gitattributes and the merge_exclude union, forbid re-run on the head tree, gate-pass head and green CI required); C5 shown by the authorize scratch-repo tests with and without an accepted record.
+  - 2026-11-27 dimensions:
+    - acceptance — PASS — decision-test 251 checks; C5: authorize_merge_accepted_on_origin_exit0 vs authorize_merge_no_record/proposed_record/branch_only_acceptance/revoked_on_origin_escalates; C8 prune_apply_* and prune_keeps_accepted; C3 propose wiring in feature-loop, feature-plan, merge-gate, brainstorm, doc-garden; C1/C2/C9 skill text (feature-plan-review:40, feature-triage:49-51, doc-garden:50-53)
+    - non-goals — PASS — no agent accept/supersede path (authorize only reads accepted records; new record is proposed), no history mining, brain untouched, nothing from #98
+    - doc accuracy — PASS — README, AGENTS + template, docs/decisions README (template now project-neutral), changeset match decision.sh and the skills; CHANGELOG untouched by the PR
+    - decision records — PASS — `check`: 0 rules, 0 hits; no accepted records, so nothing to conflict with
+  - 2026-11-27 proposed records: none — verdict set no direction
