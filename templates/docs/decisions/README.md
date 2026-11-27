@@ -54,6 +54,8 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
   - no planned path is under `docs/decisions/` or `scripts/decisions/`, or is one of those directories or a parent of them;
   - every planned file matches that one record's `plan_paths`.
 
+  Planned paths are compared literally, so a path written as a glob (`docs/*`) is not expanded against the protected list. The merge stop checks the real diff, which is where a protected edit is caught.
+
   `/feature-loop` also runs the second opinion on small fast-lane plans when `authorize plan --probe` finds such a record.
 - **`authorize merge --head <sha> --pr-base <branch>`** exits 0 only when:
   - the PR targets the default branch;
