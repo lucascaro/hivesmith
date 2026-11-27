@@ -706,7 +706,7 @@ Also from the plan:
 - **2026-11-26 iter 3 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ffc07294c82b37e7cca1789cf74c5fbf2fb7492fae72fdb95bddcc3fb9f44b33; threads_open: 0; action: escalated: risky fix needs human decision (glob metacharacters in planned paths bypass protected check); head_sha: 5bb78cede335bf011a2468b3dedde15a79514e7b
 - **2026-11-27 iter 4 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0f3bafe9b314eb6a0589d5d93e975096fb08ade51289df52bf3869c6c06c81a2; threads_open: 0; action: escalated: risky fix needs human decision (merge forbid re-check greps the worktree, not the head commit); head_sha: af7b06d31ae0587250e8fde53e0c8c7108a915e5
 - **2026-11-27 iter 5 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: f5da059de0cf0bcb1cde4fac0a269f9bee1d789684deac23c7bc7b816ed79a7c; threads_open: 0; action: escalated: risky fix needs human decision (forbid grep skips binary files) — max iterations reached; head_sha: f4e02ee7b523a7f031ec20709b4f72743b65e780
-- **2026-11-27 operator stop (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop (operator decision at the 5-iteration cap, after the iter-5 RISKY fix was applied with tests by operator decision; not a converged review pass); head_sha: see the commit after f4e02ee
+- **2026-11-27 operator stop (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop (operator decision at the 5-iteration cap, after the iter-5 RISKY fix was applied with tests by operator decision; not a converged review pass); head_sha: 716f11ff9e36bbf3ad4283fafa4d6190b1da4417
 
 ## Gate verdict
 
