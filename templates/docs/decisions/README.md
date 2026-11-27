@@ -62,7 +62,7 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
   - the worktree is clean and `HEAD` is that exact head;
   - an accepted record has `authorizes: merge`;
   - the PR's changed files avoid `docs/decisions/`, `scripts/decisions/` and every `merge_exclude:` (renames and deletes count, as do paths that differ only in case);
-  - every accepted `forbid:` check passes on that head. A check that cannot run escalates.
+  - every accepted `forbid:` check passes on that head commit itself (its tree, not the working copy). A check that cannot run escalates.
 
   Before calling it, `/feature-loop` also requires the PR head to be the gate-pass commit and CI to be green, both on that head and on the default branch. Red, pending or missing CI escalates.
 

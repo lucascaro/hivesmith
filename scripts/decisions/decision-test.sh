@@ -437,6 +437,16 @@ out="$(AM)"; rc=$?
 rc_is authorize_merge_forbid_hit_escalates 1 "$rc"
 check authorize_merge_forbid_hit_says_why "escalate: accepted record f forbid: check fails on the PR head" "$out"
 
+# A committed forbidden pattern hidden from the worktree by index flags.
+for flag in assume-unchanged skip-worktree; do
+    merge_fixture; mkrec f accepted 'forbid: "BADWORD"' 'paths: "src/"'; T rule; git push -q origin main 2>/dev/null
+    pr_branch; echo BADWORD >> src/a.txt; T pr
+    git checkout -q HEAD~1 -- src/a.txt; git reset -q -- src/a.txt; git update-index --"$flag" src/a.txt
+    out="$(AM)"; rc=$?
+    rc_is "authorize_merge_forbid_hidden_by_${flag}_escalates" 1 "$rc"
+    check "authorize_merge_forbid_hidden_by_${flag}_says_why" "src/a.txt:" "$out"
+done
+
 merge_fixture; mkrec f accepted 'forbid: "BADWORD"' 'paths: "nope/"'; T rule; git push -q origin main 2>/dev/null
 pr_change
 out="$(AM)"; rc=$?

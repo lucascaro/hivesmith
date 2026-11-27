@@ -354,10 +354,12 @@ cmd_lint() {
     printf 'lint: %d record(s) ok\n' "$count"
 }
 
-# check_one <file> — run one accepted record's forbid: check. Prints hits.
+# check_one <file> [<commit>] — run one accepted record's forbid: check. Prints
+# hits. With <commit>, grep that commit's tree rather than the working tree, so
+# index flags (assume-unchanged, skip-worktree) cannot hide committed content.
 # Returns 0 clean, 1 hits, 2 could not run.
 check_one() {
-    local f="$1" slug forbid paths e n=0 out rc
+    local f="$1" rev="${2-}" slug forbid paths e n=0 out rc
     slug="$(clean "$(fm_get "$f" id)")"
     forbid="$(fm_get "$f" forbid)"
     paths="$(fm_get "$f" paths)"
@@ -373,11 +375,22 @@ check_one() {
     if [ "$n" -eq 0 ]; then
         printf 'check: %s: forbid: has no paths:\n' "$slug"; return 2
     fi
-    if [ -z "$(git -C "$ROOT" ls-files --cached --others --exclude-standard -- "${specs[@]}" | head -n 1)" ]; then
+    if [ -n "$rev" ]; then
+        # git grep, not ls-tree: same pathspec rules (globs, magic) as the check.
+        out="$(git -C "$ROOT" grep -l -e '' "$rev" -- "${specs[@]}" 2>/dev/null)" || out=""
+    else
+        out="$(git -C "$ROOT" ls-files --cached --others --exclude-standard -- "${specs[@]}")"
+    fi
+    if [ -z "$out" ]; then
         printf 'check: %s: paths: match no files\n' "$slug"; return 2
     fi
     rc=0
-    out="$(git -C "$ROOT" grep -nIE --untracked -e "$forbid" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
+    if [ -n "$rev" ]; then
+        out="$(git -C "$ROOT" grep -nIE -e "$forbid" "$rev" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
+        out="${out//$'\n'"$rev:"/$'\n'}"; out="${out#"$rev:"}"
+    else
+        out="$(git -C "$ROOT" grep -nIE --untracked -e "$forbid" -- "${specs[@]}" ':!docs/decisions' 2>/dev/null)" || rc=$?
+    fi
     case "$rc" in
         0) printf '%s\n' "$out" | while IFS= read -r e; do
                printf 'check: %s: %s\n' "$slug" "$(clean "$(printf '%s' "$e" | cut -d: -f1,2)")"
@@ -682,7 +695,7 @@ auth_merge() {
     while IFS= read -r f; do
         [ "$(fm_get "$f" status)" = accepted ] || continue
         [ -n "$(fm_get "$f" forbid)" ] || continue
-        rc=0; check_one "$f" || rc=$?
+        rc=0; check_one "$f" "$want" || rc=$?
         case "$rc" in
             0) ;;
             1) escalate "accepted record $(clean "$(fm_get "$f" id)") forbid: check fails on the PR head" ;;
