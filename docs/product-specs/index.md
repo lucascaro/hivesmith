@@ -8,7 +8,6 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Priority | Issue | Title | Stage | Spec |
 |----------|-------|-------|-------|------|
-| P1 | #99 | Add decision records and a correction loop so agents can act within recorded guidance | GATE | [099-add-decision-records-and-a-correction-loop-so-agen](099-add-decision-records-and-a-correction-loop-so-agen.md) |
 | P2 | #16 | Rename hs-ralph-loop skill to hs-review-loop | REVIEW | [016-rename-hs-ralph-loop-skill-to-hs-review-loop](016-rename-hs-ralph-loop-skill-to-hs-review-loop.md) |
 | P2 | #32 | Decentralize indices and changelog to eliminate merge conflicts | IMPLEMENT | [032-decentralize-indices-and-changelog](032-decentralize-indices-and-changelog.md) |
 | P2 | #35 | Make plan-html the default in feature-loop and add per-section feedback boxes | REVIEW | [035-plan-html-default-and-per-section-feedback](035-plan-html-default-and-per-section-feedback.md) |
@@ -20,6 +19,7 @@ The *what* and *why* of work this project plans to do. Each spec describes user 
 
 | Issue | Title | PR | Shipped | Spec |
 |-------|-------|----|---------|------|
+| #99 | Add decision records and a correction loop so agents can act within recorded guidance | #103 | 2026-11-27 | [099-add-decision-records-and-a-correction-loop-so-agen](099-add-decision-records-and-a-correction-loop-so-agen.md) |
 | #86 | Instrument review-loop cost and harden behaviour-changing autofix fixes | #87 | 2026-09-26 | [086-instrument-review-loop-per-phase-cost-before-optim](086-instrument-review-loop-per-phase-cost-before-optim.md) |
 | #78 | /pr-queue — triage, explain, approve, land an inbound PR queue | #80 | 2026-09-16 | [078-pr-queue-inbound-triage-and-landing](078-pr-queue-inbound-triage-and-landing.md) |
 | #79 | Add /hs-brainstorm — a problem-space front door to the feature pipeline | #81 | 2026-09-16 | [079-add-hs-brainstorm-problem-space-front-door](079-add-hs-brainstorm-problem-space-front-door.md) |
