@@ -128,6 +128,13 @@ accept() { # name  args...
   if [[ "$(lines)" == "$n0" ]]; then bad "$name" "accepted but appended nothing"; return; fi
   ok "$name"
 }
+accept test_auto_approved_valid --event auto_approved --field feature=099 --field stop=merge --field record=merge-docs --field pr=110
+accept test_plan_approved_via_record --event plan_approved --field feature=099 --field rounds=1 --field via=record
+accept test_gate_verdict_decision_records_optional --event gate_verdict --field feature=099 --field verdict=PASS --field acceptance=PASS --field non_goals=PASS --field doc_accuracy=PASS --field decision_records=PASS
+before="$(lines)"
+reject test_auto_approved_bad_stop_rejected 64 --event auto_approved --field feature=099 --field stop=deploy --field record=x
+reject test_auto_approved_requires_record 64 --event auto_approved --field feature=099 --field stop=plan
+reject test_gate_verdict_decision_records_bad_value_rejected 64 --event gate_verdict --field feature=099 --field verdict=PASS --field acceptance=PASS --field non_goals=PASS --field doc_accuracy=PASS --field decision_records=OK
 accept test_action_enum_with_a_space_is_accepted \
   --event review_iteration --field feature=069 --field pr=70 --field iter=1 \
   --field verdict=REQUEST_CHANGES --field findings_count=3 --field threads_open=0 \

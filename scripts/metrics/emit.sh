@@ -111,10 +111,13 @@ SCHEMA = {
                           "risky_with_test", "risky_without_test"}),
     "gate_verdict":     ({"feature", "verdict", "acceptance", "non_goals",
                           "doc_accuracy"}, {"followups", "legacy_dimension", "seq",
-                                            "phase"}),
+                                            "phase", "decision_records"}),
     "stall":            ({"feature", "retry", "stage"}, {"reason"}),
     "stage_transition": ({"feature", "from", "to"}, set()),
     "feature_done":     ({"feature"}, {"pr", "seconds_total"}),
+    # An accepted decision record stood in for an operator stop (#99): the
+    # `hs-decision authorize` exit 0 the loop acted on. `record` is its slug.
+    "auto_approved":    ({"feature", "stop", "record"}, {"pr"}),
     # The PR-queue events are keyed by `pr` and deliberately carry NO `feature`.
     # That absence is the isolation mechanism, not an oversight: report.py builds
     # the feature-throughput denominator as {e["feature"] for e in ev if
@@ -142,12 +145,14 @@ ENUM = {
     ("gate_verdict", "acceptance"):  DIMENSION,
     ("gate_verdict", "non_goals"):   DIMENSION,
     ("gate_verdict", "doc_accuracy"): DIMENSION,
+    ("gate_verdict", "decision_records"): DIMENSION,
+    ("auto_approved", "stop"):       {"plan", "merge"},
     # SKIP = autofix step 10 did not run: no AGENTS.md, or nothing was applied.
     # Distinct from omitting the field, which reads as "not recorded".
     ("autofix_applied", "checks"):   {"PASS", "FAIL", "SKIP"},
     ("stage_transition", "from"):    STAGES,
     ("stage_transition", "to"):      STAGES,
-    ("plan_approved", "via"):        {"html", "native-plan-mode", "chat"},
+    ("plan_approved", "via"):        {"html", "native-plan-mode", "chat", "record"},
     ("stall", "retry"):              {"plan-revise-rerun", "implement-checks-refix",
                                       "gate-fail-rerun", "review-loop-guard"},
     ("stall", "stage"):              STAGES,

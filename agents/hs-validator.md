@@ -1,6 +1,6 @@
 ---
 name: hs-validator
-description: Executes one merge-gate validation dimension against a feature under review (acceptance criteria, non-goals, doc accuracy). Dispatched in parallel by /merge-gate. Runs commands and reports pass/fail with evidence.
+description: Executes one merge-gate validation dimension against a feature under review (acceptance criteria, non-goals, doc accuracy, decision records). Dispatched in parallel by /merge-gate. Runs commands and reports pass/fail with evidence.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit
 model: sonnet

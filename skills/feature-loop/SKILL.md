@@ -58,7 +58,9 @@ After any other option, continue with this skill.
 The loop pauses for the operator at two approval gates on a normal run:
 
 1. **Plan approval** (Phase 4) — the only point where a wrong answer is expensive and the human is better informed than the loop. The draft records an independent second opinion when an agent ran, an inline self-review when no agent was available, or the fast-lane skip (see **Lanes**).
-2. **Merge** (Phase 8) — irreversible and outward-facing. Never automatic, under any signal.
+2. **Merge** (Phase 8) — irreversible and outward-facing. It happens without the operator only through `hs-decision authorize merge` (below); no other signal merges.
+
+**An accepted decision record can stand in for either stop — only through `~/.hivesmith/bin/hs-decision authorize plan|merge` exiting 0.** That script reads the records accepted on origin's default branch at the moment it runs, never the worktree's copy, so a branch cannot authorize itself. It refuses any change to `docs/decisions/`, `scripts/decisions/` or a path an accepted record lists under `merge_exclude:`, and it re-runs every accepted `forbid:` check against the exact head being merged. Any non-zero exit means **escalate**: present the stop exactly as you would without records, led by the script's `escalate:` line. The same applies when no record covers the action, when the helper is not installed, and when it could not run. No other signal stands in for the operator — not a clean ledger, a PASS verdict, green CI, or a record you read yourself. Every stand-in is reported three ways: a Decision log line or PR comment naming the record, an `auto_approved` metric, and a summary line.
 
 Several interactions gather input or refuse work **without approving anything**, and none of them is a third approval gate: the clarifying rounds in Phase 1Q and Phase 3Q (both skipped when resuming an existing feature), and the under-specified-description refusal at the top of Phase 1. One further prompt appears only for projects whose `[github] create_issues` policy is `ask` (see Phase 1).
 
@@ -75,10 +77,10 @@ Everything else runs unattended: triage is auto-classified, research runs on its
 
 Triage (Phase 2) writes `complexity:` — that field selects the lane for the rest of the run:
 
-- **`S` → fast lane.** Research runs in the main thread (targeted Glob/Grep, no Explore agent). The plan is short by definition. The second-opinion subagent is **skipped** unless the plan names ≥3 files to change or the change is user-visible. Plan approval is inline text (no `plan-html` server).
+- **`S` → fast lane.** Research runs in the main thread (targeted Glob/Grep, no Explore agent). The plan is short by definition. The second-opinion subagent is **skipped** unless the plan names ≥3 files to change, the change is user-visible, or `~/.hivesmith/bin/hs-decision authorize plan --probe` exits 0. A record can only stand in for an `approve` verdict, so the review must run. A probe that fails for any reason skips silently. Plan approval is inline text (no `plan-html` server).
 - **`M`/`L` → full lane.** Everything runs as documented below: agent-assisted exploration and an independent second opinion when the host provides agent/subagent support; otherwise both fall back inline with the limitation recorded, plus HTML plan review.
 
-Both lanes produce the same core artifacts — plan sections, stage transitions, and the `## Second opinion` record. That section distinguishes an independent reviewer, a fast-lane skip, and an inline self-review when the host has no agent tool. A `second_opinion` metric is emitted only when an independent reviewer actually ran. The lanes remain resumable and gate-identical; their difference is how much independent scrutiny the host could provide before approval. The two approval gates are the same in both lanes.
+Both lanes produce the same core artifacts — plan sections, stage transitions, and the `## Second opinion` record. That section distinguishes an independent reviewer, a fast-lane skip, and an inline self-review when the host has no agent tool. A `second_opinion` metric is emitted only when an independent reviewer actually ran. The lanes remain resumable and gate-identical; their difference is how much independent scrutiny the host could provide before approval. The two approval gates are the same in both lanes. A record can stand in for the plan stop only on an `S` plan (see **The two stops**).
 
 ## Non-final phases (`Phase: N of M`, `N < M`)
 
@@ -86,7 +88,7 @@ The gate records a per-phase PASS and holds the spec at `GATE` — it never writ
 
 - **Resume at GATE (Phase 0):** if the phase's PR is already merged, the feature needs the reset above — say so and stop; do not re-run the gate (re-gating a merged phase is a no-op loop).
 - **Phase 5:** a merged `PR:` on a non-final plan names the *previous* phase. Never force-advance `stage: GATE` from it; treat stale `PR:`/`Branch:` as leftovers to clear.
-- **Phase 7/8:** on a per-phase PASS, skip the `feature_done` metric, run the merge stop as usual, and do not "fix" the `gate` label or `GATE` stage — both are deliberate until the operator performs the reset.
+- **Phase 7/8:** on a per-phase PASS, skip the `feature_done` metric, run the merge stop as usual (including its `authorize merge` stand-in), and do not "fix" the `gate` label or `GATE` stage — both are deliberate until the operator performs the reset.
 
 ## Subagent usage
 
@@ -146,7 +148,7 @@ If neither layout exists, tell the user to invoke the installed `hivesmith-init`
    - `IMPLEMENT` → Phase 5
    - `REVIEW` → Phase 6
    - `GATE` → Phase 7. **Non-final phase with an already-merged PR:** the feature needs the phase-N+1 reset — see **Non-final phases**. Say so and stop rather than re-running the gate.
-   - `DONE` → check the spec's `pr:`. If it names a PR still in state `OPEN`, the gate passed but the merge has not happened yet (the merge stop was declined, or the run was interrupted after the gate) — resume at Phase 8's merge stop to finish it. Only report completed and stop when the PR is `MERGED`, or when there is no `pr:` at all.
+   - `DONE` → check the spec's `pr:`. If it names a PR still in state `OPEN`, the gate passed but the merge has not happened yet (the merge stop was declined, or the run was interrupted after the gate) — resume at Phase 8's merge stop (step 51, which tries `authorize merge` first) to finish it. Only report completed and stop when the PR is `MERGED`, or when there is no `pr:` at all.
 
 ## Phase 1: New issue (description input only)
 
@@ -241,7 +243,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     3. **Blast radius:** grep for what else the change touches — docs, templates, cross-references, pending changesets — and add what the plan forgot.
     4. **Runaway holes:** name any path where the implementation could deadlock, silently skip work, or run away.
 
-31. **Get a second opinion before the operator sees the plan.** **Fast lane:** skip this step when the plan names fewer than 3 files to change and the change is not user-visible — write the plan's `## Second opinion` section as `Skipped — fast lane (S, <n> files, not user-visible); drafter self-check passed.` and emit no `second_opinion` metric (the absence is the skip; the plan section is the record). Otherwise — and always in the full lane — use the host's agent/subagent tool for an independent reviewer when available, adapting to its schema. If none is available, perform a separately labeled adversarial self-review using the same `must_fix` / `nice_to_have` structure, record `No independent second opinion — this host has no agent/subagent tool`, and do not emit a `second_opinion` metric as if an independent worker ran. Do not describe this self-review as independent. Any dispatched worker prompt must be self-contained — it has no view of this conversation. Template:
+31. **Get a second opinion before the operator sees the plan.** **Fast lane:** skip this step when the plan names fewer than 3 files to change, the change is not user-visible, and `~/.hivesmith/bin/hs-decision authorize plan --probe` does not exit 0 — write the plan's `## Second opinion` section as `Skipped — fast lane (S, <n> files, not user-visible); drafter self-check passed.` and emit no `second_opinion` metric (the absence is the skip; the plan section is the record). Otherwise — and always in the full lane — use the host's agent/subagent tool for an independent reviewer when available, adapting to its schema. If none is available, perform a separately labeled adversarial self-review using the same `must_fix` / `nice_to_have` structure, record `No independent second opinion — this host has no agent/subagent tool`, and do not emit a `second_opinion` metric as if an independent worker ran. Do not describe this self-review as independent. Any dispatched worker prompt must be self-contained — it has no view of this conversation. Template:
 
     > You are giving a second opinion on ONE implementation plan inside the `/feature-loop` pipeline. You have no view of the parent conversation; everything you need is on disk.
     >
@@ -297,7 +299,20 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 
     `applied_count` is the honest half of the pair: an item you judged wrong and did not apply is a recorded outcome, not a failure to record. For a `block` (never auto-applied) and for an `approve`, `applied_count` is `0`. If reviewer output is malformed, record that fact in the plan section and skip the metric rather than inventing a verdict or a schema-valid confidence.
 
-33. **[The plan stop]** Present the plan, with its second opinion, for approval:
+33. **[The plan stop]** **First, try the record stand-in.** Skip this when no independent second opinion returned a parseable verdict. Otherwise run:
+
+    ```bash
+    printf '%s\n' <every path under Files to change and New files> | ~/.hivesmith/bin/hs-decision authorize plan \
+      --complexity <S|M|L> --verdict <approve|revise|block> --confidence <n> \
+      --must-fix <n> --conflicts <n> --files -
+    ```
+
+    `--conflicts` counts the `conflicts with docs/decisions/` flags raised at triage and in the second opinion.
+
+    - **Exit 0** — the record stands in. Its stdout is `authorized: <id> (docs/decisions/<file>)`: `<slug>` below is that `<id>`, and `<file>` is the parenthesised path's file name. Do not present the plan. Step 34 still runs in full: sections written, records proposed, and `stage: IMPLEMENT` as the last write. Use `plan_approved --field rounds=1 --field via=record` with no `seconds_to_approval`. Also emit `HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event auto_approved --field feature=<NNN> --field stop=plan --field record=<slug>`, and append `plan auto-approved by docs/decisions/<file> (hs-decision authorize plan)` to the Decision log.
+    - **Any other exit, or the helper missing** — this is an escalation. Present the stop below and lead it with the `escalate:` line, or with `no record stand-in: hs-decision not installed`.
+
+    Otherwise present the plan, with its second opinion, for approval:
     - **Fast lane — inline text.** The plan is short by definition: present it under a `### Draft plan for review` heading with a single approve / revise / stop question. No `plan-html`, no native plan mode. Iterate on `revise` until approved.
     - **Full lane — default: HTML plan via `plan-html`.** Follow the **Canonical call sequence** in `skills/plan-html/SKILL.md` verbatim — guard, fallback chain, render, serve, **wait**, stop. Iteration is driven by blocking on `wait.sh` (sequence step 5), never by an unassisted poll: exit `0` is approval, `10` delivers `<plan>.feedback.json` for a revise round (re-render to the same path with `changed: true` on affected sections), `11` means call it again. Keep iterating until approved or the operator cancels in chat. Opt out with `HIVESMITH_PLAN_HTML=0` or `--no-html`.
     - **Full lane — fallback: native plan mode** when the runtime has one (e.g. Claude Code's `EnterPlanMode` / `ExitPlanMode`).
@@ -308,7 +323,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event plan_approved \
       --field feature=<NNN> --field rounds=<re-render count, 1 if approved first pass> \
       --field seconds_to_approval=<wall seconds since the first start.sh; OMIT the flag entirely on the native-plan-mode and chat paths, which have no start.sh to measure from — never estimate it> \
-      --field via=<html|native-plan-mode|chat>
+      --field via=<html|native-plan-mode|chat|record>
     ```
 
     Then write the Approach, Files to change, New files, Tests, Verification and `## Second opinion` sections into the exec plan. Write order matters: all non-stage writes first, then set the spec frontmatter `stage: IMPLEMENT` as the **last** write (emitting `~/.hivesmith/bin/hs-metric --event stage_transition --field feature=<NNN> --field from=PLAN --field to=IMPLEMENT` alongside it). **Do not edit `docs/product-specs/index.md`.** **Legacy layout only:** update the `features/BACKLOG.md` row.
@@ -363,7 +378,7 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 45. Run the `merge-gate` workflow for `<issue-number>`. Use host-native skill chaining if it can run the workflow now; otherwise load and follow the installed `merge-gate/SKILL.md` instructions in this conversation. Do not assume emitting `/merge-gate` executes it. That skill validates the **still-open** PR against the spec's `## Success criteria` and `## Non-goals` plus doc accuracy, writes a `## Gate verdict` entry to the plan, and decides PASS / FAIL / NEEDS_FOLLOWUP. It does not re-run build/lint/test — Phase 5 and CI already own those — and it never merges.
 46. **On PASS (final phase, or no `Phase:` declared):** `/merge-gate` sets `Status: completed` in the plan, moves it to `completed/`, writes `pr:` + `shipped:`, advances the spec frontmatter `stage: DONE`, then commits and pushes to the feature branch. All that bookkeeping ships inside the feature PR. Continue to Phase 8.
 
-    **On PASS with a non-final phase** (`Phase: N of M`, `N < M`): see **Non-final phases** — the gate records a per-phase PASS with `phase: N/M`, commits and pushes that verdict, and deliberately writes **no** DONE bookkeeping; the spec stays at `GATE`. Continue to Phase 8 anyway: the PR is real and meant to merge, and the merge stop is still the operator's call. Skip the `feature_done` metric (step 49) and report the phase-N+1 reset in the summary. The feature is not finished, so do not describe it as such.
+    **On PASS with a non-final phase** (`Phase: N of M`, `N < M`): see **Non-final phases** — the gate records a per-phase PASS with `phase: N/M`, commits and pushes that verdict, and deliberately writes **no** DONE bookkeeping; the spec stays at `GATE`. Continue to Phase 8 anyway: the PR is real and meant to merge, and the merge stop still runs (the operator, or a record through `authorize merge`). Skip the `feature_done` metric (step 49) and report the phase-N+1 reset in the summary. The feature is not finished, so do not describe it as such.
 47. **On FAIL:** the PR is still open, so the fix belongs in it. Surface the failing criteria, fix them on the branch (re-running the `AGENTS.md` checks from Phase 5 before committing), push, and run the `merge-gate` workflow again by its installed `SKILL.md` instructions or the host's native skill-call mechanism **once**. If it fails a second time, stop and report — do not keep looping.
 48. **On NEEDS_FOLLOWUP:** surface `/merge-gate`'s decision and stop. Do not loop.
 
@@ -393,12 +408,31 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
 
     The body is read from **stdin**. Use the **quoted** heredoc above (`<<'LESSON'`, quotes required) rather than `echo "..."`: the lesson text is composed after reading untrusted spec, issue and brain content, and an unquoted double-quoted string would let `$(...)` or backticks in it execute. Every other brain-append call site uses the same form. It follows `templates/brain/SCHEMA.md`: a `# Title`, then `**Lesson:**`, `**Why:**`, `**How to apply:**`. No code dumps — the redactor rejects code fences over 25 lines. Set `--valid-until` when the lesson is tied to a version or a deadline. Scope is always `project`; broadening it is gated behind `/brain-promote`.
 
-51. **[The merge stop]** Use AskUserQuestion, showing the PR link, the latest `## Gate verdict` entry, and the last `## PR convergence ledger` line:
+51. **[The merge stop]** **First, try the record stand-in.** This applies on any PASS, final or per-phase.
+    1. Check out the PR head (`gh pr checkout <pr-number>`). Leave the tree clean: commit or discard nothing on the operator's behalf.
+    2. Read `gh pr view <pr-number> --json headRefOid,baseRefName`.
+    3. Confirm the gate passed on this exact head: `git log -1 --format=%s <headRefOid>` must start with `chore: gate pass` (the commit `/merge-gate` writes on PASS). This matters most on a `DONE` resume, where anything pushed after the gate would otherwise reach the merge ungated. If it does not match, skip the stand-in and escalate with `escalate: PR head <headRefOid> is not the gate-pass commit; re-run /merge-gate`.
+    4. Require green CI on both sides. A record never merges on red, pending, or missing CI:
+       - **The PR head:** `gh pr checks <pr-number> --watch --interval 15` must exit 0. A failed or cancelled check, or no checks at all, is not green.
+       - **The base:** for each workflow, the newest completed run on `<baseRefName>` (`gh run list --branch <baseRefName> --limit 30 --json workflowName,status,conclusion`) must have concluded `success`. A red base means the PR's own green run proves less, so it escalates too.
+
+       Otherwise skip the stand-in and escalate with `escalate: CI not green: <check or workflow> (<state>)`.
+    5. Run `~/.hivesmith/bin/hs-decision authorize merge --head <headRefOid> --pr-base <baseRefName>`.
+
+    - **Exit 0** — stdout is `authorized: <id> (docs/decisions/<file>)`; `<slug>` below is that `<id>` and `<file>` the parenthesised file name. Run `gh pr merge <pr-number> --squash --delete-branch --match-head-commit <headRefOid>`, then confirm `gh pr view <pr-number> --json state -q .state` is `MERGED`. **Only after that:**
+      - comment with `gh pr comment <pr-number> --body "Auto-merged under docs/decisions/<file> (accepted on <baseRefName>). Gate: PASS; decision records: PASS."`;
+      - emit `HIVESMITH_SKILL=hs-feature-loop ~/.hivesmith/bin/hs-metric --event auto_approved --field feature=<NNN> --field stop=merge --field record=<slug> --field pr=<pr-number>`;
+      - skip the question and step 52.
+
+      If the merge is refused, only enqueued, or not `MERGED`, fall through to the question below, and report nothing as auto-merged.
+    - **Any other exit, or the helper missing** — this is an escalation. Show the `escalate:` line, then:
+
+    Use AskUserQuestion, showing the PR link, the latest `## Gate verdict` entry, the last `## PR convergence ledger` line, and the CI state from item 4 (name any check or base workflow that is not green):
     > "Review converged and the gate passed. Merge the PR now?"
     > 1. Yes — merge with `gh pr merge --squash`
     > 2. No — leave the PR open (stage stays DONE on the branch until it lands; on a non-final phase it stays GATE)
 
-    This is never automatic. There is no signal — clean ledger, PASS verdict, green CI — that lets the loop merge on its own.
+    Outside `hs-decision authorize merge` exiting 0, there is no signal — clean ledger, PASS verdict, green CI — that lets the loop merge on its own.
 52. If yes, run `gh pr merge <pr-number> --squash --delete-branch` (or the project's merge convention from `AGENTS.md`). On a **final-phase** PASS no label write is needed — `/merge-gate` already swapped `gate` → `gate-passed` — and no stage write is needed either, because the gate already set `stage: DONE` and it lands with the merge. **On a non-final phase neither happened** — see **Non-final phases**: do not "fix" the `gate` label or `GATE` stage, and the route to phase N+1 is the manual reset, which step 46 already told the operator to make. The `regenerate-generated` job rebuilds `docs/product-specs/index.md` on push to `main` and moves the row into the Completed table on its own.
 
 ## Phase 9: Summary
@@ -407,13 +441,14 @@ Skipped when resuming, and skipped when the research surfaced no genuine ambigui
     - Feature: #<issue-number> — <title>
     - Stages completed this run (e.g. "RESEARCH → PLAN → IMPLEMENT → REVIEW → GATE → DONE")
     - PR link and whether it merged
+    - Each stop a record stood in for, as `auto-approved <plan|merge> by docs/decisions/<file>`, or `no record stand-ins`
     - Gate verdict
     - The lesson captured, or "no durable lesson this run"
 
 ## Rules
 
-- **The loop pauses at two approval gates: plan approval and merge.** Everything else proceeds on its own. One further prompt exists under the `ask` issue-creation policy; the two clarifying rounds and the Phase 1 under-specified refusal gather input or stop the run without approving anything.
-- **The merge is never automatic.** No combination of signals authorizes `gh pr merge` without a human answering the merge stop.
+- **The loop pauses at two approval gates: plan approval and merge.** An accepted record can stand in for either, but only through `hs-decision authorize` exiting 0; anything else escalates to the operator. Everything else proceeds on its own. One further prompt exists under the `ask` issue-creation policy; the two clarifying rounds and the Phase 1 under-specified refusal gather input or stop the run without approving anything.
+- **The merge needs the operator's answer or `hs-decision authorize merge` exit 0.** No other combination of signals authorizes `gh pr merge`, and an authorized merge always uses `--match-head-commit`.
 - **One feature at a time.** Do not process multiple features in a single run.
 - **Stalls get one bounded retry, then stop.** See **Stall handling**. Never advance a stage on weak signal, and never retry a retry.
 - **Never bypass a failed check.** A failing `AGENTS.md` command halts the run after its single retry, regardless of how far along the pipeline is.

@@ -13,7 +13,7 @@ Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → 
 
 **PR convergence:** `/review-loop` drives review → autofix → re-review on any PR until findings clear or escalation criteria hit. Independent of the feature pipeline. When a matching exec plan exists, review-loop appends per-iteration entries to the plan's `## PR convergence ledger` so a fresh harness run can resume mid-loop.
 
-**Pre-merge gate:** `/merge-gate` checks the open PR against the spec's `## Success criteria` and `## Non-goals` plus doc accuracy. It does **not** re-run build/lint/test — `/feature-implement` runs those before the commit and CI runs them on every push. PASS advances Stage → DONE, moves the plan to `completed/`, and commits that bookkeeping to the **feature branch**, so a feature ships in one PR instead of a follow-up chore PR. A plan declaring a non-final `Phase: N of M` (`N < M`) is the exception: the gate records a per-phase PASS and holds the spec at `GATE` instead. FAIL holds at GATE and the fix goes into the same PR; it files no follow-up issues, because nothing has shipped yet.
+**Pre-merge gate:** `/merge-gate` checks the open PR against the spec's `## Success criteria` and `## Non-goals`, plus doc accuracy and compliance with the accepted decision records. It does **not** re-run build/lint/test — `/feature-implement` runs those before the commit and CI runs them on every push. PASS advances Stage → DONE, moves the plan to `completed/`, and commits that bookkeeping to the **feature branch**, so a feature ships in one PR instead of a follow-up chore PR. A plan declaring a non-final `Phase: N of M` (`N < M`) is the exception: the gate records a per-phase PASS and holds the spec at `GATE` instead. FAIL holds at GATE and the fix goes into the same PR; it files no follow-up issues, because nothing has shipped yet.
 
 **Feedback loop tooling:** `/feedback-loop audit` scores the app's production-feedback loop on six dimensions (instrumentation, error visibility, user voice, metrics, triage cadence, closure of loop) and writes a date-stamped report under `docs/design-docs/`. `/feedback-loop design` proposes fixes for low-scoring dimensions and auto-creates TRIAGE specs to track them.
 
@@ -32,7 +32,7 @@ Canonical lifecycle: `TRIAGE → RESEARCH → PLAN → IMPLEMENT → REVIEW → 
 - `docs/exec-plans/active/` — what's being built right now (decision logs append-only).
 - `docs/exec-plans/completed/` — what was built (preserved for future agent runs).
 - `docs/design-docs/` — non-obvious architectural decisions.
-- `docs/decisions/` — decision records (`hs-decision`): repo-wide decisions agents check plans, issues and ideas against. Agents propose; only the operator accepts.
+- `docs/decisions/` — decision records (`hs-decision`): repo-wide decisions agents check plans, issues and ideas against. Agents propose; only the operator accepts. An accepted record can stand in for the plan or merge stop, only through `hs-decision authorize` exiting 0.
 - `docs/references/` — external docs pulled in for agent context.
 - `golden-principles.md` — mechanical rules `/gc-sweep` enforces.
 

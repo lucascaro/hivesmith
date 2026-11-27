@@ -194,8 +194,11 @@ def main() -> int:
     iters = {k: iters[k] for k in sorted(iters, key=fnum)}
     gates = [1.0 if e.get("verdict") != "PASS" else 0.0
              for e in sorted(by["gate_verdict"], key=lambda e: fnum(e.get("feature")))]
+    # A record-approved plan had no review rounds; counting it as 1 would read
+    # as the operator approving first time.
     rounds = [e.get("rounds", 1)
-              for e in sorted(by["plan_approved"], key=lambda e: fnum(e.get("feature")))]
+              for e in sorted(by["plan_approved"], key=lambda e: fnum(e.get("feature")))
+              if e.get("via") != "record"]
 
     if iters or gates or rounds:
         print("\nTREND — are the skills getting better?")
@@ -206,6 +209,15 @@ def main() -> int:
         f, l = half_split(rounds)
         print(trend("plan approval rounds", f, l))
         print(" (directional only — small n, unrandomised. Do not read a p-value into this.)")
+
+    # ---- records standing in for the operator (#99) -------------------------
+    auto = by["auto_approved"]
+    if auto:
+        stops = defaultdict(int)
+        for e in auto:
+            stops[e.get("stop")] += 1
+        print("\nAUTO-APPROVED BY RECORD — operator stops a decision record stood in for")
+        print(f" plan stop: {stops['plan']}   merge stop: {stops['merge']}")
 
     # ---- second opinion -----------------------------------------------------
     so = by["second_opinion"]

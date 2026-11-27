@@ -2,10 +2,10 @@
 
 - **Spec:** [docs/product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md](../../product-specs/099-add-decision-records-and-a-correction-loop-so-agen.md)
 - **Issue:** #99
-- **Status:** active
-- **PR:** #102
-- **Branch:** feature/99-decision-records-p2
-- **Phase:** 2 of 3
+- **Status:** completed
+- **PR:** #103
+- **Branch:** feature/99-decision-records-p3
+- **Phase:** 3 of 3
 
 ## Summary
 
@@ -95,12 +95,6 @@ Conventions this feature touches:
 - **An exception to a contract must reach every restatement of it.** Adding an exception to "never automatic" means updating the question text at the merge stop, the label and stage writes, and the "no write needed" justifications, not just the headline rule. That covers feature-loop :61/:382/:397, merge-gate :159, review-loop :300 and pr-queue :331.
 - **A skill change cannot verify itself in the session that makes it.** Installed skills come from main. Gate criteria should be offline-checkable (test scripts). "A real run produces records" belongs in a post-merge follow-up, or is tested via `scripts/dev-link-local.sh` plus a restart.
 - A reversed decision tends to leave stale comments behind. Supersession needs a cleanup pass (title only; entry not opened).
-- 2026-11-24 — Review iter 3 escalated: lint/die echoed untrusted record values raw. Operator chose to apply the fix: `die` and lint's `p` strip control bytes at the shared output point (covers every message), with test `lint_strips_control_chars`.
-- **2026-11-24** — verdict: PASS; phase: 2/3; checks: 8 passed / 0 failed / 0 followups / 1 deferred; followups: none; one-line: phase 2 (slug ids, prune with link clearing, doc-garden drift pass, correction loop with forbid/paths regression check) delivered; C5 deferred to phase 3.
-  - 2026-11-24 dimensions:
-    - acceptance — PASS — C4, C7, C8, C9 shown by decision-test (113 checks: check_fails_after_accept, lint_flags_duplicate_slug_across_dates, prune_* tests), correction paragraph in AGENTS.md and template, doc-garden signal 6; C1–C3, C6 still hold; C5 DEFERRED (phase > 2)
-    - non-goals — PASS — no agent accept/supersede, no history mining, brain untouched, no scheduler/coordinator; no phase-3 auto-approve or auto-merge
-    - doc accuracy — PASS — README, docs/decisions and template copies (byte-identical), changesets, AGENTS and CI lists match decision.sh; committed CHANGELOG.md is regenerated after merge (verify-generated green)
 
 ## Approach
 
@@ -398,6 +392,240 @@ Phase 3 (not in this PR) covers the approval stand-in: plan auto-approve, auto-m
 - The operator approved through the HTML plan review, with no feedback. That approval includes the C4 rewording in Approach 4.
 
 
+## Phase 3 plan
+
+Phase 3 of 3: records stand in for the plan and merge stops through `hs-decision authorize`, and C5 escalation.
+
+### Operator answers (2026-11-25)
+- **Merge eligibility:** the operator's own wording was "merge-gate, and ADR compliance should be explicitly checked." A PR whose gate passed may auto-merge when an accepted record allows auto-merge and the PR is explicitly checked against the accepted records. There is no path scope for merges.
+- **Plan auto-approve:** allowed when all of these hold:
+  - the feature is complexity S;
+  - the second opinion is `approve` with confidence ≥8;
+  - there are 0 must-fix items and 0 conflict flags;
+  - every file the plan changes matches the record's `plan_paths:`.
+- **C5 proof:** scratch-repo tests of the script. A live run is a follow-up after merge.
+- **Reporting:** each auto-approval posts a PR comment (for merges), emits an `auto_approved` metric, and adds a line to the summary.
+- **Extra protected paths:** yes. Records can list more protected paths with `merge_exclude:`.
+
+### Approach
+
+**1. `hs-decision authorize plan|merge` is the exit-0 script.**
+
+Exit codes:
+- 0: authorized. Prints `authorized: <slug> (docs/decisions/<f>)`.
+- 1: not authorized. Prints `escalate: <reason>`.
+- 2: could not evaluate. Also escalate.
+- 64: bad input.
+
+Callers treat any non-zero exit as "go to the operator stop".
+
+**Trust anchor: what is accepted on the default branch at origin, fetched now.** `authorize` takes no `--base` flag. It runs these steps, in order:
+1. **Resolve the default branch name from the remote:** `git ls-remote --symref origin HEAD`. A failure is exit 2. There is no local symbolic-ref and no main/master fallback, because a local ref goes stale after a rename and an agent can re-point it.
+2. **Fetch:** `git fetch --quiet origin <name>`. A failed fetch is exit 2.
+3. **Pin the base once:** `base=$(git rev-parse --verify FETCH_HEAD^{commit})`. Every later read (`ls-tree`, `show`, `merge-base`) uses `$base`, so a concurrent fetch can't mix commits. A stale or hand-moved `refs/remotes/origin/*` is never trusted, so a supersede or delete upstream takes effect at the next authorize.
+4. **Extract the records:**
+   - `git ls-tree -z "$base" docs/decisions/` keeps only regular blobs (100644/100755), which skips symlinks and submodules.
+   - Each name must match the `records()` glob.
+   - Each record is written with `git show` into a temp dir held in a **global** `AUTH_TMP`, with an `EXIT` trap that is safe under `set -u` on bash 3.2.
+   - `DIR` is repointed at that temp dir, so `records()`, `with_slug` and `check_one` see only base records, never the worktree's.
+
+**Path hygiene for both stops.** Every listed path is validated before any check:
+- **Rejected (exit 64):**
+  - an empty entry;
+  - a leading `/`;
+  - any `..` segment;
+  - pathspec magic: a leading `:`;
+  - control bytes.
+- **Normalized:** a leading `./` is stripped, and `//` is collapsed.
+- **Protected-path test:** case-insensitive match against the built-in `docs/decisions/` and `scripts/decisions/`, plus the union of `merge_exclude:` across **all** accepted base records. `merge_exclude:` holds comma-separated globs with the same semantics as `plan_paths`. A union means no record can narrow another's exclusion. The README recommends this repo's merge record list `skills/`, `.github/workflows/` and `AGENTS.md`.
+
+**Record keys:** `authorizes:` matches exact comma-separated tokens after trimming spaces.
+- `plan`, `merge` and `plan, merge` are valid.
+- `nomerge` is not, and neither is `merge\r`: CR is not trimmed, so CRLF records fail closed.
+- `authorize` never assumes the base passed lint.
+
+**`plan_paths:`** is a set of comma-separated globs, matched with bash `case` under `set -f`. `*` crosses `/`. A trailing `/` means a directory prefix. Leading `:` magic is rejected. Lint flags:
+- `authorizes: plan` without `plan_paths:`;
+- a whole-repo scope (`*`, `**`, `.`, `/`);
+- an unknown `authorizes` token.
+
+**`authorize merge --head <sha> --pr-base <branch>`** exits 0 only when all of these hold. Each failing case prints its own `escalate:` reason.
+1. `--pr-base` equals the resolved default branch.
+2. The worktree is clean (`git status --porcelain` is empty, including untracked files), and `HEAD` equals `--head`. The tree that is checked is the tree GitHub will merge.
+3. An accepted base record has the `merge` token.
+4. **Changed files are computed by the script, not passed in:**
+   - `mb=$(git merge-base "$base" HEAD)`. A failure, such as a shallow clone, is exit 2.
+   - `git diff -z --name-only --no-renames "$mb" HEAD`, read NUL-delimited, so non-ASCII names are never quoted past the prefix test.
+   - With `--no-renames`, a move or delete shows up as touching its old path.
+   - An empty diff is exit 2.
+   - Any protected path is exit 1.
+5. **ADR compliance, the mechanical part:** each accepted base record's `forbid:` check runs through `check_one` against the clean HEAD tree.
+   - A hit is exit 1.
+   - When `check_one` returns 2 (for example, `paths:` matching nothing), authorize returns exit 2. It is never treated as clean.
+
+**`authorize plan --complexity <S|M|L> --verdict <v> --confidence <n> --must-fix <n> --conflicts <n> --files -`** exits 0 only when all of these hold:
+- An accepted base record has the `plan` token.
+- complexity is `S`, the verdict is `approve`, confidence is ≥8, and must-fix and conflicts are both 0.
+- The stdin file list is not empty (empty or unreadable is exit 2).
+- No listed path is protected.
+- Every path matches the `plan_paths` of one single plan record (no union across records). The matching slug is printed.
+
+**`authorize plan --probe`** exits 0 if any accepted base record has the `plan` token. If its fetch fails, the fast lane silently skips the forced second opinion. Fast lane uses it (below). Numbers are validated as non-negative integers (exit 64).
+
+**2. ADR compliance becomes a fourth merge-gate dimension, `decision records`.** It runs on every gate, not only for auto-merge.
+- **Mechanical part:** `hs-decision check`.
+  - A hit in a file the PR changed (`git diff --name-only main...HEAD`) is a FAIL.
+  - A hit only in untouched files was there before this PR. It is noted, not failed, so the gate isn't stuck on a violation the PR didn't add.
+  - Exit 2, meaning check could not run, is NEEDS_FOLLOWUP, never PASS.
+- **Judgment part:** read the PR diff against up to 5 relevant accepted records from `hs-decision list`. A contradiction is reported as `conflicts with docs/decisions/<f>: <why>` and is a FAIL.
+- **When `hs-decision` is not installed:** PASS only when `docs/decisions/` holds no `status: accepted` record. Otherwise NEEDS_FOLLOWUP.
+- **Overall verdict:** the dimension joins the overall rule, the verdict line template, the gate metric, and `hs-validator`.
+
+**3. Wiring in `/feature-loop`.**
+- **Fast lane (step 31):** run the second opinion whenever `hs-decision authorize plan --probe` exits 0, even for an S plan that would skip it. Auto-approve needs an `approve` verdict, so this makes the operator's thresholds reachable without changing them.
+- **Plan stop (step 33):** before presenting, pipe the plan's Files-to-change plus New-files paths into `authorize plan`, along with the second opinion's values.
+  - **Exit 0:** skip the stop. **Step 34 still runs in full**: the plan sections are written, records are proposed, and `stage: IMPLEMENT` is the last write.
+    - Emit `plan_approved rounds=1 via=record`, with `seconds_to_approval` omitted.
+    - Emit `auto_approved stop=plan record=<slug>`.
+    - Append a Decision log line: `plan auto-approved by docs/decisions/<f>`.
+  - **Non-zero:** the normal stop, led by the `escalate:` line. This is the C5 behaviour.
+- **Merge stop (step 51), and the DONE-with-OPEN-PR resume at step 3:**
+  - Check out the PR head and run `hs-decision authorize merge --head <headRefOid> --pr-base <baseRefName>`.
+  - **Exit 0:**
+    1. Run `gh pr merge <pr> --squash --delete-branch --match-head-commit <sha>`.
+    2. **Only on success:** post a PR comment, `Auto-merged under docs/decisions/<f> (accepted on <branch>). Gate: PASS; decision records: PASS.`; emit `auto_approved stop=merge record=<slug> pr=<n>`; and add a summary line.
+    3. On a refused or enqueued merge, fall back to the operator merge stop.
+  - **Non-zero:** the usual question, with the `escalate:` reason shown.
+- **Restatements updated:**
+  - feature-loop :13, :56-61, :81 ("two approval gates are the same in both lanes"), :89, :149, :366, :401, :416 and :422;
+  - merge-gate :3 (description), :66 ("Three dimensions") and :134;
+  - feature-implement :71;
+  - review-loop :300;
+  - `agents/hs-validator.md:3`;
+  - `README.md:42`;
+  - `AGENTS.md:42` (gate dimensions) and `:60` (`auto_approved` emitter), plus `templates/AGENTS.hivesmith.md`;
+  - `tests/manual/brainstorm-smoke.md:57`: keep the phrase "two approval gates" three times, or update the count.
+
+  merge-gate's "never merge from this skill" stays true. pr-queue is unchanged: it handles inbound PRs, which are out of scope.
+
+**4. Metrics.**
+- **New event** `auto_approved`. Required fields: `feature`, `stop` (`plan|merge`) and `record`. Optional: `pr`.
+- `plan_approved.via` gains `record`.
+- `gate_verdict` gains an optional `decision_records` field (DIMENSION enum).
+- `scripts/metrics/backfill.py` `DIM_FIELD` gains `"decision records": "decision_records"`, so the new dimension line is not filed as `legacy_dimension`.
+- `report.py`'s "plan approval rounds" trend leaves out `via=record`.
+- `scripts/metrics/README.md` lists the new event.
+
+### Files to change
+1. `scripts/decisions/decision.sh`
+   - `cmd_authorize`, `default_branch`, `fetch_base`, `base_records` (global temp dir, trap, `DIR` repoint);
+   - `norm_path` / `protected_path` / `in_plan_paths`;
+   - token matching for `authorizes`;
+   - lint for `authorizes`/`plan_paths`;
+   - help text (the range at :442) and usage, with exit codes documented.
+2. `scripts/decisions/decision-test.sh` — the authorize section (Tests) and the lint tests.
+3. `scripts/metrics/emit.sh`, `scripts/metrics/emit-test.sh`.
+4. `scripts/metrics/backfill.py`, `scripts/metrics/backfill-test.sh`; `scripts/metrics/report.py`; `scripts/metrics/README.md`.
+5. `skills/feature-loop/SKILL.md` — steps 3, 31, 33, 34, 51 and 52, the rules, the summary, and the restatements above.
+6. `skills/merge-gate/SKILL.md` — the 4th dimension, overall verdict, template, metric and description; `agents/hs-validator.md`.
+7. `skills/review-loop/SKILL.md`, `skills/feature-implement/SKILL.md` — wording.
+8. `docs/decisions/{README,_template}.md` and `templates/docs/decisions/{README,_template}.md` (identical) — document `authorizes`/`plan_paths`, `authorize`, the trust anchor, protected paths and the glob semantics. The template gets no live placeholder keys.
+9. `README.md`, `AGENTS.md`, `templates/AGENTS.hivesmith.md`, `tests/manual/brainstorm-smoke.md`.
+10. `tests/skill-portability-test.sh` — `has` assertions for `authorize plan`, `authorize merge`, `--match-head-commit`, and the decision-records dimension.
+11. `docs/product-specs/099-…md` — clear the stale `pr: 102` and settle the "low-risk" open question in Notes.
+
+### New files
+- `.changesets/101-decision-records-phase-3.md` — `issue: 99`, `type: added`, `bump: minor`. It notes that the two operator stops can now be stood in for by an accepted record, which reverses 064's "exactly two operator stops". Spec 064 is not edited; it is a historical record.
+
+### Tests
+
+`scripts/decisions/decision-test.sh`. Scratch repo: `origin` is a bare repo, and the PR branch is checked out and committed.
+- **Fixture:** a `pass_merge` fixture and a `pass_plan` fixture that exit 0. Every negative test flips **exactly one** condition from its passing fixture and asserts both the exit code and its specific `escalate:` or error text. A test that only checks the exit code would pass on main, where `authorize` dies with 2 as an unknown command.
+- **Merge, the C5 proof:**
+  - `authorize_merge_accepted_on_origin_exit0` (prints the record path);
+  - `..._no_record_escalates`;
+  - `..._proposed_record_escalates`;
+  - `..._branch_only_acceptance_escalates`;
+  - `..._revoked_on_origin_escalates`: the record is superseded on the bare origin after the local fetch;
+  - `..._stale_local_origin_ref_ignored`.
+- **Merge, scope and tree:**
+  - `..._touching_decisions_escalates`;
+  - `..._touching_decision_script_escalates`;
+  - `..._move_out_of_decisions_escalates`;
+  - `..._delete_in_decisions_escalates`;
+  - `..._case_variant_protected_path_escalates`;
+  - `..._dirty_worktree_escalates`;
+  - `..._untracked_file_escalates`;
+  - `..._head_mismatch_escalates`;
+  - `..._pr_base_not_default_escalates`;
+  - `..._forbid_hit_escalates`;
+  - `..._forbid_paths_match_nothing_exits_2`;
+  - `..._non_ascii_decisions_path_escalates`;
+  - `authorize_merge_exclude_hit_escalates`;
+  - `authorize_merge_exclude_from_other_record_applies`;
+  - `authorize_plan_merge_exclude_does_not_apply`: plan scope is `plan_paths` only;
+  - `authorize_stale_origin_head_after_rename_uses_remote_default`;
+  - `authorize_merge_base_failure_exits_2`;
+  - `..._empty_diff_exits_2`;
+  - `authorize_fetch_failure_exits_2`.
+- **Tokens:**
+  - `authorize_tokens_plan_comma_space_merge_exit0`;
+  - `authorize_token_nomerge_escalates`;
+  - `authorize_crlf_record_escalates`.
+- **Plan:**
+  - `authorize_plan_all_conditions_exit0`;
+  - `..._complexity_m_escalates`;
+  - `..._verdict_revise_escalates`;
+  - `..._confidence_8_exit0` and `..._confidence_7_escalates`;
+  - `..._must_fix_escalates`;
+  - `..._conflict_escalates`;
+  - `..._file_outside_scope_escalates`;
+  - `..._touching_decisions_escalates`;
+  - `..._merge_only_record_escalates`;
+  - `..._empty_files_exits_2`;
+  - `..._probe_exit0_with_plan_record` and `..._probe_escalates_without`.
+- **Path hygiene:**
+  - `authorize_rejects_dotdot_path_64`;
+  - `..._rejects_absolute_path_64`;
+  - `..._rejects_pathspec_magic_64`;
+  - `..._dot_slash_protected_path_escalates` (`./scripts/decisions/x`).
+- **Input and lint:**
+  - `authorize_bad_number_exits_64`;
+  - `authorize_unknown_stop_exits_64`;
+  - `lint_rejects_bad_authorizes`;
+  - `lint_requires_plan_paths`;
+  - `lint_rejects_whole_repo_plan_paths`;
+  - `lint_rejects_magic_in_merge_exclude`.
+
+Metrics tests:
+- `scripts/metrics/emit-test.sh`:
+  - `auto_approved_valid`;
+  - `auto_approved_bad_stop_rejected`;
+  - `auto_approved_requires_record`;
+  - `plan_approved_via_record`;
+  - `gate_verdict_decision_records_optional`;
+  - `gate_verdict_decision_records_bad_value_rejected`.
+- `scripts/metrics/backfill-test.sh`: `backfill_maps_decision_records_dimension`.
+
+### Verification
+- `bash scripts/decisions/decision-test.sh` and `/bin/bash scripts/decisions/decision-test.sh` both pass. Every authorize assertion checks specific text, so it fails on main.
+- `bash scripts/metrics/emit-test.sh` and `bash scripts/metrics/backfill-test.sh` pass.
+- `bash tests/skill-portability-test.sh` passes.
+- `! grep -niE 'never automatic' skills/feature-loop/SKILL.md`. It matches today at :61, :401 and :416.
+- `grep -c 'two approval gates'` against the rendered feature-loop matches `tests/manual/brainstorm-smoke.md`.
+- The shellcheck list, script suites, `decision.sh lint && check` on the repo, install smoke, and the changelog gate.
+
+### Open questions / risks
+- **Agent-asserted plan inputs.** The second-opinion values come from the loop itself. The ceiling is the `plan_paths` scope plus S complexity. The merge still needs its own record or the operator.
+- **This PR merges at a human stop.** The installed skills come from main.
+- **Merging changes no behaviour until a record with `authorizes:` is accepted.**
+- **Untracked files block auto-merge.** A clean tree is required, so a consumer repo whose loop leaves unignored files can never auto-merge. This fails closed. The decisions README names the ignore entries an auto-merge record needs (`.plans/`, `.rendered/`, `graphify-out/`).
+
+### Second opinion
+- **Round 1:** revise, confidence 8, 20 must-fix items. All 20 were applied: no `--base`; fetch at authorize time; the script computes the diff; HEAD is pinned with `--match-head-commit`; path hygiene; check_one returning 2 escalates; exact tokens; a global trap; merge before reporting; the fast-lane probe; non-vacuous tests; and about 15 restatements, plus backfill and the smoke count.
+- **Round 2:** revise, confidence 8, 3 must-fix items, all applied after the round: NUL-delimited diff paths; the default branch from `ls-remote --symref`; FETCH_HEAD pinned to a SHA. These were not re-reviewed, because the skill caps the second opinion at two rounds. The round-2 nice-to-haves (merge-base failure, single-record `plan_paths`, the untracked-file note, probe fetch failure) were also applied.
+- Reviewer: an independent general-purpose agent. The duration in the round-1 metric is wrong (0s; actual ~259s).
+
 ## Decision log
 
 - **2026-11-21** — The spec was split out of the #98 brainstorm. The operator chose merge-by-record knowingly, reversing feature-loop's rule that merge is "never automatic".
@@ -424,6 +652,21 @@ Phase 3 (not in this PR) covers the approval stand-in: plan auto-approve, auto-m
 - **2026-11-24** — Operator, on review iteration 1: `prune --apply` clears every `supersedes:`/`superseded_by:` link to a record before deleting it, and lint goes back to rejecting a dangling `supersedes:`. Why: re-proposing a pruned title reused its slug and inherited a successor's link, which failed lint and CI. This reverses the fresh reviewer's "lint tolerates dangling" simplification.
 - **2026-11-24** — Operator: `propose` rejects any slug that starts with 8 digits. Why: `norm_slug` would strip those digits as a date prefix, making the record unaddressable or resolving to the wrong one.
 - **2026-11-24** — Operator, on review iteration 2: the prune success criterion is reworded to "never deletes accepted records; only clears links that point at the records it deletes".
+- **2026-11-24** — Review iter 3 escalated: lint/die echoed untrusted record values raw. Operator chose to apply the fix: `die` and lint's `p` strip control bytes at the shared output point (covers every message), with test `lint_strips_control_chars`.
+- **2026-11-25** — Phase 2 merged (#102, eeec4d0). Operator chose to reset to PLAN for phase 3 (approval stand-in + C5), since phase 3 has no plan yet.
+- **2026-11-25** — Phase 3Q answers (operator):
+  - Merge eligibility: merge-gate PASS plus an explicit ADR-compliance check. There is no path scope. Implemented as a 4th gate dimension plus `forbid:` checks of the base records inside `authorize merge`.
+  - Plan auto-approve: S complexity, a second opinion of approve with confidence ≥8, no must-fix items, no conflicts, and every file within one record's `plan_paths`.
+  - C5 proof: scratch-repo tests. A live run is a follow-up after merge.
+  - Reporting: a PR comment, an `auto_approved` metric and a summary line.
+  - Records can list more protected paths with `merge_exclude:`, unioned across all accepted records.
+- **2026-11-25** — Phase 3 plan approved via HTML (round 1, no notes, approved 10s after serve). Second opinion: two rounds, both revise at confidence 8. The 20 + 3 must-fix items were applied, and the round-2 fixes were not re-reviewed (cap of two rounds). The round-1 `second_opinion` metric row records `duration_s=0` by mistake; the reviewer actually took about 259s.
+- **2026-11-25** — proposed records: records-stand-in-for-operator-stops-only-through-h
+- **2026-11-25** — Review pass 1 escalation answered by the operator: fix all four authorize bugs with regression tests (has_token SIGPIPE, unterminated stdin path, unquoted trailing-/ glob, CR in record values: stripped and flagged by lint); document the `origin` trust-anchor limit rather than verifying it against gh; on the merge stand-in, require the PR head to be the `chore: gate pass` commit.
+- **2026-11-26** — Review pass 2 escalation answered by the operator: authorize plan escalates on a protected directory or a parent of one; authorize cross-checks FETCH_HEAD against the ls-remote SHA; the merge stand-in requires green CI on the PR head **and** on the default branch (a red main escalates). The operator also asked for the red `graphify-init-tests` on main to be fixed now, in a separate PR handled by a subagent.
+- **2026-11-27** — Review pass 3 escalation: the operator chose to leave glob metacharacters in planned paths unhandled by `authorize plan`, relying on the merge stop's diff check. Documented in docs/decisions/README.md as a known limit. `graphify-init-tests` fixed on main by PR #104 (merged at the operator's request).
+- **2026-11-27** — Review pass 4 escalation: the operator chose to grep the PR head commit (not the worktree) for the merge-path `forbid:` re-check, so assume-unchanged/skip-worktree cannot hide a committed violation. Pass 4 also split the template README from hivesmith's own (project-neutral advice).
+- **2026-11-27** — Review pass 5 (the cap) escalation: the operator chose `git grep -a` for both forbid greps, `*.gitattributes` added to the built-in protected paths, and the README corrected (a check that cannot run exits 2). The operator then chose to stop the review loop at its cap and proceed to the gate; merge-gate's decision-records dimension reviews the final head.
 
 ## Progress
 
@@ -431,6 +674,8 @@ Phase 3 (not in this PR) covers the approval stand-in: plan auto-approve, auto-m
 - **2026-11-21** — Phase 1 implemented: the helper with 39 test checks, 7 skills wired, scaffold, install/CI/docs, and 23 portability assertions. All AGENTS.md checks pass.
 
 - **2026-11-24** — Phase 2 implemented on `feature/99-decision-records-p2`. decision-test passes 105 checks on bash 5 and on /bin/bash 3.2, portability 111, and all suites, shellcheck and install smoke pass.
+- **2026-11-25** — Phase 3 implemented on `feature/99-decision-records-p3`: `hs-decision authorize`, with decision-test at 205 checks on bash 5 and /bin/bash 3.2. Also the metrics, skill wiring, docs and changeset 101. Every AGENTS.md check passes.
+
 ## Open questions
 
 **Phase 2 scope** (tracked in this spec; merge-gate marks these DEFERRED for Phase 1):
@@ -456,6 +701,12 @@ Also from the plan:
 - **2026-11-24 iter 2 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 721a88bc1123b3bc64501c07a09d4d092050769ef7d9eaf7829e0cd5d1b20bb6; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: 59b953b.
 - **2026-11-24 iter 3 (phase 2, PR #102)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: b09ea5e259b0822e0aac5018c2f078a83c4523d4dfae1d5d4c5e8f0c9dab1940; threads_open: 0; action: escalated:risky-fix-needs-human-decision; head_sha: fb7b91a.
 - **2026-11-24 iter 4 (phase 2, PR #102)** — verdict: APPROVE; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop; head_sha: 98b8d31.
+- **2026-11-25 iter 1 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: edbd7eea63a0ac5872b3eb3bbe0c5cde57a11cc187adf9a8ade82b49ab4ebc86; threads_open: 3; action: escalated: risky fix needs human decision (has_token SIGPIPE, unterminated stdin path, quoted trailing-/ glob, origin trust anchor, DONE-resume head check, CRLF merge_exclude); head_sha: ca7e3f8a2239ee65973da3e0386561bd7347a071
+- **2026-11-25 iter 2 (phase 3, PR #103)** — verdict: REQUEST_CHANGES; mergeable: MERGEABLE; findings_hash: 4b3be1c8ca2e376480418b62902b221d07da5333c470c7505c7d6024e9374ef9; threads_open: 0; action: escalated: risky fix needs human decision (bare protected dir in authorize plan; no green-CI requirement on record merge); head_sha: c704793f2872913059bb71ac1a5f2a691a38e469
+- **2026-11-26 iter 3 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ffc07294c82b37e7cca1789cf74c5fbf2fb7492fae72fdb95bddcc3fb9f44b33; threads_open: 0; action: escalated: risky fix needs human decision (glob metacharacters in planned paths bypass protected check); head_sha: 5bb78cede335bf011a2468b3dedde15a79514e7b
+- **2026-11-27 iter 4 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: 0f3bafe9b314eb6a0589d5d93e975096fb08ade51289df52bf3869c6c06c81a2; threads_open: 0; action: escalated: risky fix needs human decision (merge forbid re-check greps the worktree, not the head commit); head_sha: af7b06d31ae0587250e8fde53e0c8c7108a915e5
+- **2026-11-27 iter 5 (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: f5da059de0cf0bcb1cde4fac0a269f9bee1d789684deac23c7bc7b816ed79a7c; threads_open: 0; action: escalated: risky fix needs human decision (forbid grep skips binary files) — max iterations reached; head_sha: f4e02ee7b523a7f031ec20709b4f72743b65e780
+- **2026-11-27 operator stop (phase 3, PR #103)** — verdict: COMMENT; mergeable: MERGEABLE; findings_hash: ; threads_open: 0; action: stop (operator decision at the 5-iteration cap, after the iter-5 RISKY fix was applied with tests by operator decision; not a converged review pass); head_sha: 716f11ff9e36bbf3ad4283fafa4d6190b1da4417
 
 ## Gate verdict
 
@@ -465,3 +716,15 @@ Also from the plan:
     - non-goals — PASS — skills only list and propose; no history mining, brain untouched, no #98 code (the #98 spec file comes from the brainstorm)
     - doc accuracy — PASS — README, changeset, templates (byte-identical), AGENTS and CI lists match decision.sh
   - 2026-11-23 proposed records: 0001 (only the operator accepts or supersedes records; the installed feature-loop predates its step 34, so plan approval proposed nothing)
+- **2026-11-24** — verdict: PASS; phase: 2/3; checks: 8 passed / 0 failed / 0 followups / 1 deferred; followups: none; one-line: phase 2 (slug ids, prune with link clearing, doc-garden drift pass, correction loop with forbid/paths regression check) delivered; C5 deferred to phase 3.
+  - 2026-11-24 dimensions:
+    - acceptance — PASS — C4, C7, C8, C9 shown by decision-test (113 checks: check_fails_after_accept, lint_flags_duplicate_slug_across_dates, prune_* tests), correction paragraph in AGENTS.md and template, doc-garden signal 6; C1–C3, C6 still hold; C5 DEFERRED (phase > 2)
+    - non-goals — PASS — no agent accept/supersede, no history mining, brain untouched, no scheduler/coordinator; no phase-3 auto-approve or auto-merge
+    - doc accuracy — PASS — README, docs/decisions and template copies (byte-identical), changesets, AGENTS and CI lists match decision.sh; committed CHANGELOG.md is regenerated after merge (verify-generated green)
+- **2026-11-27** — verdict: PASS; phase: 3/3; checks: 9 passed / 0 failed / 0 followups; followups: none; one-line: records stand in for the plan and merge stops only through `hs-decision authorize` exiting 0 (trust anchor = accepted on origin's default branch, protected paths incl. .gitattributes and the merge_exclude union, forbid re-run on the head tree, gate-pass head and green CI required); C5 shown by the authorize scratch-repo tests with and without an accepted record.
+  - 2026-11-27 dimensions:
+    - acceptance — PASS — decision-test 251 checks; C5: authorize_merge_accepted_on_origin_exit0 vs authorize_merge_no_record/proposed_record/branch_only_acceptance/revoked_on_origin_escalates; C8 prune_apply_* and prune_keeps_accepted; C3 propose wiring in feature-loop, feature-plan, merge-gate, brainstorm, doc-garden; C1/C2/C9 skill text (feature-plan-review:40, feature-triage:49-51, doc-garden:50-53)
+    - non-goals — PASS — no agent accept/supersede path (authorize only reads accepted records; new record is proposed), no history mining, brain untouched, nothing from #98
+    - doc accuracy — PASS — README, AGENTS + template, docs/decisions README (template now project-neutral), changeset match decision.sh and the skills; CHANGELOG untouched by the PR
+    - decision records — PASS — `check`: 0 rules, 0 hits; no accepted records, so nothing to conflict with
+  - 2026-11-27 proposed records: none — verdict set no direction
