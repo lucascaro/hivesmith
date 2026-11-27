@@ -5,12 +5,13 @@ type: enhancement
 complexity: L
 priority: P1
 pr: 103
-stage: GATE
+shipped: 2026-11-27
+stage: DONE
 ---
 
 # Add decision records and a correction loop so agents can act within recorded guidance
 
-- **Exec plan:** [docs/exec-plans/active/099-add-decision-records-and-a-correction-loop-so-agen.md](../exec-plans/active/099-add-decision-records-and-a-correction-loop-so-agen.md) (or completed/)
+- **Exec plan:** [docs/exec-plans/completed/099-add-decision-records-and-a-correction-loop-so-agen.md](../exec-plans/completed/099-add-decision-records-and-a-correction-loop-so-agen.md)
 
 ## Problem
 
