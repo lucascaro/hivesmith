@@ -550,6 +550,16 @@ AP() {
 }
 plan_fixture() { setup_auth; mkrec p accepted "authorizes: plan" "plan_paths: src/, docs/notes.md"; push_base; }
 plan_fixture
+# Bad arguments are usage errors (64), never an escalation or an authorization.
+sha="$(git rev-parse HEAD)"
+rc_is authorize_merge_bad_head_exits_64 64 "$(D authorize merge --head XYZ --pr-base main >/dev/null 2>&1; echo $?)"
+rc_is authorize_merge_missing_pr_base_exits_64 64 "$(D authorize merge --head "$sha" >/dev/null 2>&1; echo $?)"
+rc_is authorize_merge_unknown_arg_exits_64 64 "$(D authorize merge --bogus >/dev/null 2>&1; echo $?)"
+rc_is authorize_merge_head_without_value_exits_2 2 "$(D authorize merge --head >/dev/null 2>&1; echo $?)"
+rc_is authorize_plan_bad_complexity_exits_64 64 "$(CX=X AP src/x.sh >/dev/null; echo $?)"
+rc_is authorize_plan_bad_verdict_exits_64 64 "$(V=maybe AP src/x.sh >/dev/null; echo $?)"
+rc_is authorize_plan_files_not_stdin_exits_64 64 "$(echo src/x.sh | D authorize plan --complexity S --verdict approve --confidence 8 --must-fix 0 --conflicts 0 --files foo >/dev/null 2>&1; echo $?)"
+rc_is authorize_plan_unknown_arg_exits_64 64 "$(D authorize plan --bogus >/dev/null 2>&1; echo $?)"
 out="$(AP src/x.sh docs/notes.md)"; rc=$?
 rc_is authorize_plan_all_conditions_exit0 0 "$rc"
 check authorize_plan_names_record "authorized: p (docs/decisions/20260101-p.md)" "$out"

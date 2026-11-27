@@ -40,7 +40,7 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
 
 - `authorizes:` takes `plan`, `merge`, or `plan, merge`. The values are matched exactly, so `nomerge` matches nothing.
 - `plan_paths:` lists comma-separated globs and is required with `authorizes: plan`. A trailing `/` means a directory prefix; otherwise `*` also crosses `/`. A whole-repo scope (`*`, `**`, `.`) fails lint.
-- `merge_exclude:` lists comma-separated globs that no auto-merged PR may touch. It is unioned across **every** accepted record, so one record can never narrow another's exclusions. In hivesmith's own repo, list `skills/, .github/workflows/, AGENTS.md`: changes to those widen what agents may do.
+- `merge_exclude:` lists comma-separated globs that no auto-merged PR may touch. It is unioned across **every** accepted record, so one record can never narrow another's exclusions. List the paths whose changes widen what agents may do, such as CI workflows, agent skills and agent instructions (`AGENTS.md`).
 
 `hs-decision authorize` trusts only records **accepted on origin's default branch, fetched when it runs**. It never reads the worktree's records, so a branch cannot authorize itself, and superseding or deleting a record upstream takes effect at the next call.
 
@@ -70,7 +70,7 @@ A record opts in with frontmatter keys. Add them by hand: the template leaves th
 
 Exit codes: 0 authorized, 1 escalate (`escalate: <reason>`), 2 could not evaluate, 64 bad input. Every non-zero exit means the operator decides.
 
-The clean-tree rule means untracked files block auto-merge. Make sure the loop's scratch output is ignored: `.plans/`, `.rendered/` and `graphify-out/`.
+The clean-tree rule means untracked files block auto-merge. Make sure any scratch output your agents or tools write into the repo is gitignored.
 
 Records from before slug ids (`0001-<slug>.md`) still load, but `lint` asks you to rename them to `YYYYMMDD-<slug>.md` and set `id:` to the slug.
 
